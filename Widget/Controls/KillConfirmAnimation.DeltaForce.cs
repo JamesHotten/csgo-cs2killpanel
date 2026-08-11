@@ -163,7 +163,12 @@ namespace KillConfirmGameBar.Controls
             int moneyReward = NormalizeBattlefieldMoneyReward(reward);
             AddBattlefieldMoneyReward("deltaforce", moneyReward, roundNumber, moneyEpoch, now);
 
-            string feedLabel = BuildDeltaForceFeedLabel(isHeadshot, isKnifeKill, isAssist, eventKind);
+            string feedLabel = BuildDeltaForceFeedLabel(
+                isHeadshot,
+                isKnifeKill,
+                isAssist,
+                eventKind,
+                moneyReward);
             QueueDeltaForceFeedEvent(feedLabel, moneyReward, now);
 
             if (IsRoundBonusEvent(eventKind))
@@ -254,11 +259,17 @@ namespace KillConfirmGameBar.Controls
             bool isHeadshot,
             bool isKnifeKill,
             bool isAssist,
-            string eventKind)
+            string eventKind,
+            int moneyReward)
         {
             if (IsRoundBonusEvent(eventKind))
             {
-                return IsRoundWinEvent(eventKind) ? "胜利奖励" : "失败奖励";
+                if (moneyReward > 0)
+                {
+                    return IsRoundWinEvent(eventKind) ? "胜利奖励" : "失败奖励";
+                }
+
+                return IsRoundWinEvent(eventKind) ? "回合胜利" : "回合失败";
             }
 
             if (IsObjectiveBonusEvent(eventKind))

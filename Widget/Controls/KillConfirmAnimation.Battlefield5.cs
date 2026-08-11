@@ -20,7 +20,7 @@ namespace KillConfirmGameBar.Controls
         private const double Battlefield5YOffset = 118;
         private const double Battlefield5IconSpacing = 1.0;
         private const int Battlefield5MaxVisibleIcons = 7;
-        private const int Battlefield5MaxPendingIcons = 30;
+        private const int Battlefield5MaxPendingEvents = 30;
         private const double Battlefield5DisplayIntervalMs = 100;
         private const double Battlefield5PositionAnimationMs = 300;
         private const double Battlefield5RingDelayMs = 100;
@@ -63,23 +63,36 @@ namespace KillConfirmGameBar.Controls
             int generation = _battlefield5Generation;
             int killType = ResolveBattlefieldKillType(isHeadshot, isKnifeKill, isAssist, false);
             string normalizedEventKind = NormalizeBattlefieldEventKind(isAssist, eventKind);
+            var pendingEvent = new Battlefield5ScrollIcon(
+                killType,
+                null,
+                Battlefield5DisplaySeconds * 1000,
+                Math.Max(0, killCount),
+                string.IsNullOrWhiteSpace(playerName) ? string.Empty : playerName.Trim(),
+                ResolveBattlefieldWeaponName(weaponLabel),
+                Math.Max(0, moneyReward),
+                normalizedEventKind,
+                Math.Max(0, roundNumber),
+                Math.Max(0, moneyEpoch));
+
             if (IsBattlefieldTextOnlyEvent(isAssist, normalizedEventKind))
             {
-                AddBattlefield5TextEvent(new Battlefield5ScrollIcon(
-                    killType,
-                    null,
-                    Battlefield5DisplaySeconds * 1000,
-                    Math.Max(0, killCount),
-                    string.IsNullOrWhiteSpace(playerName) ? string.Empty : playerName.Trim(),
-                    ResolveBattlefieldWeaponName(weaponLabel),
-                    Math.Max(0, moneyReward),
-                    normalizedEventKind,
-                    Math.Max(0, roundNumber),
-                    Math.Max(0, moneyEpoch)),
-                    _playbackClock.IsRunning ? _playbackClock.Elapsed.TotalMilliseconds : 0);
+                pendingEvent.IsReady = true;
+                if (!QueueBattlefield5PendingEvent(pendingEvent))
+                {
+                    return;
+                }
+
                 StartBattlefield5Scrolling();
                 return;
             }
+
+            if (!QueueBattlefield5PendingEvent(pendingEvent))
+            {
+                return;
+            }
+
+            StartBattlefield5Scrolling();
 
             string iconFileName = GetBattlefieldIconFileName("bf5", isHeadshot, isAssist, isKnifeKill, false);
 
@@ -90,6 +103,7 @@ namespace KillConfirmGameBar.Controls
             }
             catch
             {
+                _battlefield5ScrollState.PendingEvents.Remove(pendingEvent);
                 return;
             }
 
@@ -98,23 +112,20 @@ namespace KillConfirmGameBar.Controls
                 return;
             }
 
-            _battlefield5ScrollState.PendingIcons.Add(new Battlefield5ScrollIcon(
-                killType,
-                icon,
-                Battlefield5DisplaySeconds * 1000,
-                Math.Max(0, killCount),
-                string.IsNullOrWhiteSpace(playerName) ? string.Empty : playerName.Trim(),
-                ResolveBattlefieldWeaponName(weaponLabel),
-                Math.Max(0, moneyReward),
-                normalizedEventKind,
-                Math.Max(0, roundNumber),
-                Math.Max(0, moneyEpoch)));
-            if (_battlefield5ScrollState.PendingIcons.Count > Battlefield5MaxPendingIcons)
+            pendingEvent.Icon = icon;
+            pendingEvent.IsReady = true;
+            SpriteCanvas.Invalidate();
+        }
+
+        private bool QueueBattlefield5PendingEvent(Battlefield5ScrollIcon pendingEvent)
+        {
+            if (_battlefield5ScrollState.PendingEvents.Count >= Battlefield5MaxPendingEvents)
             {
-                _battlefield5ScrollState.PendingIcons.RemoveAt(0);
+                return false;
             }
 
-            StartBattlefield5Scrolling();
+            _battlefield5ScrollState.PendingEvents.Add(pendingEvent);
+            return true;
         }
 
         private void StartBattlefield5Scrolling()
@@ -173,7 +184,7 @@ namespace KillConfirmGameBar.Controls
         private void UpdateBattlefield5ScrollingFrame()
         {
             double currentTimeMs = _playbackClock.Elapsed.TotalMilliseconds;
-            ProcessBattlefield5PendingIcons(currentTimeMs);
+            ProcessBattlefield5PendingEvents(currentTimeMs);
             UpdateBattlefield5TextItems(currentTimeMs);
 
             bool removedAny = false;
@@ -195,7 +206,7 @@ namespace KillConfirmGameBar.Controls
             }
 
             if (_battlefield5ScrollState.ActiveIcons.Count == 0
-                && _battlefield5ScrollState.PendingIcons.Count == 0
+                && _battlefield5ScrollState.PendingEvents.Count == 0
                 && _battlefield5ScrollState.KillFeedItem == null
                 && _battlefield5ScrollState.BonusItems.Count == 0
                 && !IsBattlefield5MoneyVisible(currentTimeMs))
@@ -217,19 +228,29 @@ namespace KillConfirmGameBar.Controls
                 || IsBattlefield5MoneyVisible(currentTimeMs);
         }
 
-        private void ProcessBattlefield5PendingIcons(double currentTimeMs)
+        private void ProcessBattlefield5PendingEvents(double currentTimeMs)
         {
-            while (_battlefield5ScrollState.PendingIcons.Count > 0
+            while (_battlefield5ScrollState.PendingEvents.Count > 0
+                && _battlefield5ScrollState.PendingEvents[0].IsReady
                 && currentTimeMs - _battlefield5ScrollState.LastIconDisplayTimeMs >= Battlefield5DisplayIntervalMs)
             {
-                Battlefield5ScrollIcon nextIcon = _battlefield5ScrollState.PendingIcons[0];
-                _battlefield5ScrollState.PendingIcons.RemoveAt(0);
+                Battlefield5ScrollIcon nextIcon = _battlefield5ScrollState.PendingEvents[0];
+                _battlefield5ScrollState.PendingEvents.RemoveAt(0);
                 nextIcon.StartTimeMs = currentTimeMs;
-                nextIcon.RingStartTimeMs = nextIcon.KillType == BattlefieldKillTypeHeadshot
-                    ? currentTimeMs + Battlefield5RingDelayMs
-                    : -1;
                 _battlefield5ScrollState.LastIconDisplayTimeMs = currentTimeMs;
-                AddBattlefield5Icon(nextIcon, currentTimeMs);
+                if (IsBattlefieldTextOnlyEvent(
+                    nextIcon.KillType == BattlefieldKillTypeAssist,
+                    nextIcon.EventKind))
+                {
+                    AddBattlefield5TextEvent(nextIcon, currentTimeMs);
+                }
+                else
+                {
+                    nextIcon.RingStartTimeMs = nextIcon.KillType == BattlefieldKillTypeHeadshot
+                        ? currentTimeMs + Battlefield5RingDelayMs
+                        : -1;
+                    AddBattlefield5Icon(nextIcon, currentTimeMs);
+                }
             }
         }
 

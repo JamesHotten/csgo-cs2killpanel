@@ -170,7 +170,7 @@ namespace KillConfirmGameBar.Controls
             _contentSizedViewport = false;
             _isBattlefield1CompactLayoutActive = false;
             _battlefield5ScrollState.ActiveIcons.Clear();
-            _battlefield5ScrollState.PendingIcons.Clear();
+            _battlefield5ScrollState.PendingEvents.Clear();
             _battlefield5ScrollState.KillFeedItem = null;
 
             _currentCodeAsset = null;

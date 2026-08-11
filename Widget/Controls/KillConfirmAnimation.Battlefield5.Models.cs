@@ -9,7 +9,7 @@ namespace KillConfirmGameBar.Controls
         private sealed class Battlefield5ScrollState
         {
             public readonly List<Battlefield5ScrollIcon> ActiveIcons = new List<Battlefield5ScrollIcon>();
-            public readonly List<Battlefield5ScrollIcon> PendingIcons = new List<Battlefield5ScrollIcon>();
+            public readonly List<Battlefield5ScrollIcon> PendingEvents = new List<Battlefield5ScrollIcon>();
             public readonly List<Battlefield5TextItem> BonusItems = new List<Battlefield5TextItem>();
             public Battlefield5TextItem KillFeedItem;
             public double MoneyRoundValue;
@@ -26,7 +26,7 @@ namespace KillConfirmGameBar.Controls
             public void Clear()
             {
                 ActiveIcons.Clear();
-                PendingIcons.Clear();
+                PendingEvents.Clear();
                 BonusItems.Clear();
                 KillFeedItem = null;
                 MoneyRoundValue = 0;
@@ -71,7 +71,8 @@ namespace KillConfirmGameBar.Controls
             }
 
             public int KillType { get; }
-            public CanvasBitmap Icon { get; }
+            public CanvasBitmap Icon { get; set; }
+            public bool IsReady { get; set; }
             public double DisplayDurationMs { get; }
             public int KillCount { get; }
             public string PlayerName { get; }

@@ -155,6 +155,37 @@ Get-ChildItem (Join-Path $repoRoot 'Widget\Assets') -Recurse -File |
     Where-Object { $_.Extension -ieq '.png' } |
     ForEach-Object { Test-PngFile $_ }
 
+# Presentation regressions: zero-money Delta rounds are outcomes, and Battlefield V
+# must keep the service event order even while the preceding kill icon loads async.
+$deltaSource = Get-Content -LiteralPath (Join-Path $repoRoot 'Widget\Controls\KillConfirmAnimation.DeltaForce.cs') -Raw
+$checks++
+if ($deltaSource -notmatch 'eventKind,\s*moneyReward\);') {
+    $errors.Add('Delta Force feed labels are not receiving the resolved money reward.')
+}
+$checks++
+if ($deltaSource -notmatch 'moneyReward > 0[\s\S]*"回合胜利" : "回合失败"') {
+    $errors.Add('Delta Force zero-money round events are not labelled as round outcomes.')
+}
+
+$battlefield5Source = Get-Content -LiteralPath (Join-Path $repoRoot 'Widget\Controls\KillConfirmAnimation.Battlefield5.cs') -Raw
+$battlefield5ModelsSource = Get-Content -LiteralPath (Join-Path $repoRoot 'Widget\Controls\KillConfirmAnimation.Battlefield5.Models.cs') -Raw
+$checks++
+if ($battlefield5Source -notmatch 'QueueBattlefield5PendingEvent\(pendingEvent\)[\s\S]*LoadBattlefieldIconAsync') {
+    $errors.Add('Battlefield V does not reserve the kill event order before async icon loading.')
+}
+$checks++
+if ($battlefield5Source -notmatch 'PendingEvents\[0\]\.IsReady') {
+    $errors.Add('Battlefield V pending events can overtake an earlier icon that is still loading.')
+}
+$checks++
+if ($battlefield5Source -notmatch 'PendingEvents\.Count >= Battlefield5MaxPendingEvents[\s\S]*return false;') {
+    $errors.Add('Battlefield V queue overflow can discard the ordered head event.')
+}
+$checks++
+if ($battlefield5ModelsSource -notmatch 'public bool IsReady \{ get; set; \}') {
+    $errors.Add('Battlefield V pending event readiness state is missing.')
+}
+
 if (-not $SkipRustTests) {
     & cargo test --manifest-path (Join-Path $repoRoot 'KillConfirmService\Cargo.toml') `
         every_builtin_audio_route_points_to_an_existing_decodable_file --quiet
