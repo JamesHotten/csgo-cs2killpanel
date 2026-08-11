@@ -41,9 +41,9 @@ use anyhow::{Context, Result};
 use soundpack::Preset;
 use soundpack::sound::warm_audio_cache;
 use util::event_stream::{
-    audio_reload, audio_volume, crossfire_settings, cs2_root, events_ws, gsi_status, health,
-    money_mode, set_crossfire_settings, set_money_mode, set_streak_settings, shutdown,
-    streak_settings, test_event,
+    audio_devices, audio_reload, audio_volume, crossfire_settings, cs2_root, events_ws, gsi_status,
+    health, money_mode, set_audio_device, set_crossfire_settings, set_money_mode,
+    set_streak_settings, shutdown, streak_settings, test_event,
 };
 use util::handler::update;
 use windows_sys::Win32::UI::Shell::ShellExecuteW;
@@ -249,6 +249,7 @@ async fn run() -> Result<()> {
             has_first_kill_in_round: false,
             pending_last_kill: None,
             player_kill_snapshots: std::collections::HashMap::new(),
+            player_view_baselines: std::collections::HashMap::new(),
             last_legacy_bridge_kill_at: None,
             last_cs2_gsi_kill_at: None,
             cs2_local_log_round: 0,
@@ -259,6 +260,7 @@ async fn run() -> Result<()> {
         control_token,
         stream_handle: RwLock::new(output_stream),
         current_output_device_name: RwLock::new(output_device_name.clone()),
+        selected_output_device_name: RwLock::new(args.device.clone()),
         args,
         preset: RwLock::new(preset),
         volume_percent: AtomicU32::new(initial_volume_percent),
@@ -271,6 +273,10 @@ async fn run() -> Result<()> {
         shared_streak_mode_active: AtomicBool::new(false),
         crossfire_first_kill_special_audio: AtomicBool::new(true),
         crossfire_last_kill_special_audio: AtomicBool::new(true),
+        crossfire_headshot_special_audio_priority: AtomicBool::new(false),
+        crossfire_knife_special_audio_priority: AtomicBool::new(true),
+        assist_audio_enabled: AtomicBool::new(false),
+        assist_audio_setting_active: AtomicBool::new(true),
         event_tx,
         shutdown_tx,
         gsi_posts: AtomicU64::new(0),
@@ -281,12 +287,10 @@ async fn run() -> Result<()> {
 
     service_log(&format!("active audio device: {}", output_device_name));
 
-    if app_state.args.device.eq_ignore_ascii_case("default") {
-        let watcher_state = app_state.clone();
-        tokio::spawn(async move {
-            monitor_default_output_device(watcher_state).await;
-        });
-    }
+    let watcher_state = app_state.clone();
+    tokio::spawn(async move {
+        monitor_default_output_device(watcher_state).await;
+    });
 
     {
         let cache_state = app_state.clone();
@@ -316,6 +320,8 @@ async fn run() -> Result<()> {
         .route("/gsi-status", get(gsi_status))
         .route("/cs2-root", get(cs2_root))
         .route("/audio/reload", post(audio_reload))
+        .route("/audio/devices", get(audio_devices))
+        .route("/audio/device", post(set_audio_device))
         .route("/audio/volume", post(audio_volume))
         .route("/money/mode", get(money_mode).post(set_money_mode))
         .route(
@@ -361,6 +367,11 @@ async fn monitor_default_output_device(app_state: Arc<AppState>) {
 
         if app_state.shutdown_tx.receiver_count() == 0 {
             break;
+        }
+
+        let selected_device = app_state.selected_output_device_name.read().await.clone();
+        if !selected_device.eq_ignore_ascii_case("default") {
+            continue;
         }
 
         let detected_name = match default_output_device_name() {

@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using KillConfirmGameBar.Services;
 using Windows.Data.Json;
 using Windows.Storage.Streams;
+using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.Web.Http;
 
@@ -10,7 +11,7 @@ namespace KillConfirmGameBar.Controls.Settings
 {
     public sealed partial class CrossfireAdvancedSettingsPanel : UserControl
     {
-        private bool _suppressSettingEvents;
+        private bool _suppressSettingEvents = true;
 
         public CrossfireAdvancedSettingsPanel()
         {
@@ -26,6 +27,11 @@ namespace KillConfirmGameBar.Controls.Settings
             StreakEditor.ApplyTheme(theme);
             SettingsPanelSupport.ApplySettingRow(FirstKillAudioLabel, FirstKillAudioSelector, theme);
             SettingsPanelSupport.ApplySettingRow(LastKillAudioLabel, LastKillAudioSelector, theme);
+            SettingsPanelSupport.ApplySettingRow(HeadshotAudioPriorityLabel, HeadshotAudioPrioritySelector, theme);
+            SettingsPanelSupport.ApplySettingRow(KnifeAudioPriorityLabel, KnifeAudioPrioritySelector, theme);
+            SettingsPanelSupport.ApplySettingRow(HeadshotIconPriorityLabel, HeadshotIconPrioritySelector, theme);
+            SettingsPanelSupport.ApplySettingRow(KnifeIconPriorityLabel, KnifeIconPrioritySelector, theme);
+            SettingsPanelSupport.ApplyToggleRow(AssistAudioLabel, AssistAudioToggle, theme);
         }
 
         public void ApplyLanguage(bool isChinese)
@@ -43,6 +49,21 @@ namespace KillConfirmGameBar.Controls.Settings
             LastKillSpecialItem.Content = FirstKillSpecialItem.Content;
             FirstKillOriginalItem.Content = isChinese ? "\u539f\u51fb\u6740\u97f3\u6548" : "Original kill audio";
             LastKillOriginalItem.Content = FirstKillOriginalItem.Content;
+            HeadshotAudioPriorityLabel.Text = isChinese ? "\u7206\u5934\u97f3\u6548" : "Headshot audio";
+            KnifeAudioPriorityLabel.Text = isChinese ? "\u5200\u6740\u97f3\u6548" : "Knife-kill audio";
+            HeadshotSpecialPriorityItem.Content = isChinese ? "\u7206\u5934\u4f18\u5148" : "Headshot priority";
+            KnifeSpecialPriorityItem.Content = isChinese ? "\u5200\u6740\u4f18\u5148" : "Knife-kill priority";
+            HeadshotStreakPriorityItem.Content = isChinese ? "\u8fde\u6740\u4f18\u5148" : "Kill-streak priority";
+            KnifeStreakPriorityItem.Content = HeadshotStreakPriorityItem.Content;
+            HeadshotIconPriorityLabel.Text = isChinese ? "\u7206\u5934\u56fe\u6807" : "Headshot icon";
+            KnifeIconPriorityLabel.Text = isChinese ? "\u5200\u6740\u56fe\u6807" : "Knife-kill icon";
+            HeadshotIconSpecialPriorityItem.Content = HeadshotSpecialPriorityItem.Content;
+            KnifeIconSpecialPriorityItem.Content = KnifeSpecialPriorityItem.Content;
+            HeadshotIconStreakPriorityItem.Content = HeadshotStreakPriorityItem.Content;
+            KnifeIconStreakPriorityItem.Content = HeadshotStreakPriorityItem.Content;
+            AssistAudioLabel.Text = isChinese ? "\u52a9\u653b\u97f3\u6548" : "Assist audio";
+            AssistAudioToggle.OnContent = isChinese ? "\u6709\u58f0\u97f3\uff08common\uff09" : "Sound (common)";
+            AssistAudioToggle.OffContent = isChinese ? "\u65e0\u58f0\u97f3\uff08\u9ed8\u8ba4\uff09" : "Muted (default)";
         }
 
         private void LoadGameplaySettings()
@@ -52,8 +73,13 @@ namespace KillConfirmGameBar.Controls.Settings
             try
             {
                 StreakEditor.SelectValue(settings.StreakMode);
+                SelectTaggedItem(HeadshotAudioPrioritySelector, settings.HeadshotSpecialAudioPriority ? "special" : "streak", "streak");
+                SelectTaggedItem(KnifeAudioPrioritySelector, settings.KnifeSpecialAudioPriority ? "special" : "streak", "special");
+                SelectTaggedItem(HeadshotIconPrioritySelector, settings.HeadshotSpecialIconPriority ? "special" : "streak", "streak");
+                SelectTaggedItem(KnifeIconPrioritySelector, settings.KnifeSpecialIconPriority ? "special" : "streak", "special");
                 SelectTaggedItem(FirstKillAudioSelector, settings.FirstKillSpecialAudio ? "special" : "original", "special");
                 SelectTaggedItem(LastKillAudioSelector, settings.LastKillSpecialAudio ? "special" : "original", "special");
+                AssistAudioToggle.IsOn = settings.AssistAudioEnabled;
             }
             finally
             {
@@ -63,9 +89,9 @@ namespace KillConfirmGameBar.Controls.Settings
             CrossfireGameplaySettingsStore.Save(settings);
         }
 
-        private async void OnGameplaySettingChanged(object sender, SelectionChangedEventArgs e)
+        private async void OnGameplaySettingChanged(object sender, RoutedEventArgs e)
         {
-            if (_suppressSettingEvents)
+            if (_suppressSettingEvents || !AreGameplayControlsReady())
             {
                 return;
             }
@@ -73,8 +99,13 @@ namespace KillConfirmGameBar.Controls.Settings
             var settings = new CrossfireGameplaySettingsValues
             {
                 StreakMode = StreakEditor.GetValue(SharedStreakSettingsStore.LifeMode),
+                HeadshotSpecialAudioPriority = ReadTaggedItem(HeadshotAudioPrioritySelector, "streak") == "special",
+                KnifeSpecialAudioPriority = ReadTaggedItem(KnifeAudioPrioritySelector, "special") == "special",
+                HeadshotSpecialIconPriority = ReadTaggedItem(HeadshotIconPrioritySelector, "streak") == "special",
+                KnifeSpecialIconPriority = ReadTaggedItem(KnifeIconPrioritySelector, "special") == "special",
                 FirstKillSpecialAudio = ReadTaggedItem(FirstKillAudioSelector, "special") == "special",
-                LastKillSpecialAudio = ReadTaggedItem(LastKillAudioSelector, "special") == "special"
+                LastKillSpecialAudio = ReadTaggedItem(LastKillAudioSelector, "special") == "special",
+                AssistAudioEnabled = AssistAudioToggle.IsOn
             };
             CrossfireGameplaySettingsStore.Save(settings);
             await TrySyncRuntimeSettingsAsync(settings);
@@ -89,7 +120,10 @@ namespace KillConfirmGameBar.Controls.Settings
                     ["active"] = JsonValue.CreateBooleanValue(true),
                     ["streak_mode"] = JsonValue.CreateStringValue(settings.StreakMode),
                     ["first_kill_special_audio"] = JsonValue.CreateBooleanValue(settings.FirstKillSpecialAudio),
-                    ["last_kill_special_audio"] = JsonValue.CreateBooleanValue(settings.LastKillSpecialAudio)
+                    ["last_kill_special_audio"] = JsonValue.CreateBooleanValue(settings.LastKillSpecialAudio),
+                    ["headshot_special_audio_priority"] = JsonValue.CreateBooleanValue(settings.HeadshotSpecialAudioPriority),
+                    ["knife_special_audio_priority"] = JsonValue.CreateBooleanValue(settings.KnifeSpecialAudioPriority),
+                    ["assist_audio_enabled"] = JsonValue.CreateBooleanValue(settings.AssistAudioEnabled)
                 };
 
                 using (var client = await LocalServiceAuth.CreateHttpClientAsync())
@@ -121,6 +155,11 @@ namespace KillConfirmGameBar.Controls.Settings
 
         private static void SelectTaggedItem(ComboBox selector, string value, string fallback)
         {
+            if (selector == null)
+            {
+                return;
+            }
+
             string target = string.IsNullOrWhiteSpace(value) ? fallback : value;
             foreach (object option in selector.Items)
             {
@@ -134,6 +173,18 @@ namespace KillConfirmGameBar.Controls.Settings
             }
 
             selector.SelectedIndex = 0;
+        }
+
+        private bool AreGameplayControlsReady()
+        {
+            return StreakEditor != null
+                && HeadshotAudioPrioritySelector != null
+                && KnifeAudioPrioritySelector != null
+                && HeadshotIconPrioritySelector != null
+                && KnifeIconPrioritySelector != null
+                && FirstKillAudioSelector != null
+                && LastKillAudioSelector != null
+                && AssistAudioToggle != null;
         }
     }
 }

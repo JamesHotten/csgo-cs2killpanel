@@ -1,5 +1,6 @@
 using System;
 using KillConfirmGameBar.Services;
+using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 
 namespace KillConfirmGameBar.Controls.GameStyles
@@ -11,9 +12,14 @@ namespace KillConfirmGameBar.Controls.GameStyles
             InitializeComponent();
         }
 
-        public event SelectionChangedEventHandler StreakModeSelectionChanged;
-        public event SelectionChangedEventHandler FirstKillAudioSelectionChanged;
-        public event SelectionChangedEventHandler LastKillAudioSelectionChanged;
+        public event RoutedEventHandler StreakModeSelectionChanged;
+        public event RoutedEventHandler HeadshotAudioPrioritySelectionChanged;
+        public event RoutedEventHandler KnifeAudioPrioritySelectionChanged;
+        public event RoutedEventHandler HeadshotIconPrioritySelectionChanged;
+        public event RoutedEventHandler KnifeIconPrioritySelectionChanged;
+        public event RoutedEventHandler FirstKillAudioSelectionChanged;
+        public event RoutedEventHandler LastKillAudioSelectionChanged;
+        public event RoutedEventHandler AssistAudioToggled;
 
         public ComboBox StreakModeSelectorControl => StreakEditor.SelectorControl;
         public ComboBox FirstKillAudioSelectorControl => FirstKillAudioSelector;
@@ -30,6 +36,11 @@ namespace KillConfirmGameBar.Controls.GameStyles
             StreakEditor.ApplyTheme(theme);
             AdvancedEffectsPanelSupport.ApplyMoneyRow(FirstKillAudioLabel, FirstKillAudioSelector, theme);
             AdvancedEffectsPanelSupport.ApplyMoneyRow(LastKillAudioLabel, LastKillAudioSelector, theme);
+            AdvancedEffectsPanelSupport.ApplyMoneyRow(HeadshotAudioPriorityLabel, HeadshotAudioPrioritySelector, theme);
+            AdvancedEffectsPanelSupport.ApplyMoneyRow(KnifeAudioPriorityLabel, KnifeAudioPrioritySelector, theme);
+            AdvancedEffectsPanelSupport.ApplyMoneyRow(HeadshotIconPriorityLabel, HeadshotIconPrioritySelector, theme);
+            AdvancedEffectsPanelSupport.ApplyMoneyRow(KnifeIconPriorityLabel, KnifeIconPrioritySelector, theme);
+            AdvancedEffectsPanelSupport.ApplyToggleRow(AssistAudioLabel, AssistAudioToggle, theme);
         }
 
         public void ApplyLanguage(bool isChinese)
@@ -45,6 +56,21 @@ namespace KillConfirmGameBar.Controls.GameStyles
             LastKillSpecialItem.Content = FirstKillSpecialItem.Content;
             FirstKillOriginalItem.Content = isChinese ? "\u539f\u51fb\u6740\u97f3\u6548" : "Original kill audio";
             LastKillOriginalItem.Content = FirstKillOriginalItem.Content;
+            HeadshotAudioPriorityLabel.Text = isChinese ? "\u7206\u5934\u97f3\u6548" : "Headshot audio";
+            KnifeAudioPriorityLabel.Text = isChinese ? "\u5200\u6740\u97f3\u6548" : "Knife-kill audio";
+            HeadshotSpecialPriorityItem.Content = isChinese ? "\u7206\u5934\u4f18\u5148" : "Headshot priority";
+            KnifeSpecialPriorityItem.Content = isChinese ? "\u5200\u6740\u4f18\u5148" : "Knife-kill priority";
+            HeadshotStreakPriorityItem.Content = isChinese ? "\u8fde\u6740\u4f18\u5148" : "Kill-streak priority";
+            KnifeStreakPriorityItem.Content = HeadshotStreakPriorityItem.Content;
+            HeadshotIconPriorityLabel.Text = isChinese ? "\u7206\u5934\u56fe\u6807" : "Headshot icon";
+            KnifeIconPriorityLabel.Text = isChinese ? "\u5200\u6740\u56fe\u6807" : "Knife-kill icon";
+            HeadshotIconSpecialPriorityItem.Content = HeadshotSpecialPriorityItem.Content;
+            KnifeIconSpecialPriorityItem.Content = KnifeSpecialPriorityItem.Content;
+            HeadshotIconStreakPriorityItem.Content = HeadshotStreakPriorityItem.Content;
+            KnifeIconStreakPriorityItem.Content = HeadshotStreakPriorityItem.Content;
+            AssistAudioLabel.Text = isChinese ? "\u52a9\u653b\u97f3\u6548" : "Assist audio";
+            AssistAudioToggle.OnContent = isChinese ? "\u6709\u58f0\u97f3\uff08common\uff09" : "Sound (common)";
+            AssistAudioToggle.OffContent = isChinese ? "\u65e0\u58f0\u97f3\uff08\u9ed8\u8ba4\uff09" : "Muted (default)";
         }
 
         public string GetSelectedStreakMode(string fallback)
@@ -62,11 +88,38 @@ namespace KillConfirmGameBar.Controls.GameStyles
             return ReadTaggedItem(LastKillAudioSelector, fallback ? "special" : "original") == "special";
         }
 
-        public void SelectSettings(string streakMode, bool firstSpecial, bool lastSpecial)
+        public bool GetHeadshotSpecialAudioPriority(bool fallback) =>
+            ReadTaggedItem(HeadshotAudioPrioritySelector, fallback ? "special" : "streak") == "special";
+
+        public bool GetKnifeSpecialAudioPriority(bool fallback) =>
+            ReadTaggedItem(KnifeAudioPrioritySelector, fallback ? "special" : "streak") == "special";
+
+        public bool GetHeadshotSpecialIconPriority(bool fallback) =>
+            ReadTaggedItem(HeadshotIconPrioritySelector, fallback ? "special" : "streak") == "special";
+
+        public bool GetKnifeSpecialIconPriority(bool fallback) =>
+            ReadTaggedItem(KnifeIconPrioritySelector, fallback ? "special" : "streak") == "special";
+
+        public bool GetAssistAudioEnabled(bool fallback) => AssistAudioToggle?.IsOn ?? fallback;
+
+        public void SelectSettings(
+            string streakMode,
+            bool headshotAudioSpecial,
+            bool knifeAudioSpecial,
+            bool headshotIconSpecial,
+            bool knifeIconSpecial,
+            bool firstSpecial,
+            bool lastSpecial,
+            bool assistAudioEnabled)
         {
             StreakEditor.SelectValue(streakMode);
+            SelectTaggedItem(HeadshotAudioPrioritySelector, headshotAudioSpecial ? "special" : "streak", "streak");
+            SelectTaggedItem(KnifeAudioPrioritySelector, knifeAudioSpecial ? "special" : "streak", "special");
+            SelectTaggedItem(HeadshotIconPrioritySelector, headshotIconSpecial ? "special" : "streak", "streak");
+            SelectTaggedItem(KnifeIconPrioritySelector, knifeIconSpecial ? "special" : "streak", "special");
             SelectTaggedItem(FirstKillAudioSelector, firstSpecial ? "special" : "original", "special");
             SelectTaggedItem(LastKillAudioSelector, lastSpecial ? "special" : "original", "special");
+            AssistAudioToggle.IsOn = assistAudioEnabled;
         }
 
         private void OnStreakModeSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -83,6 +136,20 @@ namespace KillConfirmGameBar.Controls.GameStyles
         {
             LastKillAudioSelectionChanged?.Invoke(this, e);
         }
+
+        private void OnHeadshotAudioPrioritySelectionChanged(object sender, SelectionChangedEventArgs e) =>
+            HeadshotAudioPrioritySelectionChanged?.Invoke(this, e);
+
+        private void OnKnifeAudioPrioritySelectionChanged(object sender, SelectionChangedEventArgs e) =>
+            KnifeAudioPrioritySelectionChanged?.Invoke(this, e);
+
+        private void OnHeadshotIconPrioritySelectionChanged(object sender, SelectionChangedEventArgs e) =>
+            HeadshotIconPrioritySelectionChanged?.Invoke(this, e);
+
+        private void OnKnifeIconPrioritySelectionChanged(object sender, SelectionChangedEventArgs e) =>
+            KnifeIconPrioritySelectionChanged?.Invoke(this, e);
+
+        private void OnAssistAudioToggled(object sender, RoutedEventArgs e) => AssistAudioToggled?.Invoke(this, e);
 
         private static string ReadTaggedItem(ComboBox selector, string fallback)
         {

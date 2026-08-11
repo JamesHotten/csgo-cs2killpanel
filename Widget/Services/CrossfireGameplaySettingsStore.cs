@@ -8,6 +8,11 @@ namespace KillConfirmGameBar.Services
         public string StreakMode { get; set; }
         public bool FirstKillSpecialAudio { get; set; }
         public bool LastKillSpecialAudio { get; set; }
+        public bool HeadshotSpecialAudioPriority { get; set; }
+        public bool KnifeSpecialAudioPriority { get; set; }
+        public bool HeadshotSpecialIconPriority { get; set; }
+        public bool KnifeSpecialIconPriority { get; set; }
+        public bool AssistAudioEnabled { get; set; }
     }
 
     internal static class CrossfireGameplaySettingsStore
@@ -20,6 +25,10 @@ namespace KillConfirmGameBar.Services
         private const string StreakModeSettingKey = "CrossfireStreakMode";
         private const string FirstKillSpecialAudioSettingKey = "CrossfireFirstKillSpecialAudio";
         private const string LastKillSpecialAudioSettingKey = "CrossfireLastKillSpecialAudio";
+        private const string HeadshotSpecialAudioPrioritySettingKey = "CrossfireHeadshotSpecialAudioPriority";
+        private const string KnifeSpecialAudioPrioritySettingKey = "CrossfireKnifeSpecialAudioPriority";
+        private const string HeadshotSpecialIconPrioritySettingKey = "CrossfireHeadshotSpecialIconPriority";
+        private const string KnifeSpecialIconPrioritySettingKey = "CrossfireKnifeSpecialIconPriority";
 
         public static CrossfireGameplaySettingsValues Load()
         {
@@ -28,7 +37,12 @@ namespace KillConfirmGameBar.Services
             {
                 StreakMode = NormalizeStreakMode(values[StreakModeSettingKey] as string),
                 FirstKillSpecialAudio = ReadBoolean(values[FirstKillSpecialAudioSettingKey], true),
-                LastKillSpecialAudio = ReadBoolean(values[LastKillSpecialAudioSettingKey], true)
+                LastKillSpecialAudio = ReadBoolean(values[LastKillSpecialAudioSettingKey], true),
+                HeadshotSpecialAudioPriority = ReadBoolean(values[HeadshotSpecialAudioPrioritySettingKey], false),
+                KnifeSpecialAudioPriority = ReadBoolean(values[KnifeSpecialAudioPrioritySettingKey], true),
+                HeadshotSpecialIconPriority = ReadBoolean(values[HeadshotSpecialIconPrioritySettingKey], false),
+                KnifeSpecialIconPriority = ReadBoolean(values[KnifeSpecialIconPrioritySettingKey], true),
+                AssistAudioEnabled = AssistAudioSettingsStore.Load(GameStyleMode.Crossfire)
             };
         }
 
@@ -43,6 +57,11 @@ namespace KillConfirmGameBar.Services
             values[StreakModeSettingKey] = NormalizeStreakMode(settings.StreakMode);
             values[FirstKillSpecialAudioSettingKey] = settings.FirstKillSpecialAudio;
             values[LastKillSpecialAudioSettingKey] = settings.LastKillSpecialAudio;
+            values[HeadshotSpecialAudioPrioritySettingKey] = settings.HeadshotSpecialAudioPriority;
+            values[KnifeSpecialAudioPrioritySettingKey] = settings.KnifeSpecialAudioPriority;
+            values[HeadshotSpecialIconPrioritySettingKey] = settings.HeadshotSpecialIconPriority;
+            values[KnifeSpecialIconPrioritySettingKey] = settings.KnifeSpecialIconPriority;
+            AssistAudioSettingsStore.Save(GameStyleMode.Crossfire, settings.AssistAudioEnabled);
         }
 
         public static string NormalizeStreakMode(string value)

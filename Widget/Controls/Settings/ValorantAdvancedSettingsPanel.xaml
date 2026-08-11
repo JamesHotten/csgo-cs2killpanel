@@ -23,7 +23,11 @@
                 Visibility="Collapsed"
                 TextWrapping="WrapWholeWords" />
 
-            <Grid Margin="0,8,0,0" ColumnSpacing="12">
+            <Grid Margin="0,8,0,0" RowSpacing="10" ColumnSpacing="12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="150" />
                     <ColumnDefinition Width="*" />
@@ -35,6 +39,9 @@
                     <ComboBoxItem x:Name="StreakTimed10Item" Tag="timed_10">10-second window</ComboBoxItem>
                     <ComboBoxItem x:Name="StreakTimed15Item" Tag="timed_15">15-second window</ComboBoxItem>
                 </ComboBox>
+
+                <TextBlock x:Name="AssistAudioLabel" Grid.Row="1" VerticalAlignment="Center" Text="Assist audio" />
+                <ToggleSwitch x:Name="AssistAudioToggle" Grid.Row="1" Grid.Column="1" IsOn="False" OffContent="Muted (default)" OnContent="Sound (common)" Toggled="OnAssistAudioToggled" />
             </Grid>
         </StackPanel>
     </Border>

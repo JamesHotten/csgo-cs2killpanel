@@ -1,4 +1,5 @@
 using KillConfirmGameBar.Services;
+using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 
 namespace KillConfirmGameBar.Controls.Settings
@@ -12,6 +13,7 @@ namespace KillConfirmGameBar.Controls.Settings
             InitializeComponent();
             _suppressStreakEvents = true;
             SharedStreakSettingsPanelSupport.Load(GameStyleMode.Valorant, StreakModeSelector);
+            AssistAudioToggle.IsOn = AssistAudioSettingsStore.Load(GameStyleMode.Valorant);
             _suppressStreakEvents = false;
         }
 
@@ -19,6 +21,7 @@ namespace KillConfirmGameBar.Controls.Settings
         {
             SettingsPanelSupport.ApplyPanel(Card, TitleText, BodyText, theme);
             SettingsPanelSupport.ApplySettingRow(StreakModeLabel, StreakModeSelector, theme);
+            SettingsPanelSupport.ApplyToggleRow(AssistAudioLabel, AssistAudioToggle, theme);
         }
 
         public void ApplyLanguage(bool isChinese)
@@ -33,6 +36,9 @@ namespace KillConfirmGameBar.Controls.Settings
                 StreakTimed10Item,
                 StreakTimed15Item,
                 isChinese);
+            AssistAudioLabel.Text = isChinese ? "\u52a9\u653b\u97f3\u6548" : "Assist audio";
+            AssistAudioToggle.OnContent = isChinese ? "\u6709\u58f0\u97f3\uff08common\uff09" : "Sound (common)";
+            AssistAudioToggle.OffContent = isChinese ? "\u65e0\u58f0\u97f3\uff08\u9ed8\u8ba4\uff09" : "Muted (default)";
         }
 
         private async void OnStreakModeSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -41,8 +47,25 @@ namespace KillConfirmGameBar.Controls.Settings
             {
                 await SharedStreakSettingsPanelSupport.SaveAndSyncAsync(
                     GameStyleMode.Valorant,
-                    StreakModeSelector);
+                    StreakModeSelector,
+                    AssistAudioToggle.IsOn,
+                    true);
             }
+        }
+
+        private async void OnAssistAudioToggled(object sender, RoutedEventArgs e)
+        {
+            if (_suppressStreakEvents)
+            {
+                return;
+            }
+
+            AssistAudioSettingsStore.Save(GameStyleMode.Valorant, AssistAudioToggle.IsOn);
+            await SharedStreakSettingsPanelSupport.SaveAndSyncAsync(
+                GameStyleMode.Valorant,
+                StreakModeSelector,
+                AssistAudioToggle.IsOn,
+                true);
         }
     }
 }

@@ -307,6 +307,24 @@ namespace KillConfirmGameBar
             SaveAnimationPlacementSettings();
         }
 
+        private async void OnCenterWindowClick(object sender, RoutedEventArgs e)
+        {
+            if (_widget == null)
+            {
+                return;
+            }
+
+            try
+            {
+                await _widget.CenterWindowAsync();
+            }
+            catch (Exception)
+            {
+                // Game Bar can temporarily reject window-position requests
+                // while its layout is changing. Leave all widget state intact.
+            }
+        }
+
         private void OnLowerThirdClick(object sender, RoutedEventArgs e)
         {
             _animationPlacement = AnimationPlacementMode.Bottom;

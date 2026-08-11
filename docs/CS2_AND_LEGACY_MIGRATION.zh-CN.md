@@ -6,7 +6,7 @@
 
 | 场景 | 基础事件来源 | 受控人机击杀来源 | 是否需要 SourceMod |
 | --- | --- | --- | --- |
-| CS2 | 客户端 GSI | 客户端 GSI | 否 |
+| CS2 | 客户端 GSI | 本地监听服务器使用 GSI + 本地服务器日志；远程服务器不保证支持 | 否 |
 | CS:GO Legacy 本地/离线模式 | 客户端 GSI | Legacy Bridge 日志 | 是 |
 | CS:GO Legacy 专用服务器 | 客户端 GSI | 服务器 Legacy Bridge 日志 | 服务器需要 |
 
@@ -43,6 +43,22 @@ Legacy Bridge 只转发“玩家已接管机器人”之后的击杀。普通真
 4. 在控制面板选择音效包和连续击杀规则。
 
 安装脚本会为包族 `KillConfirmGameBar.Overlay_5jgcw66eyez0m` 添加本机 loopback exemption。缺少该权限时，小组件无法访问 `127.0.0.1:3000`。
+
+### 3.1 各场景快速开启检查表
+
+以下步骤中的“击杀人机”是指玩家仍控制自己的角色、目标是机器人；“接管人机”是指玩家死亡后控制队友机器人，两者不要混淆。
+
+| 场景 | 必须开启或安装的内容 | 启用方法 |
+| --- | --- | --- |
+| CS2 普通对局、击杀普通人机、观战或回放 | Game Bar 小组件 + CS2 GSI | 安装公共组件，把 GSI 配置放入 CS2 `cfg`，完全重启 CS2，然后用 `Win + G` 打开并固定小组件 |
+| CS2 本地/离线接管人机 | 上一项 + 本地服务器日志 | 每次启动本地监听服务器后在 CS2 控制台执行 `exec killconfirm_local_server` |
+| CS2 官方或远程社区服务器接管人机 | 只能使用客户端 GSI | 无法执行或读取服务器日志时，接管击杀不保证能够识别；不要安装 Legacy Bridge |
+| Legacy 普通对局、击杀普通人机、观战或回放 | Game Bar 小组件 + Legacy GSI | 把 GSI 配置放入 Legacy `cfg`，完全重启 Legacy，然后打开并固定小组件 |
+| Legacy 本地/离线接管人机（含支持的机器人 Mod） | 上一项 + Metamod:Source + SourceMod + Legacy Bridge | 把 `killconfirm_bridge.smx` 放入本地 Legacy 的 SourceMod `plugins`，重新加载插件或重启游戏/地图 |
+| 本机 Legacy 专用服务器接管人机 | 客户端 GSI + 服务器 SourceMod/Bridge + 本地日志路径 | 在服务器安装 Bridge，把服务器根目录写入 `legacy-bridge-servers.txt`，再重启本地服务或重新打开小组件 |
+| 另一台电脑上的 Legacy 专用服务器接管人机 | 上一项 + 安全可见的 Bridge 日志 | 当前版本没有网络桥接；必须把服务器日志安全同步或挂载到运行 Game Bar 的电脑 |
+
+所有场景都使用同一套特效和音效设置。打开小组件后选择游戏风格、语音包和图标包；风格专用选项在“高级特效”面板中。普通功能不需要分别为 CS2 和 Legacy 重复设置。
 
 ## 4. CS2 部署
 

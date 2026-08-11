@@ -4,6 +4,7 @@ using KillConfirmGameBar.Controls.GameStyles;
 using KillConfirmGameBar.Services;
 using Windows.Data.Json;
 using Windows.Storage.Streams;
+using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.Web.Http;
 
@@ -11,7 +12,7 @@ namespace KillConfirmGameBar
 {
     public sealed partial class KillConfirmWidgetPage
     {
-        private async void OnCrossfireGameplaySettingChanged(object sender, SelectionChangedEventArgs e)
+        private async void OnCrossfireGameplaySettingChanged(object sender, RoutedEventArgs e)
         {
             if (_suppressCrossfireGameplaySettingEvents)
             {
@@ -42,8 +43,13 @@ namespace KillConfirmGameBar
             {
                 panel.SelectSettings(
                     settings.StreakMode,
+                    settings.HeadshotSpecialAudioPriority,
+                    settings.KnifeSpecialAudioPriority,
+                    settings.HeadshotSpecialIconPriority,
+                    settings.KnifeSpecialIconPriority,
                     settings.FirstKillSpecialAudio,
-                    settings.LastKillSpecialAudio);
+                    settings.LastKillSpecialAudio,
+                    settings.AssistAudioEnabled);
             }
             finally
             {
@@ -65,8 +71,13 @@ namespace KillConfirmGameBar
             CrossfireGameplaySettingsStore.Save(new CrossfireGameplaySettingsValues
             {
                 StreakMode = panel.GetSelectedStreakMode(fallback.StreakMode),
+                HeadshotSpecialAudioPriority = panel.GetHeadshotSpecialAudioPriority(fallback.HeadshotSpecialAudioPriority),
+                KnifeSpecialAudioPriority = panel.GetKnifeSpecialAudioPriority(fallback.KnifeSpecialAudioPriority),
+                HeadshotSpecialIconPriority = panel.GetHeadshotSpecialIconPriority(fallback.HeadshotSpecialIconPriority),
+                KnifeSpecialIconPriority = panel.GetKnifeSpecialIconPriority(fallback.KnifeSpecialIconPriority),
                 FirstKillSpecialAudio = panel.GetFirstKillSpecialAudio(fallback.FirstKillSpecialAudio),
-                LastKillSpecialAudio = panel.GetLastKillSpecialAudio(fallback.LastKillSpecialAudio)
+                LastKillSpecialAudio = panel.GetLastKillSpecialAudio(fallback.LastKillSpecialAudio),
+                AssistAudioEnabled = panel.GetAssistAudioEnabled(fallback.AssistAudioEnabled)
             });
         }
 
@@ -76,10 +87,15 @@ namespace KillConfirmGameBar
             if (_crossfireAdvancedEffectsPanel != null)
             {
                 settings.StreakMode = _crossfireAdvancedEffectsPanel.GetSelectedStreakMode(settings.StreakMode);
+                settings.HeadshotSpecialAudioPriority = _crossfireAdvancedEffectsPanel.GetHeadshotSpecialAudioPriority(settings.HeadshotSpecialAudioPriority);
+                settings.KnifeSpecialAudioPriority = _crossfireAdvancedEffectsPanel.GetKnifeSpecialAudioPriority(settings.KnifeSpecialAudioPriority);
+                settings.HeadshotSpecialIconPriority = _crossfireAdvancedEffectsPanel.GetHeadshotSpecialIconPriority(settings.HeadshotSpecialIconPriority);
+                settings.KnifeSpecialIconPriority = _crossfireAdvancedEffectsPanel.GetKnifeSpecialIconPriority(settings.KnifeSpecialIconPriority);
                 settings.FirstKillSpecialAudio = _crossfireAdvancedEffectsPanel.GetFirstKillSpecialAudio(
                     settings.FirstKillSpecialAudio);
                 settings.LastKillSpecialAudio = _crossfireAdvancedEffectsPanel.GetLastKillSpecialAudio(
                     settings.LastKillSpecialAudio);
+                settings.AssistAudioEnabled = _crossfireAdvancedEffectsPanel.GetAssistAudioEnabled(settings.AssistAudioEnabled);
             }
 
             CrossfireGameplaySettingsStore.Save(settings);
@@ -93,7 +109,13 @@ namespace KillConfirmGameBar
                     ["first_kill_special_audio"] = JsonValue.CreateBooleanValue(
                         settings.FirstKillSpecialAudio),
                     ["last_kill_special_audio"] = JsonValue.CreateBooleanValue(
-                        settings.LastKillSpecialAudio)
+                        settings.LastKillSpecialAudio),
+                    ["headshot_special_audio_priority"] = JsonValue.CreateBooleanValue(
+                        settings.HeadshotSpecialAudioPriority),
+                    ["knife_special_audio_priority"] = JsonValue.CreateBooleanValue(
+                        settings.KnifeSpecialAudioPriority),
+                    ["assist_audio_enabled"] = JsonValue.CreateBooleanValue(
+                        settings.AssistAudioEnabled)
                 };
 
                 using (var client = await LocalServiceAuth.CreateHttpClientAsync())

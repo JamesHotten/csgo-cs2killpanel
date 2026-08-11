@@ -155,6 +155,7 @@ namespace KillConfirmGameBar
             Color visualImportantText = darkStyle ? text : Color.FromArgb(255, 27, 95, 130);
             SetButtonTheme(DefaultSizeButton, visualImportantField, secondary, visualImportantText);
             SetButtonTheme(CenterButton, visualImportantField, secondary, visualImportantText);
+            SetButtonTheme(CenterWindowButton, visualImportantField, secondary, visualImportantText);
             SetButtonTheme(LowerThirdButton, visualImportantField, secondary, visualImportantText);
             SetButtonTheme(MoveUpButton, visualButtonField, darkStyle ? secondary : theme.SoftBorder, visualButtonText);
             SetButtonTheme(MoveDownButton, visualButtonField, darkStyle ? secondary : theme.SoftBorder, visualButtonText);

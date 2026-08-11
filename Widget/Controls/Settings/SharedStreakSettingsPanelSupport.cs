@@ -17,7 +17,11 @@ namespace KillConfirmGameBar.Controls.Settings
             SharedStreakSettingsStore.Select(selector, SharedStreakSettingsStore.Load(style));
         }
 
-        public static async Task SaveAndSyncAsync(GameStyleMode style, ComboBox selector)
+        public static async Task SaveAndSyncAsync(
+            GameStyleMode style,
+            ComboBox selector,
+            bool assistAudioEnabled = false,
+            bool assistAudioSettingActive = false)
         {
             string mode = SharedStreakSettingsStore.Read(selector);
             SharedStreakSettingsStore.Save(style, mode);
@@ -27,7 +31,9 @@ namespace KillConfirmGameBar.Controls.Settings
                 var request = new JsonObject
                 {
                     ["active"] = JsonValue.CreateBooleanValue(GameStyleService.Current == style),
-                    ["streak_mode"] = JsonValue.CreateStringValue(mode)
+                    ["streak_mode"] = JsonValue.CreateStringValue(mode),
+                    ["assist_audio_enabled"] = JsonValue.CreateBooleanValue(assistAudioEnabled),
+                    ["assist_audio_setting_active"] = JsonValue.CreateBooleanValue(assistAudioSettingActive)
                 };
 
                 using (var client = await LocalServiceAuth.CreateHttpClientAsync())

@@ -336,6 +336,7 @@ namespace KillConfirmGameBar
         private void PlayCrossfirePrimaryAnimation(KillEvent killEvent)
         {
             bool useLegacyAnimationPack = IsLegacyIconPackSelected();
+            CrossfireGameplaySettingsValues settings = CrossfireGameplaySettingsStore.Load();
 
             if (string.Equals(killEvent.AnimationKey, "code2kill", StringComparison.OrdinalIgnoreCase))
             {
@@ -350,58 +351,43 @@ namespace KillConfirmGameBar
                 return;
             }
 
-            if (killEvent.KillCount == 1)
+            bool knifeIconWins = killEvent.IsKnifeKill
+                && (killEvent.KillCount < 2 || settings.KnifeSpecialIconPriority);
+            if (knifeIconWins)
             {
-                if (killEvent.IsKnifeKill)
+                if (useLegacyAnimationPack)
                 {
-                    if (useLegacyAnimationPack)
-                    {
-                        PrimaryKillAnimation.PlayNamed(KnifeKillAssetKey);
-                    }
-                    else
-                    {
-                        PrimaryKillAnimation.PlayCodeKill("knife", killEvent.WeaponBadgeKey);
-                    }
-                    return;
+                    PrimaryKillAnimation.PlayNamed(KnifeKillAssetKey);
                 }
-
-                if (killEvent.IsHeadshot)
+                else
                 {
-                    if (killEvent.IsFirstKill || killEvent.IsLastKill)
-                    {
-                        if (useLegacyAnimationPack)
-                        {
-                            PrimaryKillAnimation.PlayNamed(GoldHeadshotAssetKey);
-                        }
-                        else
-                        {
-                            PrimaryKillAnimation.PlayCodeKill("headshot_gold", killEvent.WeaponBadgeKey);
-                        }
-                        return;
-                    }
-
-                    if (useLegacyAnimationPack)
-                    {
-                        PrimaryKillAnimation.PlayNamed(HeadshotAssetKey);
-                    }
-                    else
-                    {
-                        PrimaryKillAnimation.PlayCodeKill("headshot", killEvent.WeaponBadgeKey);
-                    }
-                    return;
+                    PrimaryKillAnimation.PlayCodeKill("knife", killEvent.WeaponBadgeKey);
                 }
+                return;
+            }
 
-                if (!useLegacyAnimationPack)
+            bool headshotIconWins = killEvent.IsHeadshot
+                && (killEvent.KillCount < 2 || settings.HeadshotSpecialIconPriority);
+            if (headshotIconWins)
+            {
+                bool useGoldHeadshot = killEvent.IsFirstKill || killEvent.IsLastKill;
+                if (useLegacyAnimationPack)
                 {
-                    if (string.Equals(GetSelectedIconPack(), "angelic_beast", StringComparison.OrdinalIgnoreCase))
-                    {
-                        PrimaryKillAnimation.PlayCodeKill("multi1", killEvent.WeaponBadgeKey);
-                        return;
-                    }
-
-                    PrimaryKillAnimation.PlayCodeKill("multi1", killEvent.WeaponBadgeKey);
-                    return;
+                    PrimaryKillAnimation.PlayNamed(useGoldHeadshot ? GoldHeadshotAssetKey : HeadshotAssetKey);
                 }
+                else
+                {
+                    PrimaryKillAnimation.PlayCodeKill(
+                        useGoldHeadshot ? "headshot_gold" : "headshot",
+                        killEvent.WeaponBadgeKey);
+                }
+                return;
+            }
+
+            if (killEvent.KillCount == 1 && !useLegacyAnimationPack)
+            {
+                PrimaryKillAnimation.PlayCodeKill("multi1", killEvent.WeaponBadgeKey);
+                return;
             }
 
             if (killEvent.KillCount >= 2)

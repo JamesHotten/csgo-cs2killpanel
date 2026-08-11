@@ -7,7 +7,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use gsi_cs2::Body;
 use gsi_cs2::player::Player;
-use gsi_cs2::round::RoundPhase;
+use gsi_cs2::round::{BombState, RoundPhase};
 use gsi_cs2::team::{TeamClass, TeamInfo};
 use gsi_cs2::weapon::{WeaponName, WeaponState, WeaponType};
 use serde_path_to_error::{Path as SerdePath, Segment as SerdePathSegment};
@@ -18,7 +18,7 @@ use super::auth::has_valid_gsi_token;
 use super::logging::service_log;
 use super::state::{
     AppState, CrossfireStreakMode, KillEvent, MoneyRewardMode, PendingLastKill, PlayerKillSnapshot,
-    TrackedRoundPhase,
+    PlayerViewBaseline, TrackedRoundPhase,
 };
 use super::{money_delta, money_rules};
 use crate::soundpack::sound::play_audio;
@@ -312,33 +312,32 @@ pub async fn update(
     let previous_resolved_round_kills = binding.ply_kills;
     let current_match_kills = ply.match_stats.as_ref().map(|stats| stats.kills);
     let previous_match_kills = binding.match_kills;
-    let cached_player_kill_snapshot = is_legacy
-        .then(|| binding.player_kill_snapshots.get(tracked_steamid).copied())
-        .flatten();
+    let cached_player_kill_snapshot = binding.player_kill_snapshots.get(tracked_steamid).copied();
+    let cached_player_view_baseline = binding.player_view_baselines.get(tracked_steamid).copied();
 
     let current_hs_kills = ply_state.round_killhs;
-    let origin_hs_kills = binding.ply_hs_kills;
+    let global_origin_hs_kills = binding.ply_hs_kills;
     let current_assists = ply
         .match_stats
         .as_ref()
         .map(|stats| stats.assists)
         .unwrap_or(0);
-    let original_assists = binding.ply_assists;
+    let global_original_assists = binding.ply_assists;
     let current_deaths = ply
         .match_stats
         .as_ref()
         .map(|stats| stats.deaths)
         .unwrap_or(0);
-    let original_deaths = binding.ply_deaths;
+    let global_original_deaths = binding.ply_deaths;
     let current_score = ply
         .match_stats
         .as_ref()
         .map(|stats| stats.score)
         .unwrap_or(0);
-    let original_score = binding.ply_score;
-    let previous_player_health = binding.last_player_health;
+    let global_original_score = binding.ply_score;
+    let global_previous_player_health = binding.last_player_health;
 
-    let is_initialized = binding.initialized;
+    let global_is_initialized = binding.initialized;
     let original_steamid = binding.steamid.clone();
     let previous_round = binding.current_round;
     let previous_round_phase = binding.last_round_phase;
@@ -416,13 +415,52 @@ pub async fn update(
         .iter()
         .max_by_key(|(round_number, _)| *round_number)
         .map(|(_, outcome)| outcome.as_str());
+    let bomb_exploded = bomb_state_is_exploded(
+        round.and_then(|round_data| round_data.bomb.as_ref()),
+        current_bomb_state.as_deref(),
+    );
     let is_hostage_rescue_round =
         latest_round_outcome == Some("ct_win_rescue") && matches!(player_team, Some(TeamClass::CT));
     let player_identity_matches = steamid == original_steamid || original_steamid.is_empty();
+    let switched_view_baseline = select_same_round_view_baseline(
+        player_identity_matches,
+        current_round,
+        cached_player_view_baseline,
+    );
+    let is_initialized = if player_identity_matches {
+        global_is_initialized
+    } else {
+        switched_view_baseline.is_some()
+    };
+    let origin_hs_kills = switched_view_baseline
+        .map(|baseline| baseline.round_headshot_kills)
+        .unwrap_or(global_origin_hs_kills);
+    let original_assists = switched_view_baseline
+        .map(|baseline| baseline.assists)
+        .unwrap_or(global_original_assists);
+    let original_deaths = switched_view_baseline
+        .map(|baseline| baseline.deaths)
+        .unwrap_or(global_original_deaths);
+    let original_score = switched_view_baseline
+        .map(|baseline| baseline.score)
+        .unwrap_or(global_original_score);
+    let previous_player_health = switched_view_baseline
+        .map(|baseline| baseline.health)
+        .unwrap_or(global_previous_player_health);
+    let recent_weapon_is_knife = player_identity_matches && recent_weapon_is_knife;
+    let recent_weapon_badge_key = player_identity_matches
+        .then_some(recent_weapon_badge_key)
+        .flatten();
+    let recent_weapon_name = player_identity_matches
+        .then_some(recent_weapon_name)
+        .flatten();
+    let recent_weapon_money_reward = player_identity_matches
+        .then_some(recent_weapon_money_reward)
+        .flatten();
     let (current_kills, observed_kill_delta) = resolve_main_view_kill_observation(
         is_initialized,
         player_identity_matches,
-        is_legacy,
+        true,
         round_reset,
         current_round,
         current_raw_round_kills,
@@ -441,7 +479,8 @@ pub async fn update(
     let death_reset = death_count_reset || health_death_reset;
     let freeze_phase_started = previous_round_phase != Some(TrackedRoundPhase::FreezeTime)
         && current_round_phase == Some(TrackedRoundPhase::FreezeTime);
-    let money_scope_reset = round_changed || freeze_phase_started || death_reset;
+    let money_scope_reset =
+        round_changed || freeze_phase_started || death_reset || !player_identity_matches;
     let current_money_epoch = if money_scope_reset {
         previous_money_epoch.wrapping_add(1)
     } else {
@@ -474,8 +513,14 @@ pub async fn update(
     let can_emit_kill = kill_count_increased
         && (player_identity_matches || main_view_switch_kill)
         && !suppress_death_round_end_kill
-        && !bridge_already_reported_kill;
-    let can_emit_assist = current_assists > original_assists && player_identity_matches;
+        && !bridge_already_reported_kill
+        && !bomb_exploded;
+    let can_emit_assist = should_emit_assist(
+        is_initialized,
+        player_identity_matches,
+        current_assists,
+        original_assists,
+    );
     let pending_round_over_age =
         pending_round_over_at.map(|recorded_at| now.saturating_duration_since(recorded_at));
     let round_end_reordering_active = phase_transition_to_over
@@ -509,7 +554,11 @@ pub async fn update(
     } else {
         current_kills
     };
-    let first_kill_already_seen = if round_reset && !round_end_reordering_active {
+    let first_kill_already_seen = if !player_identity_matches {
+        cached_player_kill_snapshot
+            .filter(|snapshot| snapshot.round == current_round)
+            .is_some_and(|snapshot| snapshot.resolved_round_kills > 0)
+    } else if round_reset && !round_end_reordering_active {
         false
     } else {
         had_first_kill_in_round
@@ -518,7 +567,8 @@ pub async fn update(
         should_mark_late_final_kill(can_emit_kill, pending_round_over_age, player_team_won_round);
     let defer_round_resolution = is_initialized && phase_transition_to_over && !can_emit_kill;
 
-    let should_clear_pending_last_kill = round_reset && !round_end_reordering_active;
+    let should_clear_pending_last_kill =
+        !player_identity_matches || (round_reset && !round_end_reordering_active);
     let mut pending_last_kill_for_next = if should_clear_pending_last_kill {
         None
     } else {
@@ -676,7 +726,13 @@ pub async fn update(
             is_last_kill
         );
     } else if is_initialized && phase_transition_to_over {
-        if let Some(pending_last_kill) = pending_last_kill {
+        if !round_end_allows_delayed_last_kill(
+            round.and_then(|round_data| round_data.bomb.as_ref()),
+            current_bomb_state.as_deref(),
+            latest_round_outcome,
+        ) {
+            pending_last_kill_for_next = None;
+        } else if let Some(pending_last_kill) = pending_last_kill {
             if should_promote_pending_last_kill(
                 now.saturating_duration_since(pending_last_kill.recorded_at),
                 death_reset,
@@ -925,17 +981,26 @@ pub async fn update(
         || can_emit_kill;
     binding.pending_last_kill = pending_last_kill_for_next;
     binding.last_game_mode = Some(current_mode.clone());
-    if is_legacy {
-        binding.player_kill_snapshots.insert(
-            steamid.to_string(),
-            PlayerKillSnapshot {
-                round: current_round,
-                resolved_round_kills: current_kills,
-                raw_round_kills: current_raw_round_kills,
-                match_kills: current_match_kills,
-            },
-        );
-    }
+    binding.player_kill_snapshots.insert(
+        steamid.to_string(),
+        PlayerKillSnapshot {
+            round: current_round,
+            resolved_round_kills: current_kills,
+            raw_round_kills: current_raw_round_kills,
+            match_kills: current_match_kills,
+        },
+    );
+    binding.player_view_baselines.insert(
+        steamid.to_string(),
+        PlayerViewBaseline {
+            round: current_round,
+            round_headshot_kills: current_hs_kills,
+            assists: current_assists,
+            deaths: current_deaths,
+            score: current_score,
+            health: ply_state.health,
+        },
+    );
     if let Some(is_knife) = current_active_weapon_is_knife {
         binding.last_active_weapon_is_knife = is_knife;
         binding.last_active_weapon_seen_at = Some(now);
@@ -1277,9 +1342,9 @@ fn select_tracked_player(data: &Body) -> Option<(&Player, &str)> {
     let player = data.player.as_ref()?;
     if player.state.is_some() {
         let steamid = player
-            .steam_id
+            .spectarget
             .as_deref()
-            .or(player.spectarget.as_deref())
+            .or(player.steam_id.as_deref())
             .unwrap_or("");
         return Some((player, steamid));
     }
@@ -1297,6 +1362,26 @@ fn select_tracked_player(data: &Body) -> Option<(&Player, &str)> {
             candidate.state.is_some() && candidate.steam_id.as_deref() == Some(spectarget)
         })
         .map(|(key, observed)| (observed, observed.steam_id.as_deref().unwrap_or(key)))
+}
+
+fn select_same_round_view_baseline(
+    player_identity_matches: bool,
+    current_round: u8,
+    cached: Option<PlayerViewBaseline>,
+) -> Option<PlayerViewBaseline> {
+    (!player_identity_matches)
+        .then_some(cached)
+        .flatten()
+        .filter(|baseline| baseline.round == current_round)
+}
+
+fn should_emit_assist(
+    is_initialized: bool,
+    player_identity_matches: bool,
+    current_assists: u16,
+    previous_assists: u16,
+) -> bool {
+    is_initialized && player_identity_matches && current_assists > previous_assists
 }
 
 fn deserialize_forward_compatible_gsi(
@@ -1525,7 +1610,7 @@ fn resolve_kill_observation(
 fn resolve_main_view_kill_observation(
     is_initialized: bool,
     player_identity_matches: bool,
-    legacy_view_cache_enabled: bool,
+    view_cache_enabled: bool,
     round_reset: bool,
     current_round: u8,
     current_raw_round_kills: u16,
@@ -1535,7 +1620,7 @@ fn resolve_main_view_kill_observation(
     previous_resolved_round_kills: u16,
     cached_player: Option<PlayerKillSnapshot>,
 ) -> (u16, u16) {
-    if legacy_view_cache_enabled
+    if view_cache_enabled
         && !player_identity_matches
         && let Some(cached_player) = cached_player
     {
@@ -1588,19 +1673,41 @@ fn should_promote_pending_last_kill(
         && (!death_reset || player_team_won_round == Some(true))
 }
 
+fn bomb_state_is_exploded(bomb_state: Option<&BombState>, raw_bomb_state: Option<&str>) -> bool {
+    matches!(bomb_state, Some(BombState::Exploded)) || raw_bomb_state == Some("exploded")
+}
+
+fn round_end_allows_delayed_last_kill(
+    bomb_state: Option<&BombState>,
+    raw_bomb_state: Option<&str>,
+    round_outcome: Option<&str>,
+) -> bool {
+    let ended_by_bomb_objective =
+        matches!(bomb_state, Some(BombState::Defused | BombState::Exploded))
+            || matches!(raw_bomb_state, Some("defused" | "exploded"));
+    let ended_by_non_kill_outcome = matches!(
+        round_outcome,
+        Some("ct_win_defuse" | "t_win_bomb" | "ct_win_time" | "t_win_time" | "ct_win_rescue")
+    );
+
+    !ended_by_bomb_objective && !ended_by_non_kill_outcome
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        CrossfireStreakMode, is_knife_weapon, is_legacy_gsi_payload,
+        CrossfireStreakMode, bomb_state_is_exploded, is_knife_weapon, is_legacy_gsi_payload,
         normalize_forward_compatible_enums, normalize_legacy_gsi_defaults,
         opponent_team_display_name, parse_gsi_body, parse_gsi_frame, previous_weapon_evidence,
         resolve_crossfire_streak_count, resolve_is_knife_kill, resolve_kill_delta,
         resolve_kill_observation, resolve_kill_weapon_key, resolve_main_view_kill_observation,
-        select_tracked_player, should_mark_late_final_kill, should_promote_pending_last_kill,
+        round_end_allows_delayed_last_kill, select_same_round_view_baseline, select_tracked_player,
+        should_emit_assist, should_mark_late_final_kill, should_promote_pending_last_kill,
         should_reset_streak_before_kill, should_suppress_death_round_end_kill,
         should_suppress_gsi_after_legacy_bridge,
     };
-    use crate::util::state::PlayerKillSnapshot;
+    use crate::util::state::{PlayerKillSnapshot, PlayerViewBaseline};
+    use gsi_cs2::round::BombState;
     use gsi_cs2::team::TeamClass;
     use gsi_cs2::weapon::WeaponName;
     use serde_json::json;
@@ -1624,6 +1731,39 @@ mod tests {
             Some(now - Duration::from_secs(1)),
             now
         ));
+    }
+
+    #[test]
+    fn objective_round_end_does_not_replay_a_pending_kill_as_the_last_kill() {
+        assert!(!round_end_allows_delayed_last_kill(
+            Some(&BombState::Defused),
+            Some("defused"),
+            Some("ct_win_defuse")
+        ));
+        assert!(!round_end_allows_delayed_last_kill(
+            Some(&BombState::Exploded),
+            Some("exploded"),
+            Some("t_win_bomb")
+        ));
+        assert!(!round_end_allows_delayed_last_kill(
+            None,
+            None,
+            Some("ct_win_rescue")
+        ));
+        assert!(round_end_allows_delayed_last_kill(
+            None,
+            None,
+            Some("ct_win_elimination")
+        ));
+    }
+
+    #[test]
+    fn bomb_explosion_kill_deltas_do_not_emit_player_kill_audio() {
+        assert!(bomb_state_is_exploded(
+            Some(&BombState::Exploded),
+            Some("exploded")
+        ));
+        assert!(!bomb_state_is_exploded(None, None));
     }
 
     #[test]
@@ -1845,6 +1985,33 @@ mod tests {
             ),
             (2, 1)
         );
+    }
+
+    #[test]
+    fn observation_switch_uses_only_the_selected_players_same_round_baseline() {
+        let observed_player = PlayerViewBaseline {
+            round: 12,
+            round_headshot_kills: 2,
+            assists: 4,
+            deaths: 3,
+            score: 18,
+            health: 72,
+        };
+
+        assert_eq!(
+            select_same_round_view_baseline(false, 12, Some(observed_player))
+                .map(|baseline| baseline.assists),
+            Some(4)
+        );
+        assert!(select_same_round_view_baseline(true, 12, Some(observed_player)).is_none());
+        assert!(select_same_round_view_baseline(false, 13, Some(observed_player)).is_none());
+    }
+
+    #[test]
+    fn assist_delta_is_never_carried_across_an_observation_switch() {
+        assert!(!should_emit_assist(true, false, 8, 2));
+        assert!(!should_emit_assist(false, true, 8, 2));
+        assert!(should_emit_assist(true, true, 3, 2));
     }
 
     #[test]
@@ -2364,6 +2531,34 @@ mod tests {
             player.state.as_ref().map(|state| state.round_kills),
             Some(2)
         );
+    }
+
+    #[test]
+    fn replay_payload_uses_spectarget_identity_when_player_state_is_present() {
+        let payload = json!({
+            "auth": { "token": "killconfirm" },
+            "player": {
+                "steamid": "76561198000000001",
+                "spectarget": "76561198000000042",
+                "state": {
+                    "health": 84,
+                    "armor": 50,
+                    "helmet": false,
+                    "flashed": 0,
+                    "smoked": 0,
+                    "burning": 0,
+                    "money": 2300,
+                    "round_kills": 2,
+                    "round_killhs": 1,
+                    "equip_value": 3600
+                },
+                "weapons": {}
+            }
+        });
+        let body = parse_gsi_body(payload.to_string().as_bytes()).unwrap();
+        let (_, steamid) = select_tracked_player(&body).unwrap();
+
+        assert_eq!(steamid, "76561198000000042");
     }
 
     #[test]

@@ -124,7 +124,8 @@ namespace KillConfirmGameBar
             SetNamedToolTip(ReloadAudioButton, LocalizationManager.Text("ReloadAudioTitle"), LocalizationManager.Text("ReloadAudioTooltip"));
 
             SetNamedToolTip(DefaultSizeButton, LocalizationManager.Text("DefaultSizeTitle"), LocalizationManager.Text("DefaultSizeTooltip"));
-            SetNamedToolTip(CenterButton, LocalizationManager.Text("CenterWindowTitle"), LocalizationManager.Text("CenterWindowTooltip"));
+            SetNamedToolTip(CenterButton, LocalizationManager.Text("CenterAnimationTitle"), LocalizationManager.Text("CenterAnimationTooltip"));
+            SetNamedToolTip(CenterWindowButton, LocalizationManager.Text("CenterWindowTitle"), LocalizationManager.Text("CenterWindowTooltip"));
             SetNamedToolTip(LowerThirdButton, LocalizationManager.Text("LowerThirdTitle"), LocalizationManager.Text("LowerThirdTooltip"));
             SetNamedToolTip(MoveUpButton, LocalizationManager.Text("MoveUpTitle"), LocalizationManager.Text("MoveUpTooltip"));
             SetNamedToolTip(MoveDownButton, LocalizationManager.Text("MoveDownTitle"), LocalizationManager.Text("MoveDownTooltip"));

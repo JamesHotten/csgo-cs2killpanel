@@ -39,6 +39,7 @@ pub struct Mutable {
     pub has_first_kill_in_round: bool,
     pub pending_last_kill: Option<PendingLastKill>,
     pub player_kill_snapshots: HashMap<String, PlayerKillSnapshot>,
+    pub player_view_baselines: HashMap<String, PlayerViewBaseline>,
     pub last_legacy_bridge_kill_at: Option<Instant>,
     pub last_cs2_gsi_kill_at: Option<Instant>,
     pub cs2_local_log_round: u8,
@@ -53,6 +54,16 @@ pub struct PlayerKillSnapshot {
     pub resolved_round_kills: u16,
     pub raw_round_kills: u16,
     pub match_kills: Option<u16>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct PlayerViewBaseline {
+    pub round: u8,
+    pub round_headshot_kills: u64,
+    pub assists: u16,
+    pub deaths: u16,
+    pub score: u16,
+    pub health: u8,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -250,6 +261,7 @@ pub struct AppState {
     pub control_token: String,
     pub stream_handle: RwLock<OutputStream>,
     pub current_output_device_name: RwLock<String>,
+    pub selected_output_device_name: RwLock<String>,
     pub args: Args,
     pub preset: RwLock<Preset>,
     pub volume_percent: AtomicU32,
@@ -262,6 +274,10 @@ pub struct AppState {
     pub shared_streak_mode_active: AtomicBool,
     pub crossfire_first_kill_special_audio: AtomicBool,
     pub crossfire_last_kill_special_audio: AtomicBool,
+    pub crossfire_headshot_special_audio_priority: AtomicBool,
+    pub crossfire_knife_special_audio_priority: AtomicBool,
+    pub assist_audio_enabled: AtomicBool,
+    pub assist_audio_setting_active: AtomicBool,
     pub event_tx: broadcast::Sender<KillEvent>,
     pub shutdown_tx: broadcast::Sender<()>,
     pub gsi_posts: AtomicU64,

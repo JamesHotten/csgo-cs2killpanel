@@ -1,0 +1,171 @@
+param(
+    [switch]$SkipRustTests
+)
+
+$ErrorActionPreference = 'Stop'
+$repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$errors = [System.Collections.Generic.List[string]]::new()
+$checks = 0
+
+function Test-RequiredFile {
+    param([string]$RelativePath)
+
+    $script:checks++
+    $fullPath = Join-Path $repoRoot $RelativePath
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+        $script:errors.Add("Missing file: $RelativePath")
+    }
+}
+
+function Test-PngFile {
+    param([System.IO.FileInfo]$File)
+
+    $script:checks++
+    if ($File.Length -lt 8) {
+        $script:errors.Add("Invalid PNG (too small): $($File.FullName)")
+        return
+    }
+
+    $signature = [System.IO.File]::ReadAllBytes($File.FullName)[0..7]
+    if ([System.BitConverter]::ToString($signature) -ne '89-50-4E-47-0D-0A-1A-0A') {
+        $script:errors.Add("Invalid PNG signature: $($File.FullName)")
+    }
+}
+
+# XAML event binding and generated-code compilation are also checked by the Release build.
+Get-ChildItem (Join-Path $repoRoot 'Widget') -Recurse -Filter '*.xaml' | ForEach-Object {
+    $checks++
+    try {
+        [xml](Get-Content -LiteralPath $_.FullName -Raw) | Out-Null
+    }
+    catch {
+        $errors.Add("Invalid XAML: $($_.FullName): $($_.Exception.Message)")
+    }
+}
+
+# Legacy/remastered CrossFire animation sheets.
+$legacyKeys = @(
+    '1killre', '2killre', '3killre', '4killre', '5killre', '6killre',
+    'headshot_silver', 'goldheadshot', 'knife_kill', 'firstkill', 'last_kill'
+)
+foreach ($key in $legacyKeys) {
+    $manifestPath = Join-Path $repoRoot "Widget\Assets\KillConfirmSheets\$key.json"
+    Test-RequiredFile "Widget\Assets\KillConfirmSheets\$key.json"
+    if (Test-Path -LiteralPath $manifestPath) {
+        $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+        $sheetFrames = 0
+        foreach ($sheet in $manifest.sheets) {
+            Test-RequiredFile "Widget\Assets\KillConfirmSheets\$($sheet.file)"
+            $sheetFrames += [int]$sheet.frames
+        }
+        $checks++
+        if ($sheetFrames -ne [int]$manifest.frames) {
+            $errors.Add("Frame count mismatch: $key ($sheetFrames != $($manifest.frames))")
+        }
+    }
+}
+
+# CrossFire code-rendered main icons and optional overlay layers.
+$cfFiles = @(
+    'Original\badge_multi1.png', 'Original\badge_multi2.png', 'Original\badge_multi3.png',
+    'Original\badge_multi4.png', 'Original\badge_multi5.png', 'Original\badge_multi6.png',
+    'Original\badge_headshot.png', 'Original\badge_headshot_gold.png', 'Original\badge_Assist.png',
+    'Knife\badge_knife.png', 'Knife\badge_knife_1.png', 'Knife\badge_knife_2.png', 'Knife\badge_knife_3.png',
+    'FirstLast\FIRSTKILL.png', 'FirstLast\LASTKILL.png',
+    'CommonFx\multi2_fx.png', 'CommonFx\multi3_fx.png', 'CommonFx\multi4_fx.png',
+    'CommonFx\multi5_fx.png', 'CommonFx\multi6_fx.png',
+    'EliteUpgrade\KillMark_Upgrade1.png', 'EliteUpgrade\KillMark_Upgrade2.png',
+    'EliteUpgrade\KillMark_Upgrade3.png'
+)
+foreach ($file in $cfFiles) {
+    Test-RequiredFile "Widget\Assets\KillConfirmCode\$file"
+}
+foreach ($className in @('Assault', 'Elite', 'Scout', 'Sniper', 'Knife')) {
+    foreach ($level in 1..3) {
+        Test-RequiredFile "Widget\Assets\KillConfirmCode\WeaponBadge\badge_${className}${level}.png"
+    }
+}
+foreach ($pack in @('Original', 'Vip', 'AngelicBeast', 'Anniversary10', 'Anniversary15', 'CFPL', 'Rankmach2019_1', 'Rankmach2019_2')) {
+    foreach ($tier in 1..6) {
+        Test-RequiredFile "Widget\Assets\KillConfirmCode\$pack\badge_multi$tier.png"
+    }
+    Test-RequiredFile "Widget\Assets\KillConfirmCode\$pack\badge_headshot.png"
+    Test-RequiredFile "Widget\Assets\KillConfirmCode\$pack\badge_headshot_gold.png"
+}
+
+# Battlefield/PUBG/Delta Force renderer file maps.
+$styleFiles = @{
+    'battlefield1' = @(
+        'killicon_battlefield1_default.png', 'killicon_battlefield1_headshot.png',
+        'killicon_battlefield1_crit.png', 'killicon_battlefield1_destroyvehicle.png',
+        'killicon_battlefield1_explosion.png'
+    )
+    'battlefield5' = @(
+        'killicon_battlefield5_default.png', 'killicon_battlefield5_headshot.png',
+        'killicon_battlefield5_assist.png', 'killicon_battlefield5_destroyvehicle.png'
+    )
+    'battlefield4' = @('killicon_battlefield1_default.png', 'killicon_battlefield1_headshot.png')
+    'battlefield2042' = @(
+        'Assist.png', 'AssistSprite.png', 'HeadshotSkull.png', 'HeadshotSkullSprite.png',
+        'NormalSkull.png', 'NormalSkullSprite.png', 'HitmarkerKillArm.png', 'SmoothCircle.png',
+        'Glitch0.png', 'Glitch1.png', 'Glitch2.png', 'Glitch3.png', 'Glitch4.png'
+    )
+    'pubg' = @(
+        'killicon_scrolling_default.png', 'killicon_scrolling_headshot.png',
+        'killicon_scrolling_crit.png', 'killicon_scrolling_assist.png',
+        'killicon_scrolling_destroyvehicle.png', 'killicon_scrolling_explosion.png'
+    )
+    'deltaforce' = @(
+        'killicon_df_default.png', 'killicon_df_headshot.png', 'killicon_df_capture.png',
+        'killicon_df_destroyvehicle.png', 'killicon_scrolling_assist.png'
+    )
+}
+foreach ($style in $styleFiles.Keys) {
+    foreach ($file in $styleFiles[$style]) {
+        Test-RequiredFile "Widget\Assets\GameStyles\$style\killconfirm\textures\$file"
+    }
+}
+
+# Every Valorant visual manifest must have all textures and a matching service voice pack.
+$valorantRoot = Join-Path $repoRoot 'Widget\Assets\GameStyles\valorant\killconfirm'
+$valorantManifests = Get-ChildItem $valorantRoot -Directory | ForEach-Object {
+    Get-Item (Join-Path $_.FullName 'manifest.json')
+}
+$checks++
+if ($valorantManifests.Count -lt 26) {
+    $errors.Add("Unexpected Valorant manifest count: $($valorantManifests.Count)")
+}
+foreach ($manifestFile in $valorantManifests) {
+    $manifest = Get-Content -LiteralPath $manifestFile.FullName -Raw | ConvertFrom-Json
+    $folder = $manifest.folder
+    $checks++
+    if ($manifestFile.Directory.Name -ne $folder) {
+        $errors.Add("Valorant folder mismatch: $($manifestFile.Directory.Name) != $folder")
+    }
+    foreach ($texture in $manifest.textures) {
+        Test-RequiredFile "Widget\Assets\GameStyles\valorant\killconfirm\$folder\textures\$texture"
+    }
+    foreach ($audioName in @('1.wav', '2.wav', '3.wav', '4.wav', '5.wav', 'headshot.wav', 'sound.lua')) {
+        Test-RequiredFile "KillConfirmService\sounds\valorant_$folder\$audioName"
+    }
+}
+
+# Check all shipped PNGs, including files reached through renderer fallbacks.
+Get-ChildItem (Join-Path $repoRoot 'Widget\Assets') -Recurse -File |
+    Where-Object { $_.Extension -ieq '.png' } |
+    ForEach-Object { Test-PngFile $_ }
+
+if (-not $SkipRustTests) {
+    & cargo test --manifest-path (Join-Path $repoRoot 'KillConfirmService\Cargo.toml') `
+        every_builtin_audio_route_points_to_an_existing_decodable_file --quiet
+    if ($LASTEXITCODE -ne 0) {
+        $errors.Add('Built-in audio routing/decoding test failed.')
+    }
+}
+
+if ($errors.Count -gt 0) {
+    $errors | ForEach-Object { Write-Error $_ }
+    throw "Effect/audio asset audit failed with $($errors.Count) error(s)."
+}
+
+Write-Host "Effect/audio asset audit passed: $checks checks, $($valorantManifests.Count) Valorant packs, $($legacyKeys.Count) legacy animation sets."
