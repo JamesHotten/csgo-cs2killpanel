@@ -103,6 +103,11 @@ namespace KillConfirmGameBar
             "   \"player_state\"       \"1\"\r\n" +
             "   \"player_weapons\"     \"1\"\r\n" +
             "   \"player_match_stats\" \"1\"\r\n" +
+            "   \"player_position\"    \"1\"\r\n" +
+            "   \"allplayers_id\"          \"1\"\r\n" +
+            "   \"allplayers_state\"       \"1\"\r\n" +
+            "   \"allplayers_weapons\"     \"1\"\r\n" +
+            "   \"allplayers_match_stats\" \"1\"\r\n" +
             " }\r\n" +
             "}\r\n";
         private const int ControlPanelStateRefreshMs = 250;
@@ -128,22 +133,7 @@ namespace KillConfirmGameBar
         private const string FreeServicePortParameterGroupId = "FreeServicePort";
         private const string OpenRuntimeLogsParameterGroupId = "OpenRuntimeLogs";
         private const string OpenSettingsWindowParameterGroupId = "OpenSettingsWindow";
-        private const string DownloadPendingUpdateParameterGroupId = "DownloadPendingUpdate";
-        private const string RunPendingUpdateParameterGroupId = "RunPendingUpdate";
-        private const string OpenQuarkUpdateParameterGroupId = "OpenQuarkUpdate";
-        private const string OpenProjectGitHubParameterGroupId = "OpenProjectGitHub";
-        private const string OpenAuthorGitHubParameterGroupId = "OpenAuthorGitHub";
-        private const string OpenAuthorBilibiliParameterGroupId = "OpenAuthorBilibili";
-        private const string OpenUpdateFolderParameterGroupId = "OpenUpdateFolder";
-        private const string PendingUpdateFileName = "pending_update.json";
-        private const string UpdateDownloadResultFileName = "update_download_result.json";
-        private const string QuarkUpdateUrl = "https://pan.quark.cn/s/1f3cfbcf8d5f?pwd=7Twv";
-        private const string QuarkUpdateCode = "7Twv";
-        private const string ProjectGitHubUrl = "https://github.com/eachkinji/CS2KillConfirmOverlay";
-        private const string AuthorGitHubUrl = "https://github.com/eachkinji";
-        private const string AuthorBilibiliUrl = "https://space.bilibili.com/18017622";
         private static readonly SemaphoreSlim ServiceStartupGate = new SemaphoreSlim(1, 1);
-        private static readonly Uri LatestReleaseUri = new Uri("https://api.github.com/repos/eachkinji/CS2KillConfirmOverlay/releases/latest");
         private static readonly IReadOnlyDictionary<string, TestPreset> TestPresets =
             new Dictionary<string, TestPreset>(StringComparer.OrdinalIgnoreCase)
             {
@@ -199,20 +189,9 @@ namespace KillConfirmGameBar
         private bool _animationCacheReady;
         private bool _animationCacheFailed;
         private bool _shutdownRequested;
-        private bool _updateCheckInProgress;
-        private bool _updateDownloadInProgress;
         private int _statusHintIndex;
         private string _currentStatusHintText = string.Empty;
         private DateTimeOffset _lastGsiStatusCheck = DateTimeOffset.MinValue;
-        private UpdateAvailabilityState _updateAvailabilityState = UpdateAvailabilityState.Unknown;
-        private string _latestReleaseVersion = string.Empty;
-        private string _latestReleaseDownloadUrl = string.Empty;
-        private string _latestReleaseAssetName = string.Empty;
-        private string _latestReleasePageUrl = string.Empty;
-        private string _latestReleaseNotes = string.Empty;
-        private DateTimeOffset? _latestReleasePublishedAt;
-        private bool _updateInstallerReady;
-        private bool _releaseNotesExpanded;
         private readonly DispatcherTimer _controlPanelStateTimer;
         private readonly DispatcherTimer _statusHintTimer;
 
@@ -221,17 +200,13 @@ namespace KillConfirmGameBar
             _suppressGameStyleEvents = true;
             InitializeComponent();
             _suppressGameStyleEvents = false;
-            WireUpdateOverlayEvents();
             AnimationLayer.SizeChanged += OnAnimationLayerSizeChanged;
             PackCatalogService.CatalogChanged += OnPackCatalogChanged;
             GameStyleService.Changed += OnGameStyleServiceChanged;
-            VersionText.Text = GetUpdateButtonLabel();
-            ToolTipService.SetToolTip(UpdateButton, GetDisplayVersion());
             LoadGameStyleSelector();
             LoadLanguageSelector();
             ApplyLanguage();
             ApplyGameStyleUi();
-            UpdateUpdateButtonVisualState();
 
             _controlPanelStateTimer = new DispatcherTimer
             {
@@ -269,7 +244,6 @@ namespace KillConfirmGameBar
             ConfigureWidgetCapabilities();
             _ = EnsureServiceAvailableAsync();
             _ = LoadSavedCsFolderAsync();
-            _ = CheckForUpdatesAsync(false);
             UpdateControlPanelVisibility();
             base.OnNavigatedTo(e);
         }

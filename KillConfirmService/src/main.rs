@@ -83,7 +83,7 @@ fn current_package_family_name() -> String {
             }
         }
     }
-    "KillConfirmGameBar.Overlay_4t2qzenbgqd14".to_string()
+    "KillConfirmGameBar.Overlay_5jgcw66eyez0m".to_string()
 }
 
 #[tokio::main]
@@ -225,6 +225,8 @@ async fn run() -> Result<()> {
             initialized: false,
             steamid: "".into(),
             ply_kills: 0,
+            raw_round_kills: 0,
+            match_kills: None,
             ply_hs_kills: 0,
             ply_assists: 0,
             ply_deaths: 0,
@@ -243,8 +245,16 @@ async fn run() -> Result<()> {
             last_crossfire_kill_at: None,
             current_round: 0,
             last_round_phase: None,
+            pending_round_over_at: None,
             has_first_kill_in_round: false,
             pending_last_kill: None,
+            player_kill_snapshots: std::collections::HashMap::new(),
+            last_legacy_bridge_kill_at: None,
+            last_cs2_gsi_kill_at: None,
+            cs2_local_log_round: 0,
+            cs2_local_log_round_kills: 0,
+            cs2_local_log_unconfirmed_kills: 0,
+            last_game_mode: None,
         }),
         control_token,
         stream_handle: RwLock::new(output_stream),
@@ -282,6 +292,20 @@ async fn run() -> Result<()> {
         let cache_state = app_state.clone();
         tokio::spawn(async move {
             warm_audio_cache(cache_state).await;
+        });
+    }
+
+    {
+        let bridge_state = app_state.clone();
+        tokio::spawn(async move {
+            util::legacy_bridge::watch_legacy_bridge_logs(bridge_state).await;
+        });
+    }
+
+    {
+        let bridge_state = app_state.clone();
+        tokio::spawn(async move {
+            util::cs2_local_bridge::watch_cs2_local_server_logs(bridge_state).await;
         });
     }
 

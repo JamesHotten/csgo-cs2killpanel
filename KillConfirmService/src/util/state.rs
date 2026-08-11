@@ -1,6 +1,8 @@
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU32, AtomicU64};
 use std::time::Instant;
 
+use gsi_cs2::map::Mode;
 use rodio::OutputStream;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{RwLock, broadcast};
@@ -13,6 +15,8 @@ pub struct Mutable {
     pub initialized: bool,
     pub steamid: String,
     pub ply_kills: u16,
+    pub raw_round_kills: u16,
+    pub match_kills: Option<u16>,
     pub ply_hs_kills: u64,
     pub ply_assists: u16,
     pub ply_deaths: u16,
@@ -31,8 +35,24 @@ pub struct Mutable {
     pub last_crossfire_kill_at: Option<Instant>,
     pub current_round: u8,
     pub last_round_phase: Option<TrackedRoundPhase>,
+    pub pending_round_over_at: Option<Instant>,
     pub has_first_kill_in_round: bool,
     pub pending_last_kill: Option<PendingLastKill>,
+    pub player_kill_snapshots: HashMap<String, PlayerKillSnapshot>,
+    pub last_legacy_bridge_kill_at: Option<Instant>,
+    pub last_cs2_gsi_kill_at: Option<Instant>,
+    pub cs2_local_log_round: u8,
+    pub cs2_local_log_round_kills: u16,
+    pub cs2_local_log_unconfirmed_kills: u16,
+    pub last_game_mode: Option<Mode>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct PlayerKillSnapshot {
+    pub round: u8,
+    pub resolved_round_kills: u16,
+    pub raw_round_kills: u16,
+    pub match_kills: Option<u16>,
 }
 
 #[derive(Clone, Debug, Serialize)]

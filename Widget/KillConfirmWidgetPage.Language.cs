@@ -66,12 +66,6 @@ namespace KillConfirmGameBar
             SetNamedToolTip(OpenGuideButton, LocalizationManager.Text("OpenGuideTitle"), LocalizationManager.Text("OpenGuideTooltip"));
             SetNamedToolTip(OpenLogsButton, LocalizationManager.Text("OpenLogsTitle"), LocalizationManager.Text("OpenLogsTooltip"));
             SetNamedToolTip(FreePortButton, LocalizationManager.Text("FreePortTitle"), LocalizationManager.Text("FreePortTooltip"));
-            SetNamedToolTip(UpdateButton, LocalizationManager.Text("UpdateTitle"), LocalizationManager.Text("UpdateUnavailableTooltip"));
-            UpdateOpenQuarkButton.Content = LocalizationManager.Text("UpdateOpenQuark");
-            UpdateCopyQuarkButton.Content = LocalizationManager.Text("UpdateCopyQuark");
-            UpdateDownloadButton.Content = LocalizationManager.Text("UpdateDownloadInstaller");
-            UpdateInstallButton.Content = LocalizationManager.Text("UpdateInstallNow");
-            UpdateOpenFolderButton.Content = LocalizationManager.Text("UpdateOpenDownloadFolder");
             SetNamedToolTip(ConnectionStatusBadge, LocalizationManager.Text("ServiceStatusTitle"), LocalizationManager.Text("ServiceStatusTooltip"));
             SetNamedToolTip(CfgStatusBadge, LocalizationManager.Text("CfgStatusTitle"), LocalizationManager.Text("CfgStatusTooltip"));
             SetNamedToolTip(GsiStatusBadge, LocalizationManager.Text("GsiStatusTitle"), LocalizationManager.Text("GsiStatusTooltip"));
@@ -176,7 +170,6 @@ namespace KillConfirmGameBar
             UpdateCfgStatus(_cfgDetectionState, null, _cfgStatusDetail);
             UpdateGsiStatus(true, _gsiRecentlySeen, _gsiRecentlySeen ? 1 : 0, null);
             ApplyGameStyleUi();
-            UpdateUpdateButtonVisualState();
         }
 
         private void ApplyTestPresetLabels()

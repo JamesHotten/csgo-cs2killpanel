@@ -6,6 +6,8 @@ Package/obj/
 target/
 Output/
 Package/AppPackages/
+InstalledPackage*/
+InstallDataBackup/
 
 # Generated transfer/install packages
 KillConfirmGameBar_Transfer_*/

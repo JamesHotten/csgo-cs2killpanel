@@ -142,7 +142,6 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="55" />
                             <ColumnDefinition Width="24" />
-                            <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
                         <Button
@@ -217,43 +216,6 @@
                                 Foreground="#FFFFFF" />
                         </Button>
 
-                        <Button
-                            x:Name="UpdateButton"
-                            Grid.Column="2"
-                            Width="132"
-                            Height="24"
-                            Padding="0"
-                            HorizontalAlignment="Left"
-                            VerticalAlignment="Center"
-                            Background="#FFFDFC"
-                            BorderBrush="#E2DDD3"
-                            BorderThickness="1"
-                            CornerRadius="13"
-                            Click="OnUpdateClick"
-                            ToolTipService.ToolTip="Update">
-                            <Grid ColumnSpacing="3" Padding="5,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Ellipse
-                                    x:Name="UpdateIndicatorDot"
-                                    Width="6"
-                                    Height="6"
-                                    VerticalAlignment="Center"
-                                    Fill="#4B5563" />
-                                <TextBlock
-                                    x:Name="VersionText"
-                                    Grid.Column="1"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center"
-                                    FontFamily="Segoe UI"
-                                    FontSize="9"
-                                    FontWeight="SemiBold"
-                                    Foreground="#8A6A36"
-                                    Text="版本：作者 Zac" />
-                            </Grid>
-                        </Button>
                     </Grid>
 
                     <Grid
@@ -996,6 +958,5 @@
             </Grid>
         </Border>
 
-        <controls:UpdateOverlayView x:Name="UpdateOverlay" Visibility="Collapsed" />
     </Grid>
 </Page>

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using KillConfirmGameBar.Services;
 using Windows.Data.Json;
@@ -172,21 +173,19 @@ namespace KillConfirmGameBar
             {
                 StorageFile cfgFile = await cfgFolder.GetFileAsync(GsiConfigFileName);
                 string configText = await FileIO.ReadTextAsync(cfgFile);
-                if (configText.IndexOf("\"bomb\"", StringComparison.OrdinalIgnoreCase) < 0)
+                string[] requiredReplayKeys =
                 {
-                    int roundIndex = configText.IndexOf("\"round\"", StringComparison.OrdinalIgnoreCase);
-                    if (roundIndex < 0)
-                    {
-                        UpdateCfgStatus(CfgDetectionState.Missing, null, GetCsFolderDisplayText());
-                        return;
-                    }
-
-                    int lineEnd = configText.IndexOf('\n', roundIndex);
-                    string newLine = configText.Contains("\r\n") ? "\r\n" : "\n";
-                    int insertAt = lineEnd >= 0 ? lineEnd + 1 : configText.Length;
-                    string bombLine = "   \"bomb\"               \"1\"" + newLine;
-                    configText = configText.Insert(insertAt, bombLine);
-                    await FileIO.WriteTextAsync(cfgFile, configText, UnicodeEncoding.Utf8);
+                    "\"bomb\"",
+                    "\"player_position\"",
+                    "\"allplayers_id\"",
+                    "\"allplayers_state\"",
+                    "\"allplayers_weapons\"",
+                    "\"allplayers_match_stats\""
+                };
+                if (requiredReplayKeys.Any(key =>
+                    configText.IndexOf(key, StringComparison.OrdinalIgnoreCase) < 0))
+                {
+                    await FileIO.WriteTextAsync(cfgFile, GsiConfigText, UnicodeEncoding.Utf8);
                 }
 
                 UpdateCfgStatus(CfgDetectionState.Ready, null, GetCsFolderDisplayText());
@@ -233,11 +232,31 @@ namespace KillConfirmGameBar
 
         private static async Task<StorageFolder> TryGetCfgFolderAsync(StorageFolder root)
         {
+            StorageFolder gameFolder = await TryGetChildFolderAsync(root, "game");
+            if (gameFolder != null)
+            {
+                StorageFolder cs2CsgoFolder = await TryGetChildFolderAsync(gameFolder, "csgo");
+                StorageFolder cs2CfgFolder = await TryGetChildFolderAsync(cs2CsgoFolder, "cfg");
+                if (cs2CfgFolder != null)
+                {
+                    return cs2CfgFolder;
+                }
+            }
+
+            StorageFolder legacyCsgoFolder = await TryGetChildFolderAsync(root, "csgo");
+            return await TryGetChildFolderAsync(legacyCsgoFolder, "cfg");
+        }
+
+        private static async Task<StorageFolder> TryGetChildFolderAsync(StorageFolder parent, string name)
+        {
+            if (parent == null)
+            {
+                return null;
+            }
+
             try
             {
-                StorageFolder gameFolder = await root.GetFolderAsync("game");
-                StorageFolder csgoFolder = await gameFolder.GetFolderAsync("csgo");
-                return await csgoFolder.GetFolderAsync("cfg");
+                return await parent.GetFolderAsync(name);
             }
             catch
             {
@@ -247,9 +266,26 @@ namespace KillConfirmGameBar
 
         private static async Task<StorageFolder> GetOrCreateCfgFolderAsync(StorageFolder root)
         {
-            StorageFolder gameFolder = await root.CreateFolderAsync("game", CreationCollisionOption.OpenIfExists);
-            StorageFolder csgoFolder = await gameFolder.CreateFolderAsync("csgo", CreationCollisionOption.OpenIfExists);
-            return await csgoFolder.CreateFolderAsync("cfg", CreationCollisionOption.OpenIfExists);
+            StorageFolder existing = await TryGetCfgFolderAsync(root);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            StorageFolder gameFolder = await TryGetChildFolderAsync(root, "game");
+            if (gameFolder != null)
+            {
+                StorageFolder cs2CsgoFolder = await gameFolder.CreateFolderAsync("csgo", CreationCollisionOption.OpenIfExists);
+                return await cs2CsgoFolder.CreateFolderAsync("cfg", CreationCollisionOption.OpenIfExists);
+            }
+
+            StorageFolder legacyCsgoFolder = await TryGetChildFolderAsync(root, "csgo");
+            if (legacyCsgoFolder != null)
+            {
+                return await legacyCsgoFolder.CreateFolderAsync("cfg", CreationCollisionOption.OpenIfExists);
+            }
+
+            throw new InvalidOperationException("The selected folder is neither a CS2 nor a CS:GO Legacy installation root.");
         }
 
         private async Task ShowCfgMessageAsync(string message)

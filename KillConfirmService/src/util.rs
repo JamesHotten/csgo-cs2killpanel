@@ -1,8 +1,10 @@
 mod args;
 pub use args::Args;
 pub mod auth;
+pub mod cs2_local_bridge;
 pub mod event_stream;
 pub mod handler;
+pub mod legacy_bridge;
 pub mod logging;
 pub mod money_delta;
 pub mod money_rules;

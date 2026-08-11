@@ -130,8 +130,6 @@
     <Compile Include="KillConfirmWidgetPage.CsConfig.cs" />
     <Compile Include="KillConfirmWidgetPage.Language.cs" />
     <Compile Include="KillConfirmWidgetPage.StatusHints.cs" />
-    <Compile Include="KillConfirmWidgetPage.Update.cs" />
-    <Compile Include="KillConfirmWidgetPage.UpdateOverlayRefs.cs" />
     <Compile Include="KillConfirmWidgetPage.Service.cs" />
     <Compile Include="KillConfirmWidgetPage.PackSelectors.cs" />
     <Compile Include="KillConfirmWidgetPage.PackSettings.cs" />
@@ -244,10 +242,6 @@
     <Compile Include="Controls\Settings\ValorantAdvancedSettingsPanel.xaml.cs">
       <DependentUpon>ValorantAdvancedSettingsPanel.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\UpdateOverlayView.xaml.cs">
-      <DependentUpon>UpdateOverlayView.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\UpdateOverlayView.Theme.cs" />
     <Compile Include="Services\KillEventClient.cs" />
     <Compile Include="Services\LocalServiceAuth.cs" />
     <Compile Include="Services\CrossfireGameplaySettingsStore.cs" />
@@ -280,11 +274,6 @@
     <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
     <Content Include="Assets\StoreLogo.png" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
-    <Content Include="Assets\DeveloperAvatar.jpg" />
-    <Content Include="Assets\GitHub.svg" />
-    <Content Include="Assets\bilibili.svg" />
-    <Content Include="Assets\GitHub.png" />
-    <Content Include="Assets\bilibili.png" />
     <Content Include="Assets\KillConfirmSheets\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -427,10 +416,6 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Controls\Settings\ValorantAdvancedSettingsPanel.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Controls\UpdateOverlayView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

@@ -161,7 +161,6 @@ namespace KillConfirmGameBar
             SetButtonTheme(ScaleDownButton, visualButtonField, darkStyle ? secondary : theme.SoftBorder, visualButtonText);
             SetButtonTheme(ScaleUpButton, visualButtonField, darkStyle ? secondary : theme.SoftBorder, visualButtonText);
             SetButtonTheme(ResetVisualButton, visualButtonField, darkStyle ? secondary : theme.SoftBorder, visualButtonText);
-            UpdateOverlay.ApplyTheme(theme);
         }
 
         private static void SetGameStyleItemContent(ComboBoxItem item, string text, string logoUri)

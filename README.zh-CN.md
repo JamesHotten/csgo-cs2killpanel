@@ -56,6 +56,8 @@ KillConfirmGameBar 是一个用于 Counter-Strike 2 的击杀确认 Xbox Game Ba
 
 普通用户请下载 release 包，然后运行里面的安装器或安装脚本。
 
+如果需要同时部署 CS2、CS:GO Legacy 客户端或 Legacy 专用服务器，请参阅 [CS2 与 CS:GO Legacy 迁移和使用说明](docs/CS2_AND_LEGACY_MIGRATION.zh-CN.md)。
+
 安装后：
 
 1. 按 `Win + G` 打开 Xbox Game Bar。

@@ -85,13 +85,6 @@
             <desktop:ParameterGroup GroupId="FreeServicePort" Parameters="--free-port 3000" />
             <desktop:ParameterGroup GroupId="OpenRuntimeLogs" Parameters="--open-logs" />
             <desktop:ParameterGroup GroupId="OpenSettingsWindow" Parameters="--open-settings-launcher" />
-            <desktop:ParameterGroup GroupId="DownloadPendingUpdate" Parameters="--download-pending-update" />
-            <desktop:ParameterGroup GroupId="RunPendingUpdate" Parameters="--run-pending-update" />
-            <desktop:ParameterGroup GroupId="OpenQuarkUpdate" Parameters="--open-quark-update" />
-            <desktop:ParameterGroup GroupId="OpenProjectGitHub" Parameters="--open-project-github" />
-            <desktop:ParameterGroup GroupId="OpenAuthorGitHub" Parameters="--open-author-github" />
-            <desktop:ParameterGroup GroupId="OpenAuthorBilibili" Parameters="--open-author-bilibili" />
-            <desktop:ParameterGroup GroupId="OpenUpdateFolder" Parameters="--open-update-folder" />
           </desktop:FullTrustProcess>
         </desktop:Extension>
       </Extensions>

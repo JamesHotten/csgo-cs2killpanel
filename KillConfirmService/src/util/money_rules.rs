@@ -3,6 +3,10 @@ use gsi_cs2::round::BombState;
 use gsi_cs2::team::TeamClass;
 use gsi_cs2::weapon::WeaponName;
 
+pub fn uses_standard_cash_economy(mode: &Mode) -> bool {
+    matches!(mode, Mode::Casual | Mode::Competitive | Mode::Wingman)
+}
+
 pub fn weapon_kill_reward(weapon_name: &WeaponName, mode: &Mode) -> u16 {
     let reward = match weapon_name {
         WeaponName::KnifeCT
@@ -41,15 +45,24 @@ pub fn weapon_kill_reward(weapon_name: &WeaponName, mode: &Mode) -> u16 {
 
     match mode {
         Mode::Casual => reward / 2,
-        _ => reward,
+        Mode::Competitive | Mode::Wingman => reward,
+        _ => 0,
+    }
+}
+
+pub fn default_kill_reward(mode: &Mode) -> u16 {
+    match mode {
+        Mode::Casual => 150,
+        Mode::Competitive | Mode::Wingman => 300,
+        _ => 0,
     }
 }
 
 pub fn bomb_objective_reward(mode: &Mode) -> u16 {
-    if matches!(mode, Mode::Casual) {
-        200
-    } else {
-        300
+    match mode {
+        Mode::Casual => 200,
+        Mode::Competitive | Mode::Wingman => 300,
+        _ => 0,
     }
 }
 
@@ -58,28 +71,39 @@ pub fn loss_bonus(
     mode: &Mode,
     player_team: &TeamClass,
     bomb: Option<&BombState>,
+    round_outcome: Option<&str>,
 ) -> u16 {
     let base_reward = match mode {
         Mode::Casual => 2400,
-        _ => match consecutive_round_losses.max(1) {
+        Mode::Competitive => match consecutive_round_losses.max(1) {
             1 => 1400,
             2 => 1900,
             3 => 2400,
             4 => 2900,
             _ => 3400,
         },
+        Mode::Wingman => match consecutive_round_losses.max(1) {
+            1 => 2000,
+            2 => 2300,
+            3 => 2600,
+            4 => 2900,
+            _ => 3200,
+        },
+        _ => 0,
     };
 
-    let planted_bomb_reward =
-        if matches!(player_team, TeamClass::T) && matches!(bomb, Some(BombState::Defused)) {
-            if matches!(mode, Mode::Casual) {
-                200
-            } else {
-                600
-            }
+    let planted_bomb_reward = if base_reward > 0
+        && matches!(player_team, TeamClass::T)
+        && (matches!(bomb, Some(BombState::Defused)) || round_outcome == Some("ct_win_defuse"))
+    {
+        if matches!(mode, Mode::Casual) {
+            200
         } else {
-            0
-        };
+            600
+        }
+    } else {
+        0
+    };
 
     base_reward + planted_bomb_reward
 }
@@ -89,6 +113,10 @@ pub fn hostage_objective_kind(
     mode: &Mode,
     is_rescue_round: bool,
 ) -> Option<&'static str> {
+    if !uses_standard_cash_economy(mode) {
+        return None;
+    }
+
     let is_supported_reward = if is_rescue_round {
         match mode {
             Mode::Casual => matches!(reward, 1000),
@@ -115,6 +143,10 @@ pub fn round_win_bonus(
     map_name: &str,
     round_outcome: Option<&str>,
 ) -> u16 {
+    if !uses_standard_cash_economy(mode) {
+        return 0;
+    }
+
     if matches!(mode, Mode::Casual) {
         if is_hostage_map(map_name) {
             return match round_outcome {
@@ -129,6 +161,24 @@ pub fn round_win_bonus(
         return 2700;
     }
 
+    if matches!(mode, Mode::Wingman) {
+        if is_hostage_map(map_name) {
+            return match round_outcome {
+                Some("ct_win_rescue") => 2900,
+                Some("ct_win_time") | Some("t_win_time") => 2750,
+                Some("ct_win_elimination") | Some("t_win_elimination") => 2500,
+                _ => 2500,
+            };
+        }
+
+        return match (round_outcome, win_team, bomb) {
+            (Some("t_win_bomb" | "ct_win_defuse"), _, _) => 3000,
+            (_, TeamClass::T, Some(BombState::Exploded))
+            | (_, TeamClass::CT, Some(BombState::Defused)) => 3000,
+            _ => 2750,
+        };
+    }
+
     if is_hostage_map(map_name) {
         return match round_outcome {
             Some("ct_win_rescue") => 2900,
@@ -138,10 +188,10 @@ pub fn round_win_bonus(
         };
     }
 
-    match (win_team, bomb) {
-        (TeamClass::T, Some(BombState::Exploded)) | (TeamClass::CT, Some(BombState::Defused)) => {
-            3500
-        }
+    match (round_outcome, win_team, bomb) {
+        (Some("t_win_bomb" | "ct_win_defuse"), _, _) => 3500,
+        (_, TeamClass::T, Some(BombState::Exploded))
+        | (_, TeamClass::CT, Some(BombState::Defused)) => 3500,
         _ => 3250,
     }
 }
@@ -155,10 +205,107 @@ pub fn is_hostage_map(map_name: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{hostage_objective_kind, loss_bonus, round_win_bonus};
+    use super::{
+        bomb_objective_reward, default_kill_reward, hostage_objective_kind, loss_bonus,
+        round_win_bonus, weapon_kill_reward,
+    };
     use gsi_cs2::map::Mode;
     use gsi_cs2::round::BombState;
     use gsi_cs2::team::TeamClass;
+    use gsi_cs2::weapon::WeaponName;
+
+    #[test]
+    fn modes_without_cash_economy_do_not_report_rewards() {
+        for mode in [
+            Mode::ArmsRace,
+            Mode::Custom,
+            Mode::Deathmatch,
+            Mode::Demolition,
+            Mode::Survival,
+            Mode::Training,
+        ] {
+            assert_eq!(weapon_kill_reward(&WeaponName::AK47, &mode), 0);
+            assert_eq!(default_kill_reward(&mode), 0);
+            assert_eq!(bomb_objective_reward(&mode), 0);
+            assert_eq!(loss_bonus(5, &mode, &TeamClass::T, None, None), 0);
+            assert_eq!(
+                round_win_bonus(
+                    &TeamClass::CT,
+                    None,
+                    &mode,
+                    "de_dust2",
+                    Some("ct_win_elimination"),
+                ),
+                0
+            );
+        }
+    }
+
+    #[test]
+    fn wingman_uses_its_separate_round_economy() {
+        assert_eq!(
+            loss_bonus(1, &Mode::Wingman, &TeamClass::CT, None, None),
+            2000
+        );
+        assert_eq!(
+            loss_bonus(5, &Mode::Wingman, &TeamClass::CT, None, None),
+            3200
+        );
+        assert_eq!(
+            loss_bonus(
+                1,
+                &Mode::Wingman,
+                &TeamClass::T,
+                None,
+                Some("ct_win_defuse"),
+            ),
+            2600
+        );
+        assert_eq!(
+            round_win_bonus(
+                &TeamClass::CT,
+                None,
+                &Mode::Wingman,
+                "de_inferno",
+                Some("ct_win_elimination"),
+            ),
+            2750
+        );
+        assert_eq!(
+            round_win_bonus(
+                &TeamClass::T,
+                None,
+                &Mode::Wingman,
+                "de_inferno",
+                Some("t_win_bomb"),
+            ),
+            3000
+        );
+    }
+
+    #[test]
+    fn round_outcome_preserves_objective_win_reward_when_bomb_state_is_absent() {
+        assert_eq!(
+            round_win_bonus(
+                &TeamClass::CT,
+                None,
+                &Mode::Competitive,
+                "de_nuke",
+                Some("ct_win_defuse"),
+            ),
+            3500
+        );
+        assert_eq!(
+            round_win_bonus(
+                &TeamClass::T,
+                None,
+                &Mode::Competitive,
+                "de_nuke",
+                Some("t_win_bomb"),
+            ),
+            3500
+        );
+    }
 
     #[test]
     fn casual_bomb_rounds_use_the_fixed_2700_win_award() {
@@ -186,14 +333,26 @@ mod tests {
 
     #[test]
     fn casual_loss_award_is_always_2400() {
-        assert_eq!(loss_bonus(1, &Mode::Casual, &TeamClass::CT, None), 2400);
-        assert_eq!(loss_bonus(5, &Mode::Casual, &TeamClass::T, None), 2400);
+        assert_eq!(
+            loss_bonus(1, &Mode::Casual, &TeamClass::CT, None, None),
+            2400
+        );
+        assert_eq!(
+            loss_bonus(5, &Mode::Casual, &TeamClass::T, None, None),
+            2400
+        );
     }
 
     #[test]
     fn a_losing_t_team_gets_the_planted_bomb_reward_after_a_defuse() {
         assert_eq!(
-            loss_bonus(1, &Mode::Casual, &TeamClass::T, Some(&BombState::Defused)),
+            loss_bonus(
+                1,
+                &Mode::Casual,
+                &TeamClass::T,
+                Some(&BombState::Defused),
+                None,
+            ),
             2600
         );
         assert_eq!(
@@ -201,7 +360,8 @@ mod tests {
                 1,
                 &Mode::Competitive,
                 &TeamClass::T,
-                Some(&BombState::Defused)
+                Some(&BombState::Defused),
+                None,
             ),
             2000
         );

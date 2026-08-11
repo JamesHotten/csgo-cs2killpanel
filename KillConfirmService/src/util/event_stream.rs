@@ -1,7 +1,6 @@
 use std::{
     fs,
     path::PathBuf,
-    process::Command,
     sync::Arc,
     sync::atomic::Ordering,
     time::{SystemTime, UNIX_EPOCH},
@@ -18,6 +17,11 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 use tracing::{debug, error, warn};
+use windows_sys::Win32::Foundation::ERROR_SUCCESS;
+use windows_sys::Win32::System::Registry::{
+    HKEY, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, REG_SZ, RRF_RT_REG_SZ, RRF_SUBKEY_WOW6432KEY,
+    RegGetValueW,
+};
 
 use crate::soundpack::Preset;
 use crate::soundpack::sound::{play_audio, warm_audio_cache};
@@ -127,6 +131,7 @@ pub struct StreakSettingsResponse {
 pub struct Cs2RootResponse {
     pub found: bool,
     pub path: Option<String>,
+    pub paths: Vec<String>,
 }
 
 #[derive(Clone, Copy, Debug, Serialize)]
@@ -351,10 +356,14 @@ pub async fn gsi_status(State(app_state): State<Arc<AppState>>) -> Json<GsiStatu
 }
 
 pub async fn cs2_root() -> Json<Cs2RootResponse> {
-    let path = detect_cs2_root();
+    let paths = detect_counter_strike_roots();
     Json(Cs2RootResponse {
-        found: path.is_some(),
-        path: path.map(|value| value.display().to_string()),
+        found: !paths.is_empty(),
+        path: paths.first().map(|value| value.display().to_string()),
+        paths: paths
+            .into_iter()
+            .map(|value| value.display().to_string())
+            .collect(),
     })
 }
 
@@ -810,18 +819,34 @@ fn soundpack_display_name(preset_name: &str) -> &'static str {
         .unwrap_or("custom")
 }
 
-fn detect_cs2_root() -> Option<PathBuf> {
+pub(crate) fn detect_counter_strike_roots() -> Vec<PathBuf> {
+    let mut installations = Vec::new();
     for library_root in steam_library_roots() {
-        let cs2_root = library_root
-            .join("steamapps")
-            .join("common")
-            .join("Counter-Strike Global Offensive");
-        if cs2_root.join("game").join("csgo").join("cfg").is_dir() {
-            return Some(cs2_root);
+        let common = library_root.join("steamapps").join("common");
+        for installation in find_counter_strike_installations_in_common(&common) {
+            push_unique_path(&mut installations, installation);
         }
     }
 
-    None
+    installations
+}
+
+fn find_counter_strike_installations_in_common(common: &std::path::Path) -> Vec<PathBuf> {
+    let Ok(entries) = fs::read_dir(common) else {
+        return Vec::new();
+    };
+    let mut installations = entries
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|root| {
+            let has_cs2_layout = root.join("game").join("csgo").join("cfg").is_dir();
+            let has_legacy_layout =
+                root.join("csgo.exe").is_file() && root.join("csgo").join("cfg").is_dir();
+            has_cs2_layout || has_legacy_layout
+        })
+        .collect::<Vec<_>>();
+    installations.sort_by_key(|path| path.to_string_lossy().to_ascii_lowercase());
+    installations
 }
 
 fn steam_library_roots() -> Vec<PathBuf> {
@@ -845,12 +870,12 @@ fn steam_roots() -> Vec<PathBuf> {
     let mut roots = Vec::new();
 
     for value_name in ["SteamPath", "InstallPath"] {
-        for key in [
-            r"HKCU\Software\Valve\Steam",
-            r"HKLM\Software\WOW6432Node\Valve\Steam",
-            r"HKLM\Software\Valve\Steam",
+        for (hive, key, wow6432) in [
+            (HKEY_CURRENT_USER, r"Software\Valve\Steam", false),
+            (HKEY_LOCAL_MACHINE, r"Software\Valve\Steam", true),
+            (HKEY_LOCAL_MACHINE, r"Software\Valve\Steam", false),
         ] {
-            if let Some(path) = query_registry_string(key, value_name) {
+            if let Some(path) = query_registry_string(hive, key, value_name, wow6432) {
                 push_unique_path(&mut roots, PathBuf::from(path.replace('/', "\\")));
             }
         }
@@ -863,32 +888,47 @@ fn steam_roots() -> Vec<PathBuf> {
     roots
 }
 
-fn query_registry_string(key: &str, value_name: &str) -> Option<String> {
-    let output = Command::new("reg")
-        .args(["query", key, "/v", value_name])
-        .output()
-        .ok()?;
-
-    if !output.status.success() {
+fn query_registry_string(hive: HKEY, key: &str, value_name: &str, wow6432: bool) -> Option<String> {
+    let key = key.encode_utf16().chain(Some(0)).collect::<Vec<_>>();
+    let value_name = value_name.encode_utf16().chain(Some(0)).collect::<Vec<_>>();
+    let flags = RRF_RT_REG_SZ | if wow6432 { RRF_SUBKEY_WOW6432KEY } else { 0 };
+    let mut value_type = 0;
+    let mut byte_count = 0;
+    let status = unsafe {
+        RegGetValueW(
+            hive,
+            key.as_ptr(),
+            value_name.as_ptr(),
+            flags,
+            &mut value_type,
+            std::ptr::null_mut(),
+            &mut byte_count,
+        )
+    };
+    if status != ERROR_SUCCESS || value_type != REG_SZ || byte_count < 2 {
         return None;
     }
 
-    let text = String::from_utf8_lossy(&output.stdout);
-    for line in text.lines() {
-        let trimmed = line.trim();
-        if !trimmed.starts_with(value_name) {
-            continue;
-        }
-
-        if let Some(index) = trimmed.find("REG_SZ") {
-            let value = trimmed[index + "REG_SZ".len()..].trim();
-            if !value.is_empty() {
-                return Some(value.to_string());
-            }
-        }
+    let mut buffer = vec![0u16; byte_count as usize / 2];
+    let status = unsafe {
+        RegGetValueW(
+            hive,
+            key.as_ptr(),
+            value_name.as_ptr(),
+            flags,
+            &mut value_type,
+            buffer.as_mut_ptr().cast(),
+            &mut byte_count,
+        )
+    };
+    if status != ERROR_SUCCESS || value_type != REG_SZ {
+        return None;
     }
-
-    None
+    if let Some(terminator) = buffer.iter().position(|value| *value == 0) {
+        buffer.truncate(terminator);
+    }
+    let value = String::from_utf16(&buffer).ok()?;
+    (!value.trim().is_empty()).then_some(value)
 }
 
 fn parse_steam_library_paths(text: &str) -> Vec<PathBuf> {
@@ -981,4 +1021,30 @@ async fn send_events(
     }
 
     debug!("kill event websocket disconnected");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::find_counter_strike_installations_in_common;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn installation_scan_finds_cs2_and_a_custom_named_legacy_copy() {
+        let suffix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let common = std::env::temp_dir().join(format!("killconfirm-cs-layouts-{suffix}"));
+        let cs2 = common.join("Counter-Strike Global Offensive");
+        let legacy = common.join("csgo legacy");
+        fs::create_dir_all(cs2.join("game").join("csgo").join("cfg")).unwrap();
+        fs::create_dir_all(legacy.join("csgo").join("cfg")).unwrap();
+        fs::write(legacy.join("csgo.exe"), []).unwrap();
+
+        let installations = find_counter_strike_installations_in_common(&common);
+
+        assert_eq!(installations, vec![cs2, legacy]);
+        fs::remove_dir_all(common).unwrap();
+    }
 }

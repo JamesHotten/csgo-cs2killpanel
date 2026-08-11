@@ -649,7 +649,7 @@ function Get-SteamLibraryRoots {
     return $allRoots
 }
 
-function Install-Cs2GsiConfig {
+function Install-CounterStrikeGsiConfig {
     $configLines = @(
         '"KillConfirmGameBar"',
         '{',
@@ -667,34 +667,77 @@ function Install-Cs2GsiConfig {
         '   "provider"           "1"',
         '   "map"                "1"',
         '   "round"              "1"',
+        '   "bomb"               "1"',
         '   "player_id"          "1"',
         '   "player_state"       "1"',
         '   "player_weapons"     "1"',
         '   "player_match_stats" "1"',
+        '   "player_position"    "1"',
+        '   "allplayers_id"          "1"',
+        '   "allplayers_state"       "1"',
+        '   "allplayers_weapons"     "1"',
+        '   "allplayers_match_stats" "1"',
         ' }',
         '}'
+    )
+    $localServerLogLines = @(
+        '// KillConfirm CS2 local listen-server logging.',
+        '// Local practice/listen servers only; remote online servers require server-side support.',
+        'sv_logsdir "killconfirm_logs"',
+        'sv_logfile 1',
+        'sv_logflush 1',
+        'log off',
+        'log on',
+        'echo "KillConfirm local server logging enabled"'
     )
 
     $installed = $false
     foreach ($libraryRoot in Get-SteamLibraryRoots) {
-        $cfgRoot = Join-Path $libraryRoot "steamapps\common\Counter-Strike Global Offensive\game\csgo\cfg"
-        if (-not (Test-Path $cfgRoot)) {
+        $commonRoot = Join-Path $libraryRoot "steamapps\common"
+        if (-not (Test-Path -LiteralPath $commonRoot -PathType Container)) {
             continue
         }
 
-        $cfgPath = Join-Path $cfgRoot "gamestate_integration_killconfirm.cfg"
-        Set-Content -LiteralPath $cfgPath -Value $configLines -Encoding ASCII
-        Write-Host "CS2 GSI config installed: $cfgPath"
-        $installed = $true
+        foreach ($installationRoot in Get-ChildItem -LiteralPath $commonRoot -Directory -ErrorAction SilentlyContinue) {
+            $cfgRoots = @(
+                (Join-Path $installationRoot.FullName "game\csgo\cfg"),
+                (Join-Path $installationRoot.FullName "csgo\cfg")
+            )
+
+            foreach ($cfgRoot in $cfgRoots) {
+                if (-not (Test-Path -LiteralPath $cfgRoot -PathType Container)) {
+                    continue
+                }
+
+                $isCs2Layout = $cfgRoot -like "*\game\csgo\cfg"
+                $isLegacyLayout = (Test-Path -LiteralPath (Join-Path $installationRoot.FullName "csgo.exe") -PathType Leaf)
+                if (-not $isCs2Layout -and -not $isLegacyLayout) {
+                    continue
+                }
+
+                $cfgPath = Join-Path $cfgRoot "gamestate_integration_killconfirm.cfg"
+                Set-Content -LiteralPath $cfgPath -Value $configLines -Encoding ASCII
+                $gameLabel = if ($isCs2Layout) { "CS2" } else { "CS:GO Legacy" }
+                Write-Host "$gameLabel GSI config installed: $cfgPath"
+                if ($isCs2Layout) {
+                    $localServerLogPath = Join-Path $cfgRoot "killconfirm_local_server.cfg"
+                    Set-Content -LiteralPath $localServerLogPath -Value $localServerLogLines -Encoding ASCII
+                    Write-Host "CS2 local-server logging script installed: $localServerLogPath"
+                }
+                $installed = $true
+            }
+        }
     }
 
     if (-not $installed) {
-        Write-Warning "CS2 cfg folder was not found. If kill events do not trigger, install gamestate_integration_killconfirm.cfg manually."
+        Write-Warning "No CS2 or CS:GO Legacy cfg folder was found. If kill events do not trigger, install gamestate_integration_killconfirm.cfg manually."
     }
 
-    $runningCs2 = @(Get-Process -Name "cs2" -ErrorAction SilentlyContinue)
-    if ($runningCs2.Count -gt 0) {
-        $message = "CS2 is currently running. Close and reopen CS2 so it reloads gamestate_integration_killconfirm.cfg."
+    $runningCounterStrike = @(
+        Get-Process -Name "cs2", "csgo" -ErrorAction SilentlyContinue
+    )
+    if ($runningCounterStrike.Count -gt 0) {
+        $message = "Counter-Strike is currently running. Close and reopen the running game so it reloads gamestate_integration_killconfirm.cfg."
         Write-InstallLog $message
         Write-Warning $message
     }
@@ -710,7 +753,7 @@ try {
     Test-OverlayPackageInstalled
 
     if (-not $SkipGsiConfig) {
-        Install-Cs2GsiConfig
+        Install-CounterStrikeGsiConfig
     }
 
     if (-not $SkipLoopback) {
@@ -765,7 +808,7 @@ Notes:
 - The companion service is embedded inside the MSIX package.
 - The widget starts its packaged companion service directly from the installed app.
 - The install script installs the MSIX package directly instead of requiring Visual Studio developer scripts.
-- The install script tries to create CS2's gamestate_integration_killconfirm.cfg automatically.
+- The install script creates gamestate_integration_killconfirm.cfg for every detected CS2 and CS:GO Legacy installation.
 - The widget talks to 127.0.0.1 internally, so the install script adds the required loopback exemption.
 - If Xbox Game Bar was open during install, close it and open it again.
 - The installer does not auto-open the widget URI because some Windows installs do not register ms-gamebarwidget links.

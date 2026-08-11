@@ -179,6 +179,7 @@ namespace KillConfirmGameBar
             if (_battlefield4AdvancedEffectsPanel == null)
             {
                 _battlefield4AdvancedEffectsPanel = new Battlefield4AdvancedEffectsPanel();
+                _battlefield4AdvancedEffectsPanel.MoneyRewardModeSelectionChanged += OnMoneyRewardModeSelectionChanged;
                 _battlefield4AdvancedEffectsPanel.StreakModeSelectionChanged += OnSharedStreakModeSelectionChanged;
                 LoadSharedStreakMode(GameStyleMode.Battlefield4);
             }
@@ -191,6 +192,7 @@ namespace KillConfirmGameBar
             if (_battlefield2042AdvancedEffectsPanel == null)
             {
                 _battlefield2042AdvancedEffectsPanel = new Battlefield2042AdvancedEffectsPanel();
+                _battlefield2042AdvancedEffectsPanel.MoneyRewardModeSelectionChanged += OnMoneyRewardModeSelectionChanged;
                 _battlefield2042AdvancedEffectsPanel.StreakModeSelectionChanged += OnSharedStreakModeSelectionChanged;
                 LoadSharedStreakMode(GameStyleMode.Battlefield2042);
             }
@@ -203,6 +205,7 @@ namespace KillConfirmGameBar
             if (_pubgAdvancedEffectsPanel == null)
             {
                 _pubgAdvancedEffectsPanel = new PubgAdvancedEffectsPanel();
+                _pubgAdvancedEffectsPanel.MoneyRewardModeSelectionChanged += OnMoneyRewardModeSelectionChanged;
                 _pubgAdvancedEffectsPanel.StreakModeSelectionChanged += OnSharedStreakModeSelectionChanged;
                 LoadSharedStreakMode(GameStyleMode.Pubg);
             }
@@ -215,6 +218,7 @@ namespace KillConfirmGameBar
             if (_deltaForceAdvancedEffectsPanel == null)
             {
                 _deltaForceAdvancedEffectsPanel = new DeltaForceAdvancedEffectsPanel();
+                _deltaForceAdvancedEffectsPanel.MoneyRewardModeSelectionChanged += OnMoneyRewardModeSelectionChanged;
                 _deltaForceAdvancedEffectsPanel.StreakModeSelectionChanged += OnSharedStreakModeSelectionChanged;
                 LoadSharedStreakMode(GameStyleMode.DeltaForce);
             }
@@ -326,6 +330,22 @@ namespace KillConfirmGameBar
             else if (AdvancedEffectsPanelHost?.Content == _battlefield5AdvancedEffectsPanel)
             {
                 _battlefield5AdvancedEffectsPanel.SelectMoneyRewardMode(mode, DefaultMoneyRewardMode);
+            }
+            else if (AdvancedEffectsPanelHost?.Content == _battlefield4AdvancedEffectsPanel)
+            {
+                _battlefield4AdvancedEffectsPanel.SelectMoneyRewardMode(mode, DefaultMoneyRewardMode);
+            }
+            else if (AdvancedEffectsPanelHost?.Content == _battlefield2042AdvancedEffectsPanel)
+            {
+                _battlefield2042AdvancedEffectsPanel.SelectMoneyRewardMode(mode, DefaultMoneyRewardMode);
+            }
+            else if (AdvancedEffectsPanelHost?.Content == _pubgAdvancedEffectsPanel)
+            {
+                _pubgAdvancedEffectsPanel.SelectMoneyRewardMode(mode, DefaultMoneyRewardMode);
+            }
+            else if (AdvancedEffectsPanelHost?.Content == _deltaForceAdvancedEffectsPanel)
+            {
+                _deltaForceAdvancedEffectsPanel.SelectMoneyRewardMode(mode, DefaultMoneyRewardMode);
             }
 
             _suppressMoneyRewardModeEvents = false;
