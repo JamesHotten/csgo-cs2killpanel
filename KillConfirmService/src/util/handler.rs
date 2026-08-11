@@ -781,7 +781,7 @@ pub async fn update(
             event_kind: Some("assist".to_string()),
             weapon_badge_key: None,
             weapon_name: current_active_weapon_name.clone(),
-            money_reward: 0,
+            money_reward: money_rules::assist_reward(),
             round_number: current_round,
             money_epoch: current_money_epoch,
             player_name: player_name.clone(),

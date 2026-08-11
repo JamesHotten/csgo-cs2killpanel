@@ -200,6 +200,18 @@ namespace KillConfirmGameBar
                 : targetName.Trim();
         }
 
+        private static int GetDisplayedMoneyReward(KillEvent killEvent)
+        {
+            if (killEvent == null
+                || killEvent.IsAssist
+                || string.Equals(GetBattlefieldEventKind(killEvent), "assist", StringComparison.OrdinalIgnoreCase))
+            {
+                return 0;
+            }
+
+            return Math.Max(0, killEvent.MoneyReward);
+        }
+
         private void PlayBattlefield1PrimaryAnimation(KillEvent killEvent)
         {
             PrimaryKillAnimation.PlayBattlefield1Kill(
@@ -209,7 +221,7 @@ namespace KillConfirmGameBar
                 killEvent.IsAssist,
                 GetKillTargetDisplayName(killEvent),
                 GetBattlefieldWeaponLabel(killEvent),
-                killEvent.MoneyReward,
+                GetDisplayedMoneyReward(killEvent),
                 GetBattlefieldEventKind(killEvent),
                 killEvent.RoundNumber,
                 killEvent.MoneyEpoch);
@@ -224,7 +236,7 @@ namespace KillConfirmGameBar
                 killEvent.IsAssist,
                 GetKillTargetDisplayName(killEvent),
                 GetBattlefieldWeaponLabel(killEvent),
-                killEvent.MoneyReward,
+                GetDisplayedMoneyReward(killEvent),
                 GetBattlefieldEventKind(killEvent),
                 killEvent.RoundNumber,
                 killEvent.MoneyEpoch);
@@ -239,7 +251,7 @@ namespace KillConfirmGameBar
                 killEvent.IsAssist,
                 GetKillTargetDisplayName(killEvent),
                 GetBattlefieldWeaponLabel(killEvent),
-                killEvent.MoneyReward,
+                GetDisplayedMoneyReward(killEvent),
                 GetBattlefieldEventKind(killEvent),
                 killEvent.RoundNumber,
                 killEvent.MoneyEpoch);
@@ -254,7 +266,7 @@ namespace KillConfirmGameBar
                 killEvent.IsAssist,
                 GetKillTargetDisplayName(killEvent),
                 GetBattlefieldWeaponLabel(killEvent),
-                killEvent.MoneyReward,
+                GetDisplayedMoneyReward(killEvent),
                 GetBattlefieldEventKind(killEvent),
                 killEvent.RoundNumber,
                 killEvent.MoneyEpoch);
@@ -269,7 +281,7 @@ namespace KillConfirmGameBar
                 killEvent.IsAssist,
                 GetKillTargetDisplayName(killEvent),
                 GetBattlefieldWeaponLabel(killEvent),
-                killEvent.MoneyReward,
+                GetDisplayedMoneyReward(killEvent),
                 GetBattlefieldEventKind(killEvent),
                 killEvent.RoundNumber,
                 killEvent.MoneyEpoch);
@@ -284,7 +296,7 @@ namespace KillConfirmGameBar
                 killEvent.IsAssist,
                 GetKillTargetDisplayName(killEvent),
                 GetBattlefieldWeaponLabel(killEvent),
-                killEvent.MoneyReward,
+                GetDisplayedMoneyReward(killEvent),
                 GetBattlefieldEventKind(killEvent),
                 killEvent.RoundNumber,
                 killEvent.MoneyEpoch);

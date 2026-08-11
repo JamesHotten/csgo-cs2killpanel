@@ -28,6 +28,7 @@ use crate::soundpack::sound::{play_audio, warm_audio_cache};
 use crate::util::logging::service_log;
 use crate::util::playback::{get_output_stream_with_name, output_device_names};
 
+use super::money_rules;
 use super::state::{
     AppState, CrossfireStreakMode, KillEvent, MoneyRewardMode, format_streak_setting,
     parse_streak_setting,
@@ -772,15 +773,17 @@ pub async fn test_event(
             .weapon_name
             .filter(|value| !value.trim().is_empty())
             .or_else(|| Some("AK-47".to_string())),
-        money_reward: query.money_reward.unwrap_or_else(|| {
-            if query.assist.unwrap_or(false) {
-                0
-            } else if query.knife.unwrap_or(false) {
-                1500
-            } else {
-                300
-            }
-        }),
+        money_reward: if query.assist.unwrap_or(false) {
+            money_rules::assist_reward()
+        } else {
+            query.money_reward.unwrap_or_else(|| {
+                if query.knife.unwrap_or(false) {
+                    1500
+                } else {
+                    300
+                }
+            })
+        },
         round_number: query.round_number.unwrap_or(0),
         money_epoch: query
             .money_epoch

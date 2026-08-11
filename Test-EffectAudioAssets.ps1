@@ -186,6 +186,18 @@ if ($battlefield5ModelsSource -notmatch 'public bool IsReady \{ get; set; \}') {
     $errors.Add('Battlefield V pending event readiness state is missing.')
 }
 
+# CS2 assists contribute to the scoreboard but do not award player cash. Keep the
+# UI boundary defensive so test/custom events cannot inject a false assist reward.
+$animationPageSource = Get-Content -LiteralPath (Join-Path $repoRoot 'Widget\KillConfirmWidgetPage.Animation.cs') -Raw
+$checks++
+if ($animationPageSource -notmatch 'killEvent\.IsAssist[\s\S]*GetBattlefieldEventKind\(killEvent\), "assist"[\s\S]*return 0;') {
+    $errors.Add('Assist events are not clamped to zero CS2 cash at the presentation boundary.')
+}
+$checks++
+if ([regex]::Matches($animationPageSource, 'GetDisplayedMoneyReward\(killEvent\)').Count -ne 6) {
+    $errors.Add('Not every reward-capable game style uses the assist-safe money reward.')
+}
+
 if (-not $SkipRustTests) {
     & cargo test --manifest-path (Join-Path $repoRoot 'KillConfirmService\Cargo.toml') `
         every_builtin_audio_route_points_to_an_existing_decodable_file --quiet

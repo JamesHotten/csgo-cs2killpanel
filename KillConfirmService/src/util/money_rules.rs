@@ -7,6 +7,11 @@ pub fn uses_standard_cash_economy(mode: &Mode) -> bool {
     matches!(mode, Mode::Casual | Mode::Competitive | Mode::Wingman)
 }
 
+/// CS2 records an assist as contribution/score, but does not grant player cash for it.
+pub fn assist_reward() -> u16 {
+    0
+}
+
 pub fn weapon_kill_reward(weapon_name: &WeaponName, mode: &Mode) -> u16 {
     let reward = match weapon_name {
         WeaponName::KnifeCT
@@ -206,13 +211,18 @@ pub fn is_hostage_map(map_name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        bomb_objective_reward, default_kill_reward, hostage_objective_kind, loss_bonus,
-        round_win_bonus, weapon_kill_reward,
+        assist_reward, bomb_objective_reward, default_kill_reward, hostage_objective_kind,
+        loss_bonus, round_win_bonus, weapon_kill_reward,
     };
     use gsi_cs2::map::Mode;
     use gsi_cs2::round::BombState;
     use gsi_cs2::team::TeamClass;
     use gsi_cs2::weapon::WeaponName;
+
+    #[test]
+    fn assists_do_not_award_player_cash() {
+        assert_eq!(assist_reward(), 0);
+    }
 
     #[test]
     fn modes_without_cash_economy_do_not_report_rewards() {
