@@ -37,8 +37,8 @@ english.OpenXboxGameBar=Open Xbox Game Bar
 chinesesimplified.OpenXboxGameBar=Open Xbox Game Bar
 english.InstallingOverlay=Installing Kill Confirm Overlay...
 chinesesimplified.InstallingOverlay=Installing Kill Confirm Overlay...
-english.CheckingPrerequisites=Checking required VCLibs and Xbox Game Bar components...
-chinesesimplified.CheckingPrerequisites=正在检测必需的 VCLibs 和 Xbox Game Bar 组件...
+english.CheckingPrerequisites=Checking package dependencies and Xbox Game Bar integration...
+chinesesimplified.CheckingPrerequisites=正在检测安装包依赖和 Xbox Game Bar 集成...
 english.InstallScriptLaunchFailed=Could not start the installer script.
 chinesesimplified.InstallScriptLaunchFailed=Could not start the installer script.
 english.InstallScriptFailed=Install failed. The detailed log has been opened for you. Exit code:
@@ -55,12 +55,12 @@ Type: filesandordirs; Name: "{app}\Payload"
 Source: "{#TransferRoot}\*"; DestDir: "{app}\Payload"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autodesktop}\Kill Confirm Overlay 控制面板"; Filename: "explorer.exe"; Parameters: "shell:AppsFolder\KillConfirmGameBar.Overlay_4t2qzenbgqd14!App"
-Name: "{group}\Kill Confirm Overlay 控制面板"; Filename: "explorer.exe"; Parameters: "shell:AppsFolder\KillConfirmGameBar.Overlay_4t2qzenbgqd14!App"
+Name: "{autodesktop}\Kill Confirm Overlay 控制面板"; Filename: "explorer.exe"; Parameters: "shell:AppsFolder\KillConfirmGameBar.Overlay_5jgcw66eyez0m!App"
+Name: "{group}\Kill Confirm Overlay 控制面板"; Filename: "explorer.exe"; Parameters: "shell:AppsFolder\KillConfirmGameBar.Overlay_5jgcw66eyez0m!App"
 Name: "{group}\{cm:OpenXboxGameBar}"; Filename: "explorer.exe"; Parameters: "ms-gamebar:"
 
 [UninstallRun]
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Get-Process -Name cskillconfirm,TestXboxGameBar,KillConfirmOverlay,KillConfirmGameBar,GameBar,GameBarFTServer,GameBarPresenceWriter -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Sleep -Milliseconds 800; $p = Get-AppxPackage -Name KillConfirmGameBar.Overlay -ErrorAction SilentlyContinue | Sort-Object Version -Descending | Select-Object -First 1; if ($p) {{ CheckNetIsolation.exe LoopbackExempt -d \""-n=$($p.PackageFamilyName)\"" 2>$null; $p | Remove-AppxPackage -ErrorAction SilentlyContinue }"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveAppxPackage"
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Get-Process -Name cskillconfirm,TestXboxGameBar,KillConfirmOverlay,KillConfirmGameBar,GameBar,GameBarFTServer,GameBarPresenceWriter -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Sleep -Milliseconds 800; $p = Get-AppxPackage -Name KillConfirmGameBar.Overlay -ErrorAction SilentlyContinue | Sort-Object Version -Descending | Select-Object -First 1; if ($p) {{ CheckNetIsolation.exe LoopbackExempt -d \""-n=$($p.PackageFamilyName)\"" 2>$null; $p | Remove-AppxPackage -ErrorAction SilentlyContinue }; $cert = Get-Item 'Cert:\LocalMachine\TrustedPeople\2149E649A9C51808D5DF78E8674B1A034616C1C8' -ErrorAction SilentlyContinue; if ($cert) {{ $cert | Remove-Item -Force -ErrorAction SilentlyContinue }}"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveAppxPackage"
 
 [Code]
 function InitializeSetup(): Boolean;
@@ -98,7 +98,7 @@ begin
     if not Exec('powershell.exe', Params, ExpandConstant('{app}\Payload'), SW_HIDE, ewWaitUntilTerminated, ResultCode) then
     begin
       MsgBox(ExpandConstant('{cm:InstallScriptLaunchFailed}'), mbError, MB_OK);
-      Abort;
+      RaiseException(ExpandConstant('{cm:InstallScriptLaunchFailed}'));
     end;
 
     if ResultCode <> 0 then
@@ -109,7 +109,7 @@ begin
         ExpandConstant('{cm:InstallScriptFailed}') + ' ' + IntToStr(ResultCode) + #13#10 + ExpandConstant('{cm:InstallLogOpened}'),
         mbError,
         MB_OK);
-      Abort;
+      RaiseException(ExpandConstant('{cm:InstallScriptFailed}') + ' ' + IntToStr(ResultCode));
     end;
   end;
 end;

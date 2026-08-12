@@ -29,7 +29,7 @@
     <AppxPackageSigningEnabled>true</AppxPackageSigningEnabled>
     <PackageCertificateKeyFile>..\Widget\KillConfirmGameBar_TemporaryKey.pfx</PackageCertificateKeyFile>
     <PackageCertificatePassword>test</PackageCertificatePassword>
-    <PackageCertificateThumbprint>C00A9CB110C12787AD185DF8F6D631908F07526E</PackageCertificateThumbprint>
+    <PackageCertificateThumbprint>2149E649A9C51808D5DF78E8674B1A034616C1C8</PackageCertificateThumbprint>
     <NoWarn>$(NoWarn);NU1702</NoWarn>
     <EntryPointProjectUniqueName>..\Widget\KillConfirmGameBar.csproj</EntryPointProjectUniqueName>
   </PropertyGroup>

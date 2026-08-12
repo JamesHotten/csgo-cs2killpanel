@@ -4,6 +4,8 @@ param(
     [string]$MsBuildPath = "",
     [string]$VcInstallPath = "",
     [string]$InnoCompilerPath = "",
+    [string]$InstallerSigningPfxPath = "",
+    [string]$InstallerSigningPfxPassword = "",
     [switch]$DisableSigning
 )
 
@@ -84,6 +86,39 @@ if ($LASTEXITCODE -ne 0) {
 $SetupPath = Join-Path $Root ("Output\KillConfirmGameBar_Setup_{0}.exe" -f $Version)
 if (-not (Test-Path $SetupPath)) {
     throw "Expected installer was not produced: $SetupPath"
+}
+
+if (-not $DisableSigning) {
+    if (-not $InstallerSigningPfxPath) {
+        $InstallerSigningPfxPath = Join-Path $Root "Widget\KillConfirmGameBar_TemporaryKey.pfx"
+    }
+    if (-not $InstallerSigningPfxPassword) {
+        $InstallerSigningPfxPassword = $env:KILLCONFIRM_SIGNING_PASSWORD
+    }
+    if (-not $InstallerSigningPfxPassword -and $InstallerSigningPfxPath -like "*KillConfirmGameBar_TemporaryKey.pfx") {
+        $InstallerSigningPfxPassword = "test"
+    }
+    if (-not (Test-Path -LiteralPath $InstallerSigningPfxPath -PathType Leaf)) {
+        throw "Installer signing PFX was not found: $InstallerSigningPfxPath"
+    }
+
+    $SignTool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter "signtool.exe" -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -match "\\x64\\signtool\.exe$" } |
+        Sort-Object FullName -Descending |
+        Select-Object -First 1
+    if (-not $SignTool) {
+        throw "signtool.exe was not found in the Windows SDK."
+    }
+
+    $signArgs = @("sign", "/fd", "SHA256", "/f", $InstallerSigningPfxPath)
+    if ($InstallerSigningPfxPassword) {
+        $signArgs += @("/p", $InstallerSigningPfxPassword)
+    }
+    $signArgs += @("/d", "Kill Confirm Overlay $Version", $SetupPath)
+    & $SignTool.FullName @signArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "Installer signing failed with exit code $LASTEXITCODE"
+    }
 }
 
 Write-Host ""

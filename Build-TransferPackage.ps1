@@ -30,19 +30,6 @@ $AppPackagesRoot = Join-Path $Root "Package\AppPackages"
 $TransferRoot = Join-Path $WorkspaceRoot ("KillConfirmGameBar_Transfer_{0}" -f $Version)
 $TransferZip = "{0}.zip" -f $TransferRoot
 $ExpectedPackageFamilyName = "KillConfirmGameBar.Overlay_5jgcw66eyez0m"
-$PrerequisiteSourceRoot = Join-Path $WorkspaceRoot "Vclibs"
-$PrerequisiteFileNames = @(
-    "vclibs.appx",
-    "vclibs2.appx",
-    "gamebar.AppxBundle"
-)
-
-foreach ($prerequisiteFileName in $PrerequisiteFileNames) {
-    $prerequisiteSourcePath = Join-Path $PrerequisiteSourceRoot $prerequisiteFileName
-    if (-not (Test-Path -LiteralPath $prerequisiteSourcePath -PathType Leaf)) {
-        throw "Required prerequisite package was not found: $prerequisiteSourcePath"
-    }
-}
 
 $resolvedWorkspaceRoot = [System.IO.Path]::GetFullPath($WorkspaceRoot)
 $resolvedTransferRoot = [System.IO.Path]::GetFullPath($TransferRoot)
@@ -105,14 +92,8 @@ if (Test-Path $TransferZip) {
 }
 
 $OverlayTransferRoot = Join-Path $TransferRoot "OverlayPackage"
-$PrerequisiteTransferRoot = Join-Path $TransferRoot "Prerequisites"
 
 New-Item -ItemType Directory -Force -Path $OverlayTransferRoot | Out-Null
-New-Item -ItemType Directory -Force -Path $PrerequisiteTransferRoot | Out-Null
-
-foreach ($prerequisiteFileName in $PrerequisiteFileNames) {
-    Copy-Item -LiteralPath (Join-Path $PrerequisiteSourceRoot $prerequisiteFileName) -Destination $PrerequisiteTransferRoot -Force
-}
 
 Copy-Item -LiteralPath (Join-Path $PackageSourceRoot $PackageFileName) -Destination $OverlayTransferRoot -Force
 
@@ -140,7 +121,6 @@ $ErrorActionPreference = "Stop"
 
 $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $OverlayRoot = Join-Path $ScriptRoot "OverlayPackage"
-$PrerequisiteRoot = Join-Path $ScriptRoot "Prerequisites"
 $PackageName = "KillConfirmGameBar.Overlay"
 $PackageFamilyName = $null
 $LogPath = Join-Path $env:TEMP "KillConfirmGameBar_Install.log"
@@ -151,35 +131,7 @@ function ConvertFrom-Utf8Base64 {
     return [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($Value))
 }
 
-$Prerequisites = @(
-    [pscustomobject]@{
-        Order = 1
-        DisplayName = "Microsoft Visual C++ UWP Desktop Runtime (x64)"
-        ChineseDisplayName = (ConvertFrom-Utf8Base64 -Value "TWljcm9zb2Z0IFZpc3VhbCBDKysgVVdQIERlc2t0b3Ag6L+Q6KGM5bqTICh4NjQp")
-        PackageName = "Microsoft.VCLibs.140.00.UWPDesktop"
-        Architecture = "X64"
-        MinimumVersion = [version]"14.0.33728.0"
-        FileName = "vclibs.appx"
-    },
-    [pscustomobject]@{
-        Order = 2
-        DisplayName = "Microsoft Visual C++ UWP Runtime (x64)"
-        ChineseDisplayName = (ConvertFrom-Utf8Base64 -Value "TWljcm9zb2Z0IFZpc3VhbCBDKysgVVdQIOi/kOihjOW6kyAoeDY0KQ==")
-        PackageName = "Microsoft.VCLibs.140.00"
-        Architecture = "X64"
-        MinimumVersion = [version]"14.0.33519.0"
-        FileName = "vclibs2.appx"
-    },
-    [pscustomobject]@{
-        Order = 3
-        DisplayName = "Xbox Game Bar"
-        ChineseDisplayName = "Xbox Game Bar"
-        PackageName = "Microsoft.XboxGamingOverlay"
-        Architecture = "X64"
-        MinimumVersion = [version]"7.326.6011.0"
-        FileName = "gamebar.AppxBundle"
-    }
-)
+$Prerequisites = @()
 
 function Write-InstallLog {
     param([string]$Message)
@@ -305,15 +257,31 @@ function Update-InstalledPackageContext {
     return $package
 }
 
+function Remove-DevelopmentOverlayPackageIfNeeded {
+    $package = Get-AppxPackage -Name $PackageName -ErrorAction SilentlyContinue |
+        Sort-Object Version -Descending |
+        Select-Object -First 1
+    if (-not $package -or -not $package.IsDevelopmentMode) {
+        return
+    }
+
+    Write-InstallLog "Removing development registration before installing signed MSIX: $($package.PackageFullName)"
+    $removeCommand = Get-Command Remove-AppxPackage -ErrorAction Stop
+    $removeParams = @{
+        Package = $package.PackageFullName
+        ErrorAction = "Stop"
+    }
+    if ($removeCommand.Parameters.ContainsKey("PreserveApplicationData")) {
+        $removeParams.PreserveApplicationData = $true
+    }
+    Remove-AppxPackage @removeParams
+    Write-InstallLog "Development registration removed; application data was preserved when supported by Windows."
+}
+
 function Import-PackageCertificate {
     param([string]$CertificatePath)
 
-    $storeLocations = @(
-        "Cert:\CurrentUser\TrustedPeople",
-        "Cert:\CurrentUser\Root",
-        "Cert:\LocalMachine\TrustedPeople",
-        "Cert:\LocalMachine\Root"
-    )
+    $storeLocations = @("Cert:\LocalMachine\TrustedPeople")
 
     foreach ($storeLocation in $storeLocations) {
         try {
@@ -435,10 +403,6 @@ function Confirm-PrerequisiteInstall {
 
 function Install-RequiredComponents {
     Write-InstallLog "Checking required VCLibs and Xbox Game Bar packages..."
-    if (-not (Test-Path -LiteralPath $PrerequisiteRoot -PathType Container)) {
-        throw "Prerequisites folder was not found under $ScriptRoot"
-    }
-
     $missingPrerequisites = @($Prerequisites |
         Sort-Object Order |
         Where-Object { -not (Test-PrerequisiteInstalled -Prerequisite $_) })
@@ -526,6 +490,8 @@ function Install-OverlayPackage {
         Write-InstallLog "No Kill Confirm/Game Bar processes needed stopping."
     }
     Start-Sleep -Milliseconds 800
+
+    Remove-DevelopmentOverlayPackageIfNeeded
 
     $msix = Get-ChildItem -LiteralPath $OverlayRoot -Filter "*.msix" -File | Select-Object -First 1
     if (-not $msix) {
@@ -794,7 +760,7 @@ KillConfirmGameBar transfer package
 
 What is inside:
 - OverlayPackage: the Xbox Game Bar MSIX package and its dependencies
-- Prerequisites: offline Microsoft VCLibs and Xbox Game Bar packages
+- Prerequisites: Microsoft framework dependencies included with the MSIX; Xbox Game Bar must be enabled in Windows
 - Install-KillConfirm.ps1: one-click install script
 
 Use on another PC:
