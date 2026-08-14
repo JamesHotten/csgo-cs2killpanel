@@ -20,6 +20,7 @@
             <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="CornerRadius" Value="17" />
         </Style>
+        <Style TargetType="ComboBox" BasedOn="{StaticResource CompactSettingsComboBoxStyle}" />
         <Style x:Key="CompactChoiceCardStyle" TargetType="Border">
             <Setter Property="Tag" Value="SoftChoiceCard" />
             <Setter Property="Padding" Value="10" />

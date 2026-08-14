@@ -640,6 +640,7 @@
                                 x:Name="AudioVolumeSelector"
                                 Grid.Column="1"
                                 Width="82"
+                                MinWidth="60"
                                 Style="{StaticResource NarrowComboBoxStyle}"
                                 SelectionChanged="OnAudioVolumeSelectionChanged"
                                 ToolTipService.ToolTip="Overlay volume">
@@ -922,6 +923,7 @@
                         x:Name="BrightnessSelector"
                         Grid.Column="1"
                         Width="70"
+                        MinWidth="60"
                         Style="{StaticResource NarrowComboBoxStyle}"
                         SelectionChanged="OnBrightnessSelectionChanged"
                         ToolTipService.ToolTip="Animation brightness">
@@ -949,6 +951,7 @@
                         x:Name="ContrastSelector"
                         Grid.Column="3"
                         Width="70"
+                        MinWidth="60"
                         Style="{StaticResource NarrowComboBoxStyle}"
                         SelectionChanged="OnContrastSelectionChanged"
                         ToolTipService.ToolTip="Animation contrast">

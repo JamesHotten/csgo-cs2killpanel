@@ -73,6 +73,52 @@ if ($streakEditorXaml -match '<ColumnDefinition Width="110"') {
     $errors.Add('The shared streak selector still reserves a fixed label column that can collapse the ComboBox.')
 }
 
+# Every settings ComboBox uses the same compact rounded visual foundation. The
+# widget keeps named width variants, but those variants must not fork colors,
+# borders or typography away from the shared application style.
+$appXaml = Get-Content -LiteralPath (Join-Path $repoRoot 'Widget\App.xaml') -Raw
+$checks++
+if ($appXaml -notmatch '<Style TargetType="ComboBox" BasedOn="\{StaticResource CompactSettingsComboBoxStyle\}"\s*/>') {
+    $errors.Add('ComboBox controls without an explicit style do not inherit the shared compact settings style.')
+}
+
+$widgetStylesXaml = Get-Content -LiteralPath (Join-Path $repoRoot 'Widget\KillConfirmWidgetPage.Styles.xaml') -Raw
+foreach ($styleName in @('OverlayComboBoxStyle', 'CompactComboBoxStyle', 'NarrowComboBoxStyle', 'PackAccentComboBoxStyle')) {
+    $checks++
+    if ($widgetStylesXaml -notmatch ('<Style x:Key="' + [regex]::Escape($styleName) + '" TargetType="ComboBox" BasedOn="\{StaticResource [^"]+ComboBoxStyle\}"\s*/>')) {
+        $errors.Add("Widget ComboBox variant $styleName overrides the shared rounded visual style.")
+    }
+}
+
+$allowedComboBoxStyles = @(
+    'CompactSettingsComboBoxStyle',
+    'NarrowComboBoxStyle',
+    'PackAccentComboBoxStyle'
+)
+Get-ChildItem -LiteralPath (Join-Path $repoRoot 'Widget') -Filter '*.xaml' -File -Recurse |
+    Where-Object { $_.FullName -notmatch '[\\/](?:bin|obj)[\\/]' } |
+    ForEach-Object {
+    $xaml = Get-Content -LiteralPath $_.FullName -Raw
+    foreach ($match in [regex]::Matches($xaml, '<ComboBox(?=\s|>)(?<attributes>[\s\S]*?)(?=>)')) {
+        $attributes = $match.Groups['attributes'].Value
+        $styleMatch = [regex]::Match($attributes, 'Style="\{StaticResource (?<name>[^}]+)\}"')
+        if ($styleMatch.Success -and $allowedComboBoxStyles -notcontains $styleMatch.Groups['name'].Value) {
+            $errors.Add("$($_.FullName) contains a ComboBox that bypasses the shared compact style: $($styleMatch.Groups['name'].Value)")
+        }
+        $checks++
+
+        $widthMatch = [regex]::Match($attributes, 'Width="(?<value>\d+(?:\.\d+)?)"')
+        if ($widthMatch.Success -and [double]$widthMatch.Groups['value'].Value -lt 92) {
+            $minWidthMatch = [regex]::Match($attributes, 'MinWidth="(?<value>\d+(?:\.\d+)?)"')
+            $checks++
+            if (-not $minWidthMatch.Success -or
+                [double]$minWidthMatch.Groups['value'].Value -gt [double]$widthMatch.Groups['value'].Value) {
+                $errors.Add("$($_.FullName) contains a narrow ComboBox whose shared 92-pixel minimum can overflow its layout.")
+            }
+        }
+    }
+}
+
 # Legacy/remastered CrossFire animation sheets.
 $legacyKeys = @(
     '1killre', '2killre', '3killre', '4killre', '5killre', '6killre',
