@@ -142,6 +142,8 @@
     <Compile Include="KillConfirmWidgetPage.Animation.cs" />
     <Compile Include="KillConfirmWidgetPage.CrossfireStyle.cs" />
     <Compile Include="KillConfirmWidgetPage.CrossfireGameplaySettings.cs" />
+    <Compile Include="KillConfirmWidgetPage.CsolGameplaySettings.cs" />
+    <Compile Include="KillConfirmWidgetPage.EventSoundSettings.cs" />
     <Compile Include="KillConfirmWidgetPage.SharedStreakSettings.cs" />
     <Compile Include="KillConfirmWidgetPage.Status.cs" />
     <Compile Include="KillConfirmWidgetPage.VisualSettings.cs" />
@@ -164,8 +166,12 @@
     <Compile Include="Controls\KillConfirmAnimation.DeltaForce.cs" />
     <Compile Include="Controls\KillConfirmAnimation.ValorantDemo.cs" />
     <Compile Include="Controls\KillConfirmAnimation.Valorant.cs" />
+    <Compile Include="Controls\KillConfirmAnimation.Csol.cs" />
     <Compile Include="Controls\KillConfirmAnimation.Valorant.Motion.cs" />
     <Compile Include="Controls\GameStyles\AdvancedEffectsPanelSupport.cs" />
+    <Compile Include="Controls\GameStyles\EventSoundRoutingPanel.xaml.cs">
+      <DependentUpon>EventSoundRoutingPanel.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Controls\GameStyles\StreakWindowEditor.xaml.cs">
       <DependentUpon>StreakWindowEditor.xaml</DependentUpon>
     </Compile>
@@ -217,10 +223,22 @@
     <Compile Include="Controls\GameStyles\ValorantStylePanel.xaml.cs">
       <DependentUpon>ValorantStylePanel.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Controls\GameStyles\CsolAdvancedEffectsPanel.xaml.cs">
+      <DependentUpon>CsolAdvancedEffectsPanel.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Controls\Settings\RuntimeMaintenancePanel.xaml.cs">
       <DependentUpon>RuntimeMaintenancePanel.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Controls\Settings\DisplayScalingSettingsPanel.xaml.cs">
+      <DependentUpon>DisplayScalingSettingsPanel.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Controls\Settings\SettingsPanelSupport.cs" />
+    <Compile Include="Services\CsolVoiceSettingsStore.cs" />
+    <Compile Include="Services\CombatEventSoundSettingsStore.cs" />
+    <Compile Include="Services\ControlPanelScaleSettingsStore.cs" />
+    <Compile Include="Services\CloseBehaviorSettingsStore.cs" />
+    <Compile Include="Services\SettingsBackupService.cs" />
+    <Compile Include="Services\SettingsConfigurationService.cs" />
     <Compile Include="Controls\Settings\SharedStreakSettingsPanelSupport.cs" />
     <Compile Include="Controls\Settings\Battlefield1AdvancedSettingsPanel.xaml.cs">
       <DependentUpon>Battlefield1AdvancedSettingsPanel.xaml</DependentUpon>
@@ -416,7 +434,19 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Controls\GameStyles\CsolAdvancedEffectsPanel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Controls\GameStyles\EventSoundRoutingPanel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Controls\Settings\RuntimeMaintenancePanel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Controls\Settings\DisplayScalingSettingsPanel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fs,
     path::PathBuf,
     sync::Arc,
@@ -30,8 +31,8 @@ use crate::util::playback::{get_output_stream_with_name, output_device_names};
 
 use super::money_rules;
 use super::state::{
-    AppState, CrossfireStreakMode, KillEvent, MoneyRewardMode, format_streak_setting,
-    parse_streak_setting,
+    AppState, CrossfireStreakMode, EventSoundMode, EventSoundRoute, EventSoundSettings, KillEvent,
+    MoneyRewardMode, format_streak_setting, parse_streak_setting,
 };
 
 #[derive(Debug, Deserialize)]
@@ -127,6 +128,42 @@ pub struct StreakSettingsRequest {
     pub assist_audio_setting_active: bool,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct CsolSettingsRequest {
+    #[serde(default)]
+    pub voice_picks: HashMap<String, String>,
+    #[serde(default = "default_true")]
+    pub special_voice_priority: bool,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct EventSoundRouteRequest {
+    pub mode: String,
+    #[serde(default)]
+    pub custom_path: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct EventSoundSettingsRequest {
+    pub active: bool,
+    pub normal: EventSoundRouteRequest,
+    pub headshot: EventSoundRouteRequest,
+    pub knife: EventSoundRouteRequest,
+    pub assist: EventSoundRouteRequest,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SpectatorSettingsRequest {
+    #[serde(default)]
+    pub enabled: Option<bool>,
+    #[serde(default)]
+    pub spectated_player_enabled: Option<bool>,
+    #[serde(default)]
+    pub replay_enabled: Option<bool>,
+    #[serde(default)]
+    pub controlled_bot_enabled: Option<bool>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct SoundPackResponse {
     pub preset: String,
@@ -159,11 +196,81 @@ pub struct StreakSettingsResponse {
 }
 
 #[derive(Debug, Serialize)]
+pub struct CsolSettingsResponse {
+    pub voice_picks: HashMap<String, String>,
+    pub special_voice_priority: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct EventSoundRouteResponse {
+    pub mode: &'static str,
+    pub custom_path: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct EventSoundSettingsResponse {
+    pub active: bool,
+    pub normal: EventSoundRouteResponse,
+    pub headshot: EventSoundRouteResponse,
+    pub knife: EventSoundRouteResponse,
+    pub assist: EventSoundRouteResponse,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SpectatorSettingsResponse {
+    pub enabled: bool,
+    pub spectated_player_enabled: bool,
+    pub replay_enabled: bool,
+    pub controlled_bot_enabled: bool,
+}
+
+#[derive(Debug, Serialize)]
 pub struct Cs2RootResponse {
     pub found: bool,
     pub path: Option<String>,
     pub paths: Vec<String>,
+    pub cfg_status: &'static str,
+    pub installations: Vec<CounterStrikeInstallationResponse>,
 }
+
+#[derive(Debug, Serialize)]
+pub struct CounterStrikeInstallationResponse {
+    pub path: String,
+    pub version: &'static str,
+    pub cfg_status: &'static str,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum CounterStrikeVersion {
+    Cs2,
+    Legacy,
+}
+
+impl CounterStrikeVersion {
+    fn from_query(value: Option<&str>) -> Option<Self> {
+        match value.unwrap_or("cs2").trim().to_ascii_lowercase().as_str() {
+            "cs2" => Some(Self::Cs2),
+            "csgo" | "legacy" | "csgo_legacy" => Some(Self::Legacy),
+            _ => None,
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Cs2 => "cs2",
+            Self::Legacy => "csgo_legacy",
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CounterStrikeRootQuery {
+    pub version: Option<String>,
+    pub path: Option<String>,
+}
+
+const GSI_CONFIG_FILE_NAME: &str = "gamestate_integration_killconfirm.cfg";
+const GSI_CONFIG_TEXT: &str = "\"KillConfirmGameBar\"\r\n{\r\n \"uri\" \"http://127.0.0.1:3000/\"\r\n \"timeout\" \"0.5\"\r\n \"buffer\"  \"0.05\"\r\n \"throttle\" \"0.05\"\r\n \"heartbeat\" \"15.0\"\r\n \"auth\"\r\n {\r\n   \"token\" \"killconfirm\"\r\n }\r\n \"data\"\r\n {\r\n   \"provider\"           \"1\"\r\n   \"map\"                \"1\"\r\n   \"round\"              \"1\"\r\n   \"bomb\"               \"1\"\r\n   \"player_id\"          \"1\"\r\n   \"player_state\"       \"1\"\r\n   \"player_weapons\"     \"1\"\r\n   \"player_match_stats\" \"1\"\r\n   \"player_position\"    \"1\"\r\n   \"allplayers_id\"          \"1\"\r\n   \"allplayers_state\"       \"1\"\r\n   \"allplayers_weapons\"     \"1\"\r\n   \"allplayers_match_stats\" \"1\"\r\n }\r\n}\r\n";
 
 #[derive(Clone, Copy, Debug, Serialize)]
 pub struct SoundPackOption {
@@ -221,6 +328,10 @@ const SOUND_PACK_OPTIONS: &[SoundPackOption] = &[
     SoundPackOption {
         preset: "crossfire_heart_judge_bl",
         display_name: "Heart Judge BL",
+    },
+    SoundPackOption {
+        preset: "csol4",
+        display_name: "CSOL 10杀",
     },
     SoundPackOption {
         preset: "bf1",
@@ -388,14 +499,105 @@ pub async fn gsi_status(State(app_state): State<Arc<AppState>>) -> Json<GsiStatu
 
 pub async fn cs2_root() -> Json<Cs2RootResponse> {
     let paths = detect_counter_strike_roots();
+    let first = paths.first().cloned();
+    let cfg_status = first
+        .as_ref()
+        .and_then(|root| {
+            detect_counter_strike_version(root).map(|version| cfg_status(root, version))
+        })
+        .unwrap_or("not_found");
+    let installations = counter_strike_installations_response(&paths);
     Json(Cs2RootResponse {
         found: !paths.is_empty(),
-        path: paths.first().map(|value| value.display().to_string()),
+        path: first.map(|value| value.display().to_string()),
         paths: paths
             .into_iter()
             .map(|value| value.display().to_string())
             .collect(),
+        cfg_status,
+        installations,
     })
+}
+
+pub async fn install_counter_strike_cfg(
+    Query(query): Query<CounterStrikeRootQuery>,
+) -> Result<Json<Cs2RootResponse>, (axum::http::StatusCode, String)> {
+    let roots = detect_counter_strike_roots();
+    let requested_path = query
+        .path
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    let requested_version = match query.version.as_deref() {
+        Some(value) => Some(
+            CounterStrikeVersion::from_query(Some(value)).ok_or_else(|| {
+                (
+                    axum::http::StatusCode::BAD_REQUEST,
+                    "version must be 'cs2' or 'csgo_legacy'".to_string(),
+                )
+            })?,
+        ),
+        None => None,
+    };
+    let root = roots
+        .iter()
+        .find(|root| {
+            if requested_path
+                .is_some_and(|path| !root.display().to_string().eq_ignore_ascii_case(path))
+            {
+                return false;
+            }
+            let detected = detect_counter_strike_version(root);
+            requested_version
+                .map(|version| detected == Some(version))
+                .unwrap_or(detected.is_some())
+        })
+        .cloned()
+        .ok_or_else(|| {
+            (
+                axum::http::StatusCode::NOT_FOUND,
+                "requested Counter-Strike installation was not found".to_string(),
+            )
+        })?;
+    let version = detect_counter_strike_version(&root).ok_or_else(|| {
+        (
+            axum::http::StatusCode::BAD_REQUEST,
+            "detected installation layout is unsupported".to_string(),
+        )
+    })?;
+    let cfg_folder = counter_strike_cfg_folder(&root, version);
+    fs::create_dir_all(&cfg_folder).map_err(|error| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!(
+                "failed to create cfg folder {}: {error}",
+                cfg_folder.display()
+            ),
+        )
+    })?;
+    let cfg_path = cfg_folder.join(GSI_CONFIG_FILE_NAME);
+    fs::write(&cfg_path, GSI_CONFIG_TEXT.as_bytes()).map_err(|error| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            format!("failed to write cfg {}: {error}", cfg_path.display()),
+        )
+    })?;
+    service_log(&format!(
+        "installed GSI cfg through service: {}",
+        cfg_path.display()
+    ));
+
+    let installations = counter_strike_installations_response(&roots);
+    Ok(Json(Cs2RootResponse {
+        found: true,
+        path: Some(root.display().to_string()),
+        paths: roots
+            .into_iter()
+            .map(|value| value.display().to_string())
+            .collect(),
+        cfg_status: cfg_status(&root, version),
+        installations,
+    }))
 }
 
 pub async fn shutdown(State(app_state): State<Arc<AppState>>) -> Json<HealthResponse> {
@@ -681,6 +883,124 @@ pub async fn set_streak_settings(
     Ok(Json(streak_settings_response(&app_state)))
 }
 
+pub async fn csol_settings(State(app_state): State<Arc<AppState>>) -> Json<CsolSettingsResponse> {
+    Json(csol_settings_response(&app_state).await)
+}
+
+pub async fn set_csol_settings(
+    State(app_state): State<Arc<AppState>>,
+    Json(request): Json<CsolSettingsRequest>,
+) -> Result<Json<CsolSettingsResponse>, (axum::http::StatusCode, String)> {
+    service_log(&format!(
+        "CSOL settings: voice_picks={:?}, special_voice_priority={}",
+        request.voice_picks, request.special_voice_priority
+    ));
+    {
+        let mut picks = app_state.csol_voice_picks.write().await;
+        *picks = request.voice_picks;
+    }
+    app_state
+        .csol_special_voice_priority
+        .store(request.special_voice_priority, Ordering::Relaxed);
+
+    Ok(Json(csol_settings_response(&app_state).await))
+}
+
+pub async fn event_sound_settings(
+    State(app_state): State<Arc<AppState>>,
+) -> Json<EventSoundSettingsResponse> {
+    let settings = app_state.event_sound_settings.read().await;
+    Json(event_sound_settings_response(&settings))
+}
+
+pub async fn set_event_sound_settings(
+    State(app_state): State<Arc<AppState>>,
+    Json(request): Json<EventSoundSettingsRequest>,
+) -> Result<Json<EventSoundSettingsResponse>, (axum::http::StatusCode, String)> {
+    let settings = EventSoundSettings {
+        active: request.active,
+        normal: parse_event_sound_route(request.normal)?,
+        headshot: parse_event_sound_route(request.headshot)?,
+        knife: parse_event_sound_route(request.knife)?,
+        assist: parse_event_sound_route(request.assist)?,
+    };
+    let response = event_sound_settings_response(&settings);
+    service_log(&format!(
+        "event sound settings: active={}, normal={}, headshot={}, knife={}, assist={}",
+        settings.active,
+        settings.normal.mode.as_str(),
+        settings.headshot.mode.as_str(),
+        settings.knife.mode.as_str(),
+        settings.assist.mode.as_str()
+    ));
+    *app_state.event_sound_settings.write().await = settings;
+    Ok(Json(response))
+}
+
+fn parse_event_sound_route(
+    request: EventSoundRouteRequest,
+) -> Result<EventSoundRoute, (axum::http::StatusCode, String)> {
+    let mode = EventSoundMode::from_str(&request.mode).ok_or_else(|| {
+        (
+            axum::http::StatusCode::BAD_REQUEST,
+            format!("unsupported event sound mode: {}", request.mode),
+        )
+    })?;
+    let custom_path = request.custom_path.trim();
+    Ok(EventSoundRoute {
+        mode,
+        custom_path: (!custom_path.is_empty()).then(|| custom_path.to_string()),
+    })
+}
+
+pub async fn spectator_settings(
+    State(app_state): State<Arc<AppState>>,
+) -> Json<SpectatorSettingsResponse> {
+    Json(spectator_settings_response(&app_state))
+}
+
+pub async fn set_spectator_settings(
+    State(app_state): State<Arc<AppState>>,
+    Json(request): Json<SpectatorSettingsRequest>,
+) -> Json<SpectatorSettingsResponse> {
+    let legacy = request.enabled;
+    let spectated_player_enabled =
+        request
+            .spectated_player_enabled
+            .or(legacy)
+            .unwrap_or_else(|| {
+                app_state
+                    .spectated_player_effects_enabled
+                    .load(Ordering::Relaxed)
+            });
+    let replay_enabled = request
+        .replay_enabled
+        .or(legacy)
+        .unwrap_or_else(|| app_state.replay_effects_enabled.load(Ordering::Relaxed));
+    let controlled_bot_enabled = request
+        .controlled_bot_enabled
+        .or(legacy)
+        .unwrap_or_else(|| {
+            app_state
+                .controlled_bot_effects_enabled
+                .load(Ordering::Relaxed)
+        });
+    app_state
+        .spectated_player_effects_enabled
+        .store(spectated_player_enabled, Ordering::Relaxed);
+    app_state
+        .replay_effects_enabled
+        .store(replay_enabled, Ordering::Relaxed);
+    app_state
+        .controlled_bot_effects_enabled
+        .store(controlled_bot_enabled, Ordering::Relaxed);
+    service_log(&format!(
+        "observed effects: spectated={}, replay={}, controlled_bot={}",
+        spectated_player_enabled, replay_enabled, controlled_bot_enabled
+    ));
+    Json(spectator_settings_response(&app_state))
+}
+
 pub async fn soundpack(State(app_state): State<Arc<AppState>>) -> Json<SoundPackResponse> {
     let preset = app_state.preset.read().await;
     Json(soundpack_response(
@@ -888,6 +1208,7 @@ fn resolve_soundpack_alias(value: &str) -> Option<&'static str> {
         "bf2042" | "battlefield2042" | "battlefield_2042" | "2042" => Some("battlefield2042"),
         "pubg" | "pubg_elimination" | "pubg_subtitle" => Some("pubg"),
         "delta" | "df" | "deltaforce" | "delta_force" => Some("deltaforce"),
+        "csol4" | "csol" => Some("csol4"),
         _ => None,
     }
 }
@@ -944,6 +1265,48 @@ fn streak_settings_response(app_state: &AppState) -> StreakSettingsResponse {
     }
 }
 
+async fn csol_settings_response(app_state: &AppState) -> CsolSettingsResponse {
+    CsolSettingsResponse {
+        voice_picks: app_state.csol_voice_picks.read().await.clone(),
+        special_voice_priority: app_state
+            .csol_special_voice_priority
+            .load(Ordering::Relaxed),
+    }
+}
+
+fn event_sound_settings_response(settings: &EventSoundSettings) -> EventSoundSettingsResponse {
+    EventSoundSettingsResponse {
+        active: settings.active,
+        normal: event_sound_route_response(&settings.normal),
+        headshot: event_sound_route_response(&settings.headshot),
+        knife: event_sound_route_response(&settings.knife),
+        assist: event_sound_route_response(&settings.assist),
+    }
+}
+
+fn event_sound_route_response(route: &EventSoundRoute) -> EventSoundRouteResponse {
+    EventSoundRouteResponse {
+        mode: route.mode.as_str(),
+        custom_path: route.custom_path.clone().unwrap_or_default(),
+    }
+}
+
+fn spectator_settings_response(app_state: &AppState) -> SpectatorSettingsResponse {
+    let spectated_player_enabled = app_state
+        .spectated_player_effects_enabled
+        .load(Ordering::Relaxed);
+    let replay_enabled = app_state.replay_effects_enabled.load(Ordering::Relaxed);
+    let controlled_bot_enabled = app_state
+        .controlled_bot_effects_enabled
+        .load(Ordering::Relaxed);
+    SpectatorSettingsResponse {
+        enabled: spectated_player_enabled && replay_enabled && controlled_bot_enabled,
+        spectated_player_enabled,
+        replay_enabled,
+        controlled_bot_enabled,
+    }
+}
+
 fn soundpack_display_name(preset_name: &str) -> &'static str {
     SOUND_PACK_OPTIONS
         .iter()
@@ -962,6 +1325,57 @@ pub(crate) fn detect_counter_strike_roots() -> Vec<PathBuf> {
     }
 
     installations
+}
+
+fn detect_counter_strike_version(root: &std::path::Path) -> Option<CounterStrikeVersion> {
+    if root.join("game").join("csgo").join("cfg").is_dir() {
+        Some(CounterStrikeVersion::Cs2)
+    } else if root.join("csgo.exe").is_file() && root.join("csgo").join("cfg").is_dir() {
+        Some(CounterStrikeVersion::Legacy)
+    } else {
+        None
+    }
+}
+
+fn counter_strike_cfg_folder(root: &std::path::Path, version: CounterStrikeVersion) -> PathBuf {
+    match version {
+        CounterStrikeVersion::Cs2 => root.join("game").join("csgo").join("cfg"),
+        CounterStrikeVersion::Legacy => root.join("csgo").join("cfg"),
+    }
+}
+
+fn cfg_status(root: &std::path::Path, version: CounterStrikeVersion) -> &'static str {
+    let cfg_path = counter_strike_cfg_folder(root, version).join(GSI_CONFIG_FILE_NAME);
+    let Ok(actual) = fs::read_to_string(cfg_path) else {
+        return "missing";
+    };
+    let normalize = |value: &str| {
+        value
+            .trim_start_matches('\u{feff}')
+            .replace("\r\n", "\n")
+            .replace('\r', "\n")
+    };
+    if normalize(&actual) == normalize(GSI_CONFIG_TEXT) {
+        "ready"
+    } else {
+        "outdated"
+    }
+}
+
+fn counter_strike_installations_response(
+    roots: &[PathBuf],
+) -> Vec<CounterStrikeInstallationResponse> {
+    roots
+        .iter()
+        .filter_map(|root| {
+            let version = detect_counter_strike_version(root)?;
+            Some(CounterStrikeInstallationResponse {
+                path: root.display().to_string(),
+                version: version.as_str(),
+                cfg_status: cfg_status(root, version),
+            })
+        })
+        .collect()
 }
 
 fn find_counter_strike_installations_in_common(common: &std::path::Path) -> Vec<PathBuf> {

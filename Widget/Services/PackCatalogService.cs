@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Windows.ApplicationModel;
 using Windows.Storage;
@@ -21,6 +22,7 @@ namespace KillConfirmGameBar.Services
         private const string DefaultIconKey = "default";
         private static readonly string[] SupportedAudioExtensions = { ".wav", ".mp3", ".m4a" };
         private static readonly string[] IconImageExtensions = { ".png", ".jpg", ".jpeg", ".webp", ".tga" };
+        private static readonly SemaphoreSlim CatalogIoLock = new SemaphoreSlim(1, 1);
         private static PackCatalog _cache;
 
         public static event EventHandler CatalogChanged;

@@ -128,8 +128,10 @@ namespace KillConfirmGameBar
         private const string AudioDeviceSettingKey = "AudioOutputDevice";
         private static readonly Uri MoneyRewardModeUri = new Uri("http://127.0.0.1:3000/money/mode");
         private static readonly Uri CrossfireSettingsUri = new Uri("http://127.0.0.1:3000/crossfire/settings");
+        private static readonly Uri CsolSettingsUri = new Uri("http://127.0.0.1:3000/csol/settings");
         private static readonly Uri SharedStreakSettingsUri = new Uri("http://127.0.0.1:3000/streak/settings");
         private static readonly Uri Cs2RootUri = new Uri("http://127.0.0.1:3000/cs2-root");
+        private static readonly Uri CounterStrikeCfgUri = new Uri("http://127.0.0.1:3000/counter-strike/cfg");
         private static readonly TimeSpan ServiceStartupTimeout = TimeSpan.FromSeconds(6);
         private static readonly TimeSpan ServiceStartupPollInterval = TimeSpan.FromMilliseconds(250);
         private const string FreeServicePortParameterGroupId = "FreeServicePort";
@@ -182,6 +184,12 @@ namespace KillConfirmGameBar
         private bool _suppressLanguageEvents = true;
         private bool _isPageActive;
         private StorageFolder _csInstallFolder;
+        private string _serviceDetectedCsRootPath = string.Empty;
+        private string _serviceDetectedCfgStatus = string.Empty;
+        private string _serviceDetectedCsVersion = string.Empty;
+        private bool _suppressCfgInstallationSelectionEvents;
+        private readonly List<DetectedCsInstallation> _detectedCsInstallations =
+            new List<DetectedCsInstallation>();
         private CfgDetectionState _cfgDetectionState = CfgDetectionState.NotSelected;
         private string _cfgStatusDetail = string.Empty;
         private KillEventConnectionState _serviceConnectionState = KillEventConnectionState.Disconnected;
@@ -192,11 +200,14 @@ namespace KillConfirmGameBar
         private bool _animationCacheReady;
         private bool _animationCacheFailed;
         private bool _shutdownRequested;
+        private bool _testAllEventsRunning;
         private int _statusHintIndex;
         private string _currentStatusHintText = string.Empty;
         private DateTimeOffset _lastGsiStatusCheck = DateTimeOffset.MinValue;
         private readonly DispatcherTimer _controlPanelStateTimer;
         private readonly DispatcherTimer _statusHintTimer;
+        private string _loadedControlPanelScaleMode = string.Empty;
+        private double _controlPanelScale = 1.0;
 
         public KillConfirmWidgetPage()
         {
@@ -210,6 +221,7 @@ namespace KillConfirmGameBar
             LoadLanguageSelector();
             ApplyLanguage();
             ApplyGameStyleUi();
+            RefreshControlPanelScale(false, false);
 
             _controlPanelStateTimer = new DispatcherTimer
             {
@@ -244,6 +256,7 @@ namespace KillConfirmGameBar
 
             StartKillEventClient();
             ConfigureWidgetCapabilities();
+            RefreshControlPanelScale(true, false);
             _ = InitializePackSelectorsAndServiceAsync();
             _ = LoadSavedCsFolderAsync();
             UpdateControlPanelVisibility();
@@ -252,6 +265,7 @@ namespace KillConfirmGameBar
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
         {
+            PersistCurrentPackSelections();
             _isPageActive = false;
             if (_widget != null)
             {
@@ -294,7 +308,7 @@ namespace KillConfirmGameBar
 
             try
             {
-                await _widget.TryResizeWindowAsync(DefaultWidgetSize);
+                await _widget.TryResizeWindowAsync(GetScaledDefaultWidgetSize());
             }
             catch (Exception)
             {
@@ -365,6 +379,80 @@ namespace KillConfirmGameBar
             await SendTestEventAsync(preset);
         }
 
+        private async void OnTestAllEventsClick(object sender, RoutedEventArgs e)
+        {
+            if (_testAllEventsRunning)
+            {
+                return;
+            }
+
+            _testAllEventsRunning = true;
+            SendTestButton.IsEnabled = false;
+            TestAllEventsButton.IsEnabled = false;
+            ShowStatusHint(LocalizationManager.Text("TestAllEventsRunning"), Color.FromArgb(255, 180, 90, 0));
+
+            try
+            {
+                await SyncSelectedVoicePackAsync();
+                IReadOnlyList<TestPreset> presets = BuildCurrentStyleTestSequence();
+                for (int index = 0; index < presets.Count; index++)
+                {
+                    await SendTestEventAsync(presets[index], syncVoicePack: false);
+                    if (index + 1 < presets.Count)
+                    {
+                        await Task.Delay(1400);
+                    }
+                }
+
+                ShowStatusHint(LocalizationManager.Text("TestAllEventsReady"), Color.FromArgb(255, 5, 122, 85));
+            }
+            catch (Exception ex)
+            {
+                App.Log("Test all events failed: " + ex);
+                ShowStatusHint(LocalizationManager.Text("TestAllEventsFailed"), Color.FromArgb(255, 180, 90, 0));
+            }
+            finally
+            {
+                SendTestButton.IsEnabled = true;
+                TestAllEventsButton.IsEnabled = true;
+                _testAllEventsRunning = false;
+            }
+        }
+
+        private static IReadOnlyList<TestPreset> BuildCurrentStyleTestSequence()
+        {
+            int maximumKillCount;
+            switch (GameStyleService.Current)
+            {
+                case GameStyleMode.Csol:
+                    maximumKillCount = 9;
+                    break;
+                case GameStyleMode.Crossfire:
+                    maximumKillCount = 6;
+                    break;
+                default:
+                    maximumKillCount = 5;
+                    break;
+            }
+
+            var presets = new List<TestPreset>
+            {
+                new TestPreset(1, isFirstKill: true)
+            };
+            for (int killCount = 2; killCount <= maximumKillCount; killCount++)
+            {
+                presets.Add(new TestPreset(killCount));
+            }
+
+            presets.Add(new TestPreset(1, isHeadshot: true));
+            presets.Add(new TestPreset(1, isKnifeKill: true));
+            presets.Add(new TestPreset(0, isAssist: true, playMainAnimation: false, eventKind: "assist"));
+            presets.Add(new TestPreset(1, isLastKill: true));
+            presets.Add(new TestPreset(0, playMainAnimation: false, eventKind: "round_win", moneyReward: 3250));
+            presets.Add(new TestPreset(0, playMainAnimation: false, eventKind: "round_loss", moneyReward: 1400));
+            return presets;
+        }
+
         private async void OnReloadAudioClick(object sender, RoutedEventArgs e)
         {
             await ReloadAudioOutputAsync();
@@ -383,6 +471,7 @@ namespace KillConfirmGameBar
             await InitializePackSelectorsAsync();
             await SyncSelectedVoicePackAsync();
             await SyncCrossfireGameplaySettingsAsync();
+            await SyncCsolGameplaySettingsAsync();
             await SyncSharedStreakSettingsAsync();
             _ = WarmStartupAnimationCacheAsync(0);
         }
@@ -475,11 +564,69 @@ namespace KillConfirmGameBar
         private void OnControlPanelStateTimerTick(object sender, object e)
         {
             SyncWidgetPresentationState();
+            string scaleMode = ControlPanelScaleSettingsStore.Load();
+            double resolvedScale = ControlPanelScaleSettingsStore.ResolveScaleForCurrentView(scaleMode);
+            if (!string.Equals(_loadedControlPanelScaleMode, scaleMode, StringComparison.Ordinal)
+                || Math.Abs(_controlPanelScale - resolvedScale) > 0.001)
+            {
+                RefreshControlPanelScale(true, true);
+            }
             if (IsControlPanelVisible()
                 && !_gsiStatusCheckPending
                 && DateTimeOffset.Now - _lastGsiStatusCheck > TimeSpan.FromMilliseconds(GsiStatusRefreshMs))
             {
                 _ = RefreshGsiStatusAsync();
+            }
+        }
+
+        private void RefreshControlPanelScale(bool resizeWindow, bool forceResize)
+        {
+            string mode = ControlPanelScaleSettingsStore.Load();
+            _loadedControlPanelScaleMode = mode;
+            _controlPanelScale = ControlPanelScaleSettingsStore.ResolveScaleForCurrentView(mode);
+            if (ControlPanel != null)
+            {
+                ControlPanel.RenderTransform = new CompositeTransform
+                {
+                    ScaleX = _controlPanelScale,
+                    ScaleY = _controlPanelScale
+                };
+                ControlPanel.RenderTransformOrigin = new Point(0.5, 0);
+            }
+
+            if (resizeWindow)
+            {
+                _ = ResizeWidgetForControlPanelScaleAsync(forceResize);
+            }
+        }
+
+        private Size GetScaledDefaultWidgetSize()
+        {
+            return new Size(
+                Math.Min(MaxWidgetSize.Width, DefaultWidgetSize.Width * _controlPanelScale),
+                Math.Min(MaxWidgetSize.Height, DefaultWidgetSize.Height * _controlPanelScale));
+        }
+
+        private async Task ResizeWidgetForControlPanelScaleAsync(bool forceResize)
+        {
+            if (_widget == null || (!forceResize && _controlPanelScale <= 1.001))
+            {
+                return;
+            }
+
+            Size desired = GetScaledDefaultWidgetSize();
+            if (!forceResize && ActualWidth >= desired.Width - 1 && ActualHeight >= desired.Height - 1)
+            {
+                return;
+            }
+
+            try
+            {
+                await _widget.TryResizeWindowAsync(desired);
+            }
+            catch (Exception ex)
+            {
+                App.Log("Resize widget for control panel scale failed: " + ex.Message);
             }
         }
 
@@ -512,7 +659,9 @@ namespace KillConfirmGameBar
                 bool isFirstKill = false,
                 bool isLastKill = false,
                 bool playMainAnimation = true,
-                string animationKey = null)
+                string animationKey = null,
+                string eventKind = null,
+                int? moneyReward = null)
             {
                 KillCount = killCount;
                 IsHeadshot = isHeadshot;
@@ -522,6 +671,8 @@ namespace KillConfirmGameBar
                 IsLastKill = isLastKill;
                 PlayMainAnimation = playMainAnimation;
                 AnimationKey = animationKey;
+                EventKind = eventKind;
+                MoneyReward = moneyReward ?? (isAssist ? 0 : (isKnifeKill ? 1500 : 300));
             }
 
             public int KillCount { get; }
@@ -532,6 +683,8 @@ namespace KillConfirmGameBar
             public bool IsLastKill { get; }
             public bool PlayMainAnimation { get; }
             public string AnimationKey { get; }
+            public string EventKind { get; }
+            public int MoneyReward { get; }
 
             public KillEvent ToKillEvent()
             {
@@ -545,8 +698,27 @@ namespace KillConfirmGameBar
                     IsLastKill = IsLastKill,
                     PlayMainAnimation = PlayMainAnimation,
                     AnimationKey = AnimationKey,
-                    MoneyReward = IsAssist ? 0 : (IsKnifeKill ? 1500 : 300)
+                    EventKind = EventKind,
+                    MoneyReward = MoneyReward
                 };
+            }
+        }
+
+        private sealed class DetectedCsInstallation
+        {
+            public string Path { get; set; }
+            public string Version { get; set; }
+            public string CfgStatus { get; set; }
+
+            public string DisplayText
+            {
+                get
+                {
+                    string label = string.Equals(Version, "cs2", StringComparison.OrdinalIgnoreCase)
+                        ? "CS2"
+                        : "Legacy";
+                    return $"[{label} · {CfgStatus}] {Path}";
+                }
             }
         }
     }

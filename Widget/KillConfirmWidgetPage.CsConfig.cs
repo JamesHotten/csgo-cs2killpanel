@@ -9,6 +9,7 @@ using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
 using Windows.UI.Popups;
 using Windows.UI.Xaml;
+using Windows.UI.Xaml.Controls;
 using Windows.Web.Http;
 
 namespace KillConfirmGameBar
@@ -44,7 +45,7 @@ namespace KillConfirmGameBar
 
         private async void OnInstallCfgClick(object sender, RoutedEventArgs e)
         {
-            if (_csInstallFolder == null)
+            if (_csInstallFolder == null && string.IsNullOrWhiteSpace(_serviceDetectedCsRootPath))
             {
                 await ShowCfgMessageAsync(LocalizationManager.Text("SelectCsFirst"));
                 return;
@@ -114,14 +115,23 @@ namespace KillConfirmGameBar
 
                     string responseText = await response.Content.ReadAsStringAsync();
                     JsonObject json = JsonObject.Parse(responseText);
+                    ApplyDetectedInstallations(json);
                     bool found = json.GetNamedBoolean("found", false);
-                    string path = json.GetNamedString("path", string.Empty);
+                    string path = _detectedCsInstallations.Count > 0
+                        ? _serviceDetectedCsRootPath
+                        : json.GetNamedString("path", string.Empty);
+                    string cfgStatus = _detectedCsInstallations.Count > 0
+                        ? _serviceDetectedCfgStatus
+                        : json.GetNamedString("cfg_status", string.Empty);
 
                     if (!found || string.IsNullOrWhiteSpace(path))
                     {
                         UpdateCfgStatus(CfgDetectionState.NotSelected, null, LocalizationManager.Text("CfgSelectRootHint"));
                         return;
                     }
+
+                    _serviceDetectedCsRootPath = path;
+                    _serviceDetectedCfgStatus = cfgStatus;
 
                     try
                     {
@@ -133,7 +143,7 @@ namespace KillConfirmGameBar
                     {
                         App.Log("Auto-detected CS folder, but folder access failed: " + ex);
                         ApplicationData.Current.LocalSettings.Values[CsInstallFolderPathSettingKey] = path;
-                        UpdateCfgStatus(CfgDetectionState.NotSelected, null, LocalizationManager.Text("CfgDetectedNeedConfirm") + path);
+                        ApplyServiceDetectedCfgStatus(path, cfgStatus);
                     }
                 }
             }
@@ -203,6 +213,12 @@ namespace KillConfirmGameBar
 
         private async Task InstallCfgAsync()
         {
+            if (_csInstallFolder == null && !string.IsNullOrWhiteSpace(_serviceDetectedCsRootPath))
+            {
+                await InstallCfgThroughServiceAsync();
+                return;
+            }
+
             try
             {
                 UpdateCfgStatus(CfgDetectionState.Checking, LocalizationManager.Text("CfgAdding"), GetCsFolderDisplayText());
@@ -232,19 +248,163 @@ namespace KillConfirmGameBar
 
         private static async Task<StorageFolder> TryGetCfgFolderAsync(StorageFolder root)
         {
-            StorageFolder gameFolder = await TryGetChildFolderAsync(root, "game");
-            if (gameFolder != null)
+            if (root == null)
             {
-                StorageFolder cs2CsgoFolder = await TryGetChildFolderAsync(gameFolder, "csgo");
-                StorageFolder cs2CfgFolder = await TryGetChildFolderAsync(cs2CsgoFolder, "cfg");
-                if (cs2CfgFolder != null)
-                {
-                    return cs2CfgFolder;
-                }
+                return null;
+            }
+            if (string.Equals(root.Name, "cfg", StringComparison.OrdinalIgnoreCase))
+            {
+                return root;
             }
 
-            StorageFolder legacyCsgoFolder = await TryGetChildFolderAsync(root, "csgo");
-            return await TryGetChildFolderAsync(legacyCsgoFolder, "cfg");
+            StorageFolder csgoFolder = await TryResolveCsgoFolderAsync(root, 0);
+            return await TryGetChildFolderAsync(csgoFolder, "cfg");
+        }
+
+        private async Task InstallCfgThroughServiceAsync()
+        {
+            try
+            {
+                UpdateCfgStatus(CfgDetectionState.Checking, LocalizationManager.Text("CfgAdding"), _serviceDetectedCsRootPath);
+                string requestUri = CounterStrikeCfgUri.AbsoluteUri
+                    + "?path=" + Uri.EscapeDataString(_serviceDetectedCsRootPath);
+                if (!string.IsNullOrWhiteSpace(_serviceDetectedCsVersion))
+                {
+                    requestUri += "&version=" + Uri.EscapeDataString(_serviceDetectedCsVersion);
+                }
+                using (var client = await LocalServiceAuth.CreateHttpClientAsync())
+                using (HttpResponseMessage response = await client.PostAsync(new Uri(requestUri), null))
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw new InvalidOperationException("CFG service install failed: " + response.StatusCode);
+                    }
+
+                    string responseText = await response.Content.ReadAsStringAsync();
+                    JsonObject json = JsonObject.Parse(responseText);
+                    ApplyDetectedInstallations(json);
+                    _serviceDetectedCfgStatus = json.GetNamedString("cfg_status", "ready");
+                    ApplyServiceDetectedCfgStatus(_serviceDetectedCsRootPath, _serviceDetectedCfgStatus);
+                }
+            }
+            catch (Exception ex)
+            {
+                App.Log("Failed to install cfg through local service: " + ex);
+                UpdateCfgStatus(CfgDetectionState.Error, LocalizationManager.Text("CfgAddFailed"), _serviceDetectedCsRootPath);
+                await ShowCfgMessageAsync(LocalizationManager.Text("CfgWriteFailed"));
+            }
+        }
+
+        private void ApplyServiceDetectedCfgStatus(string path, string cfgStatus)
+        {
+            switch ((cfgStatus ?? string.Empty).Trim().ToLowerInvariant())
+            {
+                case "ready":
+                    UpdateCfgStatus(CfgDetectionState.Ready, null, path);
+                    break;
+                case "missing":
+                case "outdated":
+                    UpdateCfgStatus(CfgDetectionState.Missing, null, path);
+                    break;
+                default:
+                    UpdateCfgStatus(CfgDetectionState.NotSelected, null, LocalizationManager.Text("CfgDetectedNeedConfirm") + path);
+                    break;
+            }
+        }
+
+        private void ApplyDetectedInstallations(JsonObject json)
+        {
+            if (CfgInstallationsSelector == null)
+            {
+                return;
+            }
+
+            string preferredPath = _serviceDetectedCsRootPath;
+            _detectedCsInstallations.Clear();
+            JsonArray installations = json.GetNamedArray("installations", new JsonArray());
+            foreach (IJsonValue value in installations)
+            {
+                if (value.ValueType != JsonValueType.Object)
+                {
+                    continue;
+                }
+
+                JsonObject entry = value.GetObject();
+                string path = entry.GetNamedString("path", string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(path))
+                {
+                    continue;
+                }
+
+                _detectedCsInstallations.Add(new DetectedCsInstallation
+                {
+                    Path = path,
+                    Version = entry.GetNamedString("version", "cs2"),
+                    CfgStatus = entry.GetNamedString("cfg_status", "not_found")
+                });
+            }
+
+            _suppressCfgInstallationSelectionEvents = true;
+            try
+            {
+                CfgInstallationsSelector.Items.Clear();
+                int selectedIndex = 0;
+                for (int index = 0; index < _detectedCsInstallations.Count; index++)
+                {
+                    DetectedCsInstallation installation = _detectedCsInstallations[index];
+                    CfgInstallationsSelector.Items.Add(new ComboBoxItem
+                    {
+                        Content = installation.DisplayText,
+                        Tag = installation
+                    });
+                    if (!string.IsNullOrWhiteSpace(preferredPath)
+                        && string.Equals(
+                            preferredPath,
+                            installation.Path,
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        selectedIndex = index;
+                    }
+                }
+
+                CfgInstallationsSelector.Visibility = _detectedCsInstallations.Count > 0
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+                if (_detectedCsInstallations.Count > 0)
+                {
+                    CfgInstallationsSelector.SelectedIndex = selectedIndex;
+                    SelectDetectedInstallation(_detectedCsInstallations[selectedIndex]);
+                }
+            }
+            finally
+            {
+                _suppressCfgInstallationSelectionEvents = false;
+            }
+        }
+
+        private void OnCfgInstallationSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_suppressCfgInstallationSelectionEvents)
+            {
+                return;
+            }
+
+            if (CfgInstallationsSelector.SelectedItem is ComboBoxItem item
+                && item.Tag is DetectedCsInstallation installation)
+            {
+                _csInstallFolder = null;
+                SelectDetectedInstallation(installation);
+                ApplyServiceDetectedCfgStatus(installation.Path, installation.CfgStatus);
+            }
+        }
+
+        private void SelectDetectedInstallation(DetectedCsInstallation installation)
+        {
+            _serviceDetectedCsRootPath = installation.Path;
+            _serviceDetectedCsVersion = installation.Version;
+            _serviceDetectedCfgStatus = installation.CfgStatus;
+            ApplicationData.Current.LocalSettings.Values[CsInstallFolderPathSettingKey] =
+                installation.Path;
         }
 
         private static async Task<StorageFolder> TryGetChildFolderAsync(StorageFolder parent, string name)
@@ -266,26 +426,78 @@ namespace KillConfirmGameBar
 
         private static async Task<StorageFolder> GetOrCreateCfgFolderAsync(StorageFolder root)
         {
-            StorageFolder existing = await TryGetCfgFolderAsync(root);
-            if (existing != null)
+            if (root != null && string.Equals(root.Name, "cfg", StringComparison.OrdinalIgnoreCase))
             {
-                return existing;
+                return root;
             }
 
-            StorageFolder gameFolder = await TryGetChildFolderAsync(root, "game");
-            if (gameFolder != null)
+            StorageFolder csgoFolder = await TryResolveCsgoFolderAsync(root, 0);
+            if (csgoFolder == null)
             {
-                StorageFolder cs2CsgoFolder = await gameFolder.CreateFolderAsync("csgo", CreationCollisionOption.OpenIfExists);
-                return await cs2CsgoFolder.CreateFolderAsync("cfg", CreationCollisionOption.OpenIfExists);
+                throw new InvalidOperationException("The selected folder does not contain a CS2 or CS:GO Legacy installation.");
+            }
+            return await csgoFolder.CreateFolderAsync("cfg", CreationCollisionOption.OpenIfExists);
+        }
+
+        private static async Task<StorageFolder> TryResolveCsgoFolderAsync(StorageFolder folder, int depth)
+        {
+            if (folder == null || depth > 10)
+            {
+                return null;
+            }
+            if (string.Equals(folder.Name, "csgo", StringComparison.OrdinalIgnoreCase))
+            {
+                return folder;
             }
 
-            StorageFolder legacyCsgoFolder = await TryGetChildFolderAsync(root, "csgo");
-            if (legacyCsgoFolder != null)
+            StorageFolder game = await TryGetChildFolderAsync(folder, "game");
+            StorageFolder cs2Csgo = await TryGetChildFolderAsync(game, "csgo");
+            if (cs2Csgo != null)
             {
-                return await legacyCsgoFolder.CreateFolderAsync("cfg", CreationCollisionOption.OpenIfExists);
+                return cs2Csgo;
             }
 
-            throw new InvalidOperationException("The selected folder is neither a CS2 nor a CS:GO Legacy installation root.");
+            StorageFolder legacyCsgo = await TryGetChildFolderAsync(folder, "csgo");
+            if (legacyCsgo != null)
+            {
+                return legacyCsgo;
+            }
+
+            string[] spine = { "steam", "steamapps", "common", "Counter-Strike Global Offensive", "csgo legacy" };
+            foreach (string name in spine)
+            {
+                StorageFolder child = await TryGetChildFolderAsync(folder, name);
+                StorageFolder result = await TryResolveCsgoFolderAsync(child, depth + 1);
+                if (result != null)
+                {
+                    return result;
+                }
+            }
+
+            if (string.Equals(folder.Name, "common", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    int checkedFolders = 0;
+                    foreach (StorageFolder child in await folder.GetFoldersAsync())
+                    {
+                        StorageFolder result = await TryResolveCsgoFolderAsync(child, depth + 1);
+                        if (result != null)
+                        {
+                            return result;
+                        }
+                        if (++checkedFolders >= 200)
+                        {
+                            break;
+                        }
+                    }
+                }
+                catch
+                {
+                }
+            }
+
+            return null;
         }
 
         private async Task ShowCfgMessageAsync(string message)

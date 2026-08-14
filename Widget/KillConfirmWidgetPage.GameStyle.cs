@@ -131,6 +131,7 @@ namespace KillConfirmGameBar
             SetComboTheme(MainAnimationStyleSelector, text, field, border);
             SetComboTheme(AudioVolumeSelector, text, field, border);
             SetComboTheme(TestPresetSelector, text, field, border);
+            SetComboTheme(CfgInstallationsSelector, text, field, border);
             SetComboTheme(BrightnessSelector, text, field, secondary);
             SetComboTheme(ContrastSelector, text, field, secondary);
             SetComboTheme(PlaybackFpsSelector, text, field, secondary);
@@ -147,6 +148,7 @@ namespace KillConfirmGameBar
             ContrastIcon.Foreground = Brush(text);
             PlaybackFpsLabel.Foreground = Brush(text);
             SetButtonTheme(SendTestButton, theme.Accent, crossfire ? Color.FromArgb(255, 197, 106, 0) : theme.AccentText, Color.FromArgb(255, 255, 255, 255));
+            SetButtonTheme(TestAllEventsButton, field, theme.SoftBorder, text);
             SetButtonTheme(ReloadAudioButton, field, theme.SoftBorder, text);
 
             Color visualButtonField = darkStyle ? theme.SubtleField : Color.FromArgb(255, 255, 253, 252);

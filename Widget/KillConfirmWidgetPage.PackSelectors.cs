@@ -301,6 +301,8 @@ namespace KillConfirmGameBar
                 case "crossfire_heart_judge_gr":
                 case "crossfire_heart_judge_bl":
                     return "ms-appx:///Assets/PackIcons/heart_judge.png";
+                case "csol4":
+                    return "ms-appx:///Assets/GameLogos/csol.png";
                 case "bf1":
                     return "ms-appx:///Assets/GameStyles/battlefield1/killconfirm/textures/killicon_battlefield1_headshot.png";
                 case "bf5":
@@ -341,6 +343,8 @@ namespace KillConfirmGameBar
                     return "ms-appx:///Assets/KillConfirmCode/Rankmach2019_1/badge_headshot.png";
                 case "rankmach_2019_2":
                     return "ms-appx:///Assets/KillConfirmCode/Rankmach2019_2/badge_headshot.png";
+                case "csol4":
+                    return "ms-appx:///Assets/GameLogos/csol.png";
                 case "bf1":
                     return "ms-appx:///Assets/GameStyles/battlefield1/killconfirm/textures/killicon_battlefield1_headshot.png";
                 case "bf5":
@@ -376,6 +380,8 @@ namespace KillConfirmGameBar
                     return "PUBG";
                 case "deltaforce":
                     return "Delta Force";
+                case "csol4":
+                    return "CSOL 10杀";
                 case "crossfire_swat_gr":
                     return "swat GR";
                 default:
@@ -401,6 +407,8 @@ namespace KillConfirmGameBar
                     return "PUBG";
                 case "deltaforce":
                     return "Delta Force";
+                case "csol4":
+                    return "CSOL 10杀";
                 case "default":
                     return "\u539f\u7248";
                 default:

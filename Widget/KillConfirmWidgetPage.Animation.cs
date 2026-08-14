@@ -135,7 +135,9 @@ namespace KillConfirmGameBar
                     || GameStyleService.Current == GameStyleMode.Battlefield2042
                     || GameStyleService.Current == GameStyleMode.Pubg
                     || GameStyleService.Current == GameStyleMode.DeltaForce)
-                    && IsBattlefieldTextEvent(killEvent));
+                    && IsBattlefieldTextEvent(killEvent))
+                || (GameStyleService.Current == GameStyleMode.Csol
+                    && (killEvent.KillCount > 0 || killEvent.IsAssist));
             if (shouldPlayPrimaryAnimation)
             {
                 PlayPrimaryAnimation(killEvent);
@@ -146,7 +148,11 @@ namespace KillConfirmGameBar
 
         private void PlayPrimaryAnimation(KillEvent killEvent)
         {
-            if (killEvent == null || (killEvent.KillCount <= 0 && !IsBattlefieldTextEvent(killEvent)))
+            bool isCsolAssist = GameStyleService.Current == GameStyleMode.Csol
+                && killEvent != null
+                && killEvent.IsAssist;
+            if (killEvent == null
+                || (killEvent.KillCount <= 0 && !IsBattlefieldTextEvent(killEvent) && !isCsolAssist))
             {
                 return;
             }
@@ -155,6 +161,9 @@ namespace KillConfirmGameBar
             {
                 case GameStyleMode.Valorant:
                     PlayValorantPrimaryAnimation(killEvent);
+                    return;
+                case GameStyleMode.Csol:
+                    PlayCsolPrimaryAnimation(killEvent);
                     return;
                 case GameStyleMode.Battlefield1:
                     PlayBattlefield1PrimaryAnimation(killEvent);
@@ -345,6 +354,39 @@ namespace KillConfirmGameBar
             return killEvent?.WeaponBadgeKey;
         }
 
+        private void PlayCsolPrimaryAnimation(KillEvent killEvent)
+        {
+            string specialKey = null;
+            if (killEvent.IsFirstKill)
+            {
+                specialKey = "firstkill";
+            }
+            else if (killEvent.IsLastKill)
+            {
+                CsolVoiceSettingsValues settings = CsolVoiceSettingsStore.Load();
+                specialKey = string.Equals(
+                    settings.FirstLastIcon,
+                    CsolVoiceSettingsStore.FirstKillIcon,
+                    StringComparison.OrdinalIgnoreCase)
+                    ? "firstkill"
+                    : "revenge";
+            }
+            else if (killEvent.IsAssist)
+            {
+                specialKey = "assist";
+            }
+            else if (killEvent.IsKnifeKill)
+            {
+                specialKey = "melee";
+            }
+            else if (killEvent.IsHeadshot)
+            {
+                specialKey = "headshot";
+            }
+
+            PrimaryKillAnimation.PlayCsolKill(killEvent.KillCount, specialKey);
+        }
+
         private void PlayCrossfirePrimaryAnimation(KillEvent killEvent)
         {
             bool useLegacyAnimationPack = IsLegacyIconPackSelected();
@@ -477,7 +519,7 @@ namespace KillConfirmGameBar
             return null;
         }
 
-        private async Task SendTestEventAsync(TestPreset preset)
+        private async Task SendTestEventAsync(TestPreset preset, bool syncVoicePack = true)
         {
             if (preset == null)
             {
@@ -488,7 +530,10 @@ namespace KillConfirmGameBar
 
             try
             {
-                await SyncSelectedVoicePackAsync();
+                if (syncVoicePack)
+                {
+                    await SyncSelectedVoicePackAsync();
+                }
 
                 using (var client = await LocalServiceAuth.CreateHttpClientAsync())
                 using (HttpResponseMessage response = await client.GetAsync(new Uri(BuildTestEventUri(preset))))
@@ -573,8 +618,13 @@ namespace KillConfirmGameBar
                 query.Add("animation=" + Uri.EscapeDataString(preset.AnimationKey));
             }
 
+            if (!string.IsNullOrWhiteSpace(preset.EventKind))
+            {
+                query.Add("event_kind=" + Uri.EscapeDataString(preset.EventKind));
+            }
+
             string testWeaponName = preset.IsKnifeKill ? "Knife" : "AK-47";
-            int testMoneyReward = preset.IsAssist ? 0 : (preset.IsKnifeKill ? 1500 : 300);
+            int testMoneyReward = preset.MoneyReward;
             query.Add("player_name=" + Uri.EscapeDataString("\u73a9\u5bb6"));
             query.Add("target_name=" + Uri.EscapeDataString("\u6050\u6016\u5206\u5b50"));
             query.Add("weapon_name=" + Uri.EscapeDataString(testWeaponName));

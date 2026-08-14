@@ -3,6 +3,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:KillConfirmGameBar.Controls"
+    xmlns:gameStyles="using:KillConfirmGameBar.Controls.GameStyles"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
@@ -341,6 +342,7 @@
                             SelectionChanged="OnGameStyleSelectionChanged"
                             ToolTipService.ToolTip="Game UI style">
                             <ComboBoxItem x:Name="CrossfireStyleItem" Tag="crossfire">CF</ComboBoxItem>
+                            <ComboBoxItem x:Name="CsolStyleItem" Tag="csol">CSOL</ComboBoxItem>
                             <ComboBoxItem x:Name="ValorantStyleItem" Tag="valorant">VAL</ComboBoxItem>
                             <ComboBoxItem x:Name="Battlefield1StyleItem" Tag="battlefield1">BF1</ComboBoxItem>
                             <ComboBoxItem x:Name="Battlefield5StyleItem" Tag="battlefield5">BF5</ComboBoxItem>
@@ -441,6 +443,16 @@
                         Grid.Column="2"
                         VerticalAlignment="Center"
                         Spacing="1">
+                        <ComboBox
+                            x:Name="CfgInstallationsSelector"
+                            MinWidth="220"
+                            MaxWidth="310"
+                            Height="24"
+                            Padding="7,0"
+                            FontSize="9"
+                            Visibility="Collapsed"
+                            SelectionChanged="OnCfgInstallationSelectionChanged"
+                            ToolTipService.ToolTip="Detected CS2 and Legacy installations" />
                         <TextBlock
                             x:Name="CfgStatusText"
                             FontSize="10"
@@ -584,7 +596,10 @@
                                                 BorderBrush="#E2DDD3"
                                                 BorderThickness="1"
                                                 CornerRadius="16">
-                                                <ContentControl x:Name="AdvancedEffectsPanelHost" />
+                                                <StackPanel Spacing="10">
+                                                    <ContentControl x:Name="AdvancedEffectsPanelHost" />
+                                                    <gameStyles:EventSoundRoutingPanel x:Name="EventSoundRoutingPanel" />
+                                                </StackPanel>
                                             </Border>
                                         </Flyout>
                                     </Button.Flyout>
@@ -609,6 +624,7 @@
                                 <ColumnDefinition Width="82" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="96" />
+                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
@@ -697,8 +713,23 @@
                             </Button>
 
                             <Button
-                                x:Name="ReloadAudioButton"
+                                x:Name="TestAllEventsButton"
                                 Grid.Column="5"
+                                Style="{StaticResource ToolbarIconButtonStyle}"
+                                Click="OnTestAllEventsClick"
+                                ToolTipService.ToolTip="Test all events for the current style">
+                                <FontIcon
+                                    FontFamily="Segoe MDL2 Assets"
+                                    FontSize="13"
+                                    Glyph="&#xE9D5;"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Foreground="#1B1F31" />
+                            </Button>
+
+                            <Button
+                                x:Name="ReloadAudioButton"
+                                Grid.Column="6"
                                 Style="{StaticResource ToolbarIconButtonStyle}"
                                 Click="OnReloadAudioClick"
                                 ToolTipService.ToolTip="Reload audio output">

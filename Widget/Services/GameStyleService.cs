@@ -5,6 +5,7 @@ namespace KillConfirmGameBar.Services
     internal enum GameStyleMode
     {
         Crossfire,
+        Csol,
         Valorant,
         Battlefield1,
         Battlefield5,
@@ -28,6 +29,8 @@ namespace KillConfirmGameBar.Services
                 {
                     case "valorant":
                         return GameStyleMode.Valorant;
+                    case "csol":
+                        return GameStyleMode.Csol;
                     case "battlefield1":
                         return GameStyleMode.Battlefield1;
                     case "battlefield5":
@@ -63,6 +66,8 @@ namespace KillConfirmGameBar.Services
             {
                 case GameStyleMode.Valorant:
                     return "valorant";
+                case GameStyleMode.Csol:
+                    return "csol";
                 case GameStyleMode.Battlefield1:
                     return "battlefield1";
                 case GameStyleMode.Battlefield5:
@@ -87,6 +92,8 @@ namespace KillConfirmGameBar.Services
             {
                 case "valorant":
                     return GameStyleMode.Valorant;
+                case "csol":
+                    return GameStyleMode.Csol;
                 case "battlefield1":
                 case "bf1":
                     return GameStyleMode.Battlefield1;
@@ -116,6 +123,12 @@ namespace KillConfirmGameBar.Services
         {
             return !string.IsNullOrWhiteSpace(key)
                 && key.Trim().StartsWith("valorant_", System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static bool IsCsolKey(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key)
+                && key.Trim().StartsWith("csol", System.StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool IsBattlefield1Key(string key)
@@ -181,6 +194,11 @@ namespace KillConfirmGameBar.Services
                 return GameStyleMode.Valorant;
             }
 
+            if (IsCsolKey(key))
+            {
+                return GameStyleMode.Csol;
+            }
+
             if (IsBattlefield1Key(key))
             {
                 return GameStyleMode.Battlefield1;
@@ -225,6 +243,8 @@ namespace KillConfirmGameBar.Services
             {
                 case GameStyleMode.Valorant:
                     return ValorantPackService.DefaultKey;
+                case GameStyleMode.Csol:
+                    return "csol4";
                 case GameStyleMode.Battlefield1:
                     return "bf1";
                 case GameStyleMode.Battlefield5:
@@ -249,6 +269,8 @@ namespace KillConfirmGameBar.Services
             {
                 case GameStyleMode.Valorant:
                     return ValorantPackService.DefaultKey;
+                case GameStyleMode.Csol:
+                    return "csol4";
                 case GameStyleMode.Battlefield1:
                     return "bf1";
                 case GameStyleMode.Battlefield5:

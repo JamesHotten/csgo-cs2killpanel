@@ -1,8 +1,12 @@
 using System;
 using System.Globalization;
+using System.Threading.Tasks;
+using Windows.Data.Json;
 using Windows.Storage;
+using Windows.Storage.Streams;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.Web.Http;
 
 namespace KillConfirmGameBar.Services
 {
@@ -22,6 +26,59 @@ namespace KillConfirmGameBar.Services
         private const string CustomModePrefix = "custom:";
         private const string SettingPrefix = "KillStreakMode_";
         private const string LegacySharedSettingKey = "SharedStreakMode";
+        private static readonly Uri SpectatorSettingsUri =
+            new Uri("http://127.0.0.1:3000/spectator/settings");
+
+        public static bool LoadSpectatedPlayerEffects()
+        {
+            return SettingsConfigurationService.ReadBooleanSetting(
+                SettingsConfigurationService.SpectatedPlayerEffectsKey);
+        }
+
+        public static bool LoadReplayEffects()
+        {
+            return SettingsConfigurationService.ReadBooleanSetting(
+                SettingsConfigurationService.ReplayEffectsKey);
+        }
+
+        public static bool LoadControlledBotEffects()
+        {
+            return SettingsConfigurationService.ReadBooleanSetting(
+                SettingsConfigurationService.ControlledBotEffectsKey);
+        }
+
+        public static void SaveObservedEffects(
+            bool spectatedPlayerEnabled,
+            bool replayEnabled,
+            bool controlledBotEnabled)
+        {
+            var values = ApplicationData.Current.LocalSettings.Values;
+            values[SettingsConfigurationService.SpectatedPlayerEffectsKey] = spectatedPlayerEnabled;
+            values[SettingsConfigurationService.ReplayEffectsKey] = replayEnabled;
+            values[SettingsConfigurationService.ControlledBotEffectsKey] = controlledBotEnabled;
+        }
+
+        public static async Task SyncObservedEffectsAsync()
+        {
+            var request = new JsonObject
+            {
+                ["spectated_player_enabled"] =
+                    JsonValue.CreateBooleanValue(LoadSpectatedPlayerEffects()),
+                ["replay_enabled"] = JsonValue.CreateBooleanValue(LoadReplayEffects()),
+                ["controlled_bot_enabled"] =
+                    JsonValue.CreateBooleanValue(LoadControlledBotEffects())
+            };
+
+            using (var client = await LocalServiceAuth.CreateHttpClientAsync())
+            using (var content = new HttpStringContent(
+                request.Stringify(),
+                UnicodeEncoding.Utf8,
+                "application/json"))
+            using (HttpResponseMessage response = await client.PostAsync(SpectatorSettingsUri, content))
+            {
+                response.EnsureSuccessStatusCode();
+            }
+        }
 
         public static bool IsSupported(GameStyleMode style)
         {

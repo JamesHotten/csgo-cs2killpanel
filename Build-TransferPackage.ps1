@@ -37,18 +37,6 @@ if (-not $resolvedTransferRoot.StartsWith($resolvedWorkspaceRoot, [System.String
     throw "Refusing to write outside the workspace root: $resolvedTransferRoot"
 }
 
-$KillConfirmProcessNames = @(
-    "cskillconfirm",
-    "TestXboxGameBar",
-    "KillConfirmOverlay",
-    "KillConfirmGameBar",
-    "GameBar",
-    "GameBarFTServer",
-    "GameBarPresenceWriter"
-)
-
-Get-Process -Name $KillConfirmProcessNames -ErrorAction SilentlyContinue | Stop-Process -Force
-
 $buildIntegratedArgs = @{
     Configuration = $Configuration
     Platform = $Platform
@@ -138,6 +126,154 @@ function Write-InstallLog {
     $line = "[{0}] {1}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $Message
     Add-Content -LiteralPath $LogPath -Value $line -Encoding UTF8
     Write-Host $Message
+}
+
+function Get-WindowsBuildNumber {
+    try {
+        $currentVersion = Get-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -ErrorAction Stop
+        return [int]$currentVersion.CurrentBuildNumber
+    }
+    catch {
+        Write-InstallLog "Could not determine the Windows build number: $($_.Exception.Message)"
+        return 0
+    }
+}
+
+function Test-IsAdministrator {
+    try {
+        $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+        $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+        return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    }
+    catch {
+        return $false
+    }
+}
+
+function Get-RegistryDwordSnapshot {
+    param(
+        [string]$RegistryPath,
+        [string]$ValueName
+    )
+
+    try {
+        $item = Get-ItemProperty -LiteralPath $RegistryPath -Name $ValueName -ErrorAction Stop
+        return [pscustomobject]@{
+            Path = $RegistryPath
+            Name = $ValueName
+            Exists = $true
+            Value = [int]$item.$ValueName
+        }
+    }
+    catch {
+        return [pscustomobject]@{
+            Path = $RegistryPath
+            Name = $ValueName
+            Exists = $false
+            Value = $null
+        }
+    }
+}
+
+function Save-GameBarRegistryBackup {
+    param([object[]]$Entries)
+
+    try {
+        $backupRoot = Join-Path $env:LOCALAPPDATA "Kill Confirm Overlay\GameBar_Registry_Backup"
+        New-Item -ItemType Directory -Path $backupRoot -Force -ErrorAction Stop | Out-Null
+        $backupPath = Join-Path $backupRoot ((Get-Date -Format "yyyyMMdd-HHmmss") + ".json")
+        $Entries | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $backupPath -Encoding UTF8
+        Write-InstallLog "Game Bar registry values backed up: $backupPath"
+    }
+    catch {
+        Write-InstallLog "Game Bar registry backup warning: $($_.Exception.Message)"
+    }
+}
+
+function Set-RegistryDwordSafe {
+    param(
+        [string]$RegistryPath,
+        [string]$ValueName,
+        [int]$Value
+    )
+
+    try {
+        if (-not (Test-Path -LiteralPath $RegistryPath)) {
+            New-Item -Path $RegistryPath -Force -ErrorAction Stop | Out-Null
+        }
+        New-ItemProperty -LiteralPath $RegistryPath -Name $ValueName -PropertyType DWord -Value $Value -Force -ErrorAction Stop | Out-Null
+        Write-InstallLog "Registry value set: ${RegistryPath}\${ValueName}=$Value"
+        return $true
+    }
+    catch {
+        Write-InstallLog "Registry repair warning for ${RegistryPath}\${ValueName}: $($_.Exception.Message)"
+        return $false
+    }
+}
+
+function Repair-XboxGameBar {
+    $buildNumber = Get-WindowsBuildNumber
+    if ($buildNumber -le 0) {
+        Write-InstallLog "Xbox Game Bar policy repair skipped because the Windows build could not be identified."
+        return
+    }
+
+    Write-InstallLog "Windows build $buildNumber detected. Checking Xbox Game Bar policy and service settings..."
+    $entries = @(
+        Get-RegistryDwordSnapshot -RegistryPath "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR" -ValueName "AppCaptureEnabled"
+        Get-RegistryDwordSnapshot -RegistryPath "HKCU:\System\GameConfigStore" -ValueName "GameDVR_Enabled"
+        Get-RegistryDwordSnapshot -RegistryPath "HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR" -ValueName "AllowGameDVR"
+        Get-RegistryDwordSnapshot -RegistryPath "HKLM:\SYSTEM\CurrentControlSet\Services\BcastDVRUserService" -ValueName "Start"
+    )
+    Save-GameBarRegistryBackup -Entries $entries
+
+    Set-RegistryDwordSafe -RegistryPath "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR" -ValueName "AppCaptureEnabled" -Value 1 | Out-Null
+    Set-RegistryDwordSafe -RegistryPath "HKCU:\System\GameConfigStore" -ValueName "GameDVR_Enabled" -Value 1 | Out-Null
+
+    if (-not (Test-IsAdministrator)) {
+        Write-InstallLog "Administrator rights are unavailable; machine-wide Game DVR policy and service repair were skipped."
+        return
+    }
+
+    Set-RegistryDwordSafe -RegistryPath "HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR" -ValueName "AllowGameDVR" -Value 1 | Out-Null
+    Set-RegistryDwordSafe -RegistryPath "HKLM:\SYSTEM\CurrentControlSet\Services\BcastDVRUserService" -ValueName "Start" -Value 3 | Out-Null
+
+    try {
+        $serviceInstances = Get-ChildItem -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services" -ErrorAction Stop |
+            Where-Object { $_.PSChildName -like "BcastDVRUserService_*" }
+        foreach ($serviceInstance in $serviceInstances) {
+            Set-RegistryDwordSafe -RegistryPath $serviceInstance.PSPath -ValueName "Start" -Value 3 | Out-Null
+        }
+    }
+    catch {
+        Write-InstallLog "Could not enumerate Game DVR user service instances: $($_.Exception.Message)"
+    }
+}
+
+function Test-XboxGameBarAvailable {
+    return $null -ne (Get-AppxPackage -Name "Microsoft.XboxGamingOverlay" -ErrorAction SilentlyContinue |
+        Sort-Object Version -Descending |
+        Select-Object -First 1)
+}
+
+function Confirm-XboxGameBarAvailable {
+    if (Test-XboxGameBarAvailable) {
+        $gameBar = Get-AppxPackage -Name "Microsoft.XboxGamingOverlay" -ErrorAction SilentlyContinue |
+            Sort-Object Version -Descending |
+            Select-Object -First 1
+        Write-InstallLog "Xbox Game Bar package is available: $($gameBar.Version)"
+        return
+    }
+
+    Write-InstallLog "Xbox Game Bar is unavailable. Opening its Microsoft Store page."
+    try {
+        Start-Process "ms-windows-store://pdp/?ProductId=9NZKPSTSNW4P" | Out-Null
+    }
+    catch {
+        Write-InstallLog "Could not open the Xbox Game Bar Microsoft Store page: $($_.Exception.Message)"
+    }
+
+    throw "Xbox Game Bar is not installed. Install it from Microsoft Store, then run this installer again."
 }
 
 function Get-AppxIdentityFromPackageFile {
@@ -714,7 +850,9 @@ try {
         Remove-Item -LiteralPath $LogPath -Force
     }
 
+    Repair-XboxGameBar
     Install-RequiredComponents
+    Confirm-XboxGameBarAvailable
     Install-OverlayPackage
     Test-OverlayPackageInstalled
 
@@ -770,7 +908,9 @@ Use on another PC:
 4. Use the panel power button or Check button if you want to verify status
 
 Notes:
+- On Windows 10 and Windows 11, setup backs up Game Bar registry values, repairs current-user switches, and repairs machine-wide policy/service values only when administrator rights are available.
 - Before installing the overlay, the install script detects the two required x64 VCLibs packages and Xbox Game Bar. Missing or outdated components are shown to the user and installed in the required order after approval.
+- If Xbox Game Bar is still unavailable, setup opens its Microsoft Store page and asks the user to run setup again after installation.
 - The companion service is embedded inside the MSIX package.
 - The widget starts its packaged companion service directly from the installed app.
 - The install script installs the MSIX package directly instead of requiring Visual Studio developer scripts.

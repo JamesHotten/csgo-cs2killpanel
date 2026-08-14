@@ -41,9 +41,11 @@ use anyhow::{Context, Result};
 use soundpack::Preset;
 use soundpack::sound::warm_audio_cache;
 use util::event_stream::{
-    audio_devices, audio_reload, audio_volume, crossfire_settings, cs2_root, events_ws, gsi_status,
-    health, money_mode, set_audio_device, set_crossfire_settings, set_money_mode,
-    set_streak_settings, shutdown, streak_settings, test_event,
+    audio_devices, audio_reload, audio_volume, crossfire_settings, cs2_root, csol_settings,
+    event_sound_settings, events_ws, gsi_status, health, install_counter_strike_cfg, money_mode,
+    set_audio_device, set_crossfire_settings, set_csol_settings, set_event_sound_settings,
+    set_money_mode, set_spectator_settings, set_streak_settings, shutdown, spectator_settings,
+    streak_settings, test_event,
 };
 use util::handler::update;
 use windows_sys::Win32::UI::Shell::ShellExecuteW;
@@ -277,6 +279,12 @@ async fn run() -> Result<()> {
         crossfire_knife_special_audio_priority: AtomicBool::new(true),
         assist_audio_enabled: AtomicBool::new(false),
         assist_audio_setting_active: AtomicBool::new(true),
+        event_sound_settings: RwLock::new(Default::default()),
+        csol_voice_picks: RwLock::new(std::collections::HashMap::new()),
+        csol_special_voice_priority: AtomicBool::new(true),
+        spectated_player_effects_enabled: AtomicBool::new(true),
+        replay_effects_enabled: AtomicBool::new(true),
+        controlled_bot_effects_enabled: AtomicBool::new(true),
         event_tx,
         shutdown_tx,
         gsi_posts: AtomicU64::new(0),
@@ -319,6 +327,7 @@ async fn run() -> Result<()> {
         .route("/health", get(health))
         .route("/gsi-status", get(gsi_status))
         .route("/cs2-root", get(cs2_root))
+        .route("/counter-strike/cfg", post(install_counter_strike_cfg))
         .route("/audio/reload", post(audio_reload))
         .route("/audio/devices", get(audio_devices))
         .route("/audio/device", post(set_audio_device))
@@ -331,6 +340,15 @@ async fn run() -> Result<()> {
         .route(
             "/streak/settings",
             get(streak_settings).post(set_streak_settings),
+        )
+        .route("/csol/settings", get(csol_settings).post(set_csol_settings))
+        .route(
+            "/event-sound/settings",
+            get(event_sound_settings).post(set_event_sound_settings),
+        )
+        .route(
+            "/spectator/settings",
+            get(spectator_settings).post(set_spectator_settings),
         )
         .route("/shutdown", post(shutdown))
         .route(

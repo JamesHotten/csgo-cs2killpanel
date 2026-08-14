@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.UI.Xaml;
@@ -54,6 +55,8 @@ namespace KillConfirmGameBar.Controls
         private const int LoadingIndicatorDelayMs = 250;
         private const int MaxCachedFrameWidth = 400;
         private const int MaxCachedFrameHeight = 300;
+        private const double ReferenceDisplayWidth = 550;
+        private const double ReferenceDisplayHeight = 600;
         private const double CodeKillFrameWidth = 607;
         private const double CodeKillFrameHeight = 436;
         private static double _brightnessBoost;
@@ -76,6 +79,8 @@ namespace KillConfirmGameBar.Controls
         private SpriteMetadata _currentMetadata;
         private double _logicalFrameWidth = MaxCachedFrameWidth;
         private double _logicalFrameHeight = MaxCachedFrameHeight;
+        private double _displayViewportWidth = ReferenceDisplayWidth;
+        private double _displayViewportHeight = MaxCachedFrameHeight * (ReferenceDisplayWidth / MaxCachedFrameWidth);
         private double _renderResolutionScale = 1.0;
         private bool _contentSizedViewport;
         private IReadOnlyList<SpriteSheetSegment> _currentSheets;
@@ -84,6 +89,8 @@ namespace KillConfirmGameBar.Controls
         private ValorantKillAsset _currentValorantAsset;
         private BattlefieldKillAsset _currentBattlefieldAsset;
         private static readonly Dictionary<string, Code2KillAsset> CodeKillCache = new Dictionary<string, Code2KillAsset>();
+        private static readonly SemaphoreSlim PreloadGate = new SemaphoreSlim(1, 1);
+        private static int _resourceGeneration;
         private static Task _startupPreloadTask;
         private static Task _preloadTask;
         private int _currentFrame;
@@ -175,7 +182,25 @@ namespace KillConfirmGameBar.Controls
             return _startupPreloadTask;
         }
 
-        public Task PreloadCurrentPackAnimationsAsync(IProgress<int> progress)
+        public async Task PreloadCurrentPackAnimationsAsync(IProgress<int> progress)
+        {
+            int generation = _resourceGeneration;
+            await PreloadGate.WaitAsync();
+            try
+            {
+                if (generation != _resourceGeneration)
+                {
+                    return;
+                }
+                await PreloadCurrentPackAnimationsCoreAsync(progress);
+            }
+            finally
+            {
+                PreloadGate.Release();
+            }
+        }
+
+        private Task PreloadCurrentPackAnimationsCoreAsync(IProgress<int> progress)
         {
             if (GameStyleService.IsBattlefield1Key(_iconPack))
             {
@@ -210,6 +235,12 @@ namespace KillConfirmGameBar.Controls
             if (ValorantPackService.IsValorantPackKey(_iconPack))
             {
                 return PreloadValorantAnimationsAsync(progress);
+            }
+
+            if (GameStyleService.IsCsolKey(_iconPack)
+                || GameStyleService.Current == GameStyleMode.Csol)
+            {
+                return PreloadCsolAnimationsAsync(progress);
             }
 
             if (string.Equals(_iconPack, "legacy", StringComparison.OrdinalIgnoreCase))
@@ -352,18 +383,8 @@ namespace KillConfirmGameBar.Controls
 
             _brightnessBoost = normalizedBrightness;
             _contrastBoost = normalizedContrast;
-            CodeKillCache.Clear();
-            ClearBattlefieldIconCache();
-            ClearBattlefield4IconCache();
-            ClearBattlefield2042IconCache();
-            ClearPubgIconCache();
-            ClearDeltaForceIconCache();
-            if (string.Equals(_iconPack, "legacy", StringComparison.OrdinalIgnoreCase))
-            {
-                SheetCache.Clear();
-                _startupPreloadTask = null;
-                _preloadTask = null;
-            }
+            _resourceGeneration++;
+            ClearAnimationResourceCaches();
         }
 
         public static void ConfigurePlaybackFps(double playbackFps)
@@ -386,6 +407,7 @@ namespace KillConfirmGameBar.Controls
                 && !GameStyleService.IsBattlefield2042Key(normalized)
                 && !GameStyleService.IsPubgKey(normalized)
                 && !GameStyleService.IsDeltaForceKey(normalized)
+                && !GameStyleService.IsCsolKey(normalized)
                 && !PackCatalogService.IsImportedIconPackKey(normalized))
             {
                 normalized = "default";
@@ -396,16 +418,24 @@ namespace KillConfirmGameBar.Controls
                 return;
             }
 
-            bool legacyTransition = string.Equals(_iconPack, "legacy", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(normalized, "legacy", StringComparison.OrdinalIgnoreCase);
+            _resourceGeneration++;
             _iconPack = normalized;
+            ClearAnimationResourceCaches();
+        }
+
+        private static void ClearAnimationResourceCaches()
+        {
+            MetadataCache.Clear();
+            SheetCache.Clear();
             CodeKillCache.Clear();
+            CsolKillCache.Clear();
+            ClearBattlefieldIconCache();
+            ClearBattlefield4IconCache();
+            ClearBattlefield2042IconCache();
+            ClearPubgIconCache();
+            ClearDeltaForceIconCache();
             _startupPreloadTask = null;
             _preloadTask = null;
-            if (legacyTransition)
-            {
-                SheetCache.Clear();
-            }
         }
 
         public static void ConfigureEliteEffectLevel(int eliteLevel)
@@ -485,6 +515,7 @@ namespace KillConfirmGameBar.Controls
 
         private async void PlayInternal(Func<IProgress<int>, Task<AnimationAsset>> assetLoader)
         {
+            int resourceGeneration = _resourceGeneration;
             _contentSizedViewport = false;
             _isBattlefield1CompactLayoutActive = false;
             ResetBattlefield5ScrollingState();
@@ -505,9 +536,22 @@ namespace KillConfirmGameBar.Controls
             try
             {
                 _ = ShowLoadingProgressIfStillLoadingAsync(token, progress);
-                AnimationAsset asset = await assetLoader(progress);
+                AnimationAsset asset;
+                await PreloadGate.WaitAsync();
+                try
+                {
+                    if (resourceGeneration != _resourceGeneration)
+                    {
+                        return;
+                    }
+                    asset = await assetLoader(progress);
+                }
+                finally
+                {
+                    PreloadGate.Release();
+                }
 
-                if (token != _playToken)
+                if (token != _playToken || resourceGeneration != _resourceGeneration)
                 {
                     return;
                 }
@@ -519,6 +563,7 @@ namespace KillConfirmGameBar.Controls
                 _currentCodeAsset = asset.CodeAsset;
                 _currentValorantAsset = asset.ValorantAsset;
                 _currentBattlefieldAsset = asset.BattlefieldAsset;
+                _currentCsolAsset = asset.CsolAsset;
                 _currentSheet = null;
                 _currentFrame = 0;
 
@@ -809,11 +854,19 @@ namespace KillConfirmGameBar.Controls
                 BattlefieldAsset = battlefieldAsset;
             }
 
+            public AnimationAsset(SpriteMetadata metadata, CsolKillAsset csolAsset)
+            {
+                Metadata = metadata;
+                Sheets = null;
+                CsolAsset = csolAsset;
+            }
+
             public SpriteMetadata Metadata { get; }
             public IReadOnlyList<SpriteSheetSegment> Sheets { get; }
             public Code2KillAsset CodeAsset { get; }
             public ValorantKillAsset ValorantAsset { get; }
             public BattlefieldKillAsset BattlefieldAsset { get; }
+            public CsolKillAsset CsolAsset { get; }
         }
 
         private sealed class Code2KillAsset
@@ -850,6 +903,7 @@ namespace KillConfirmGameBar.Controls
             public CanvasBitmap HeroFlame { get; set; }
             public CanvasBitmap LargeSparks { get; set; }
             public CanvasBitmap XSparks { get; set; }
+            public CanvasRenderTarget Halo { get; set; }
             public ValorantDemoProfile DemoProfile { get; set; }
         }
 

@@ -189,6 +189,8 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
+                    <Button x:Name="HomeNavigationButton" Click="OnHomeNavigationClick" Content="主页" />
+                    <Button x:Name="GameNavigationButton" Click="OnGameNavigationClick" Content="游戏设置" />
                     <TextBlock
                         x:Name="GameStyleLabelText"
                         VerticalAlignment="Center"
@@ -206,6 +208,7 @@
                         CornerRadius="8"
                         SelectionChanged="OnGameStyleSelectionChanged">
                         <ComboBoxItem x:Name="CrossfireStyleItem" Tag="crossfire">CrossFire (穿越火线)</ComboBoxItem>
+                        <ComboBoxItem x:Name="CsolStyleItem" Tag="csol">CSOL (反恐精英 Online)</ComboBoxItem>
                         <ComboBoxItem x:Name="ValorantStyleItem" Tag="valorant">Valorant (无畏契约)</ComboBoxItem>
                         <ComboBoxItem x:Name="Battlefield1StyleItem" Tag="battlefield1">Battlefield 1 (战地1)</ComboBoxItem>
                         <ComboBoxItem x:Name="Battlefield5StyleItem" Tag="battlefield5">Battlefield V (战地5)</ComboBoxItem>
@@ -218,19 +221,11 @@
             </Grid>
 
             <Grid
+                x:Name="HomePageContent"
                 Grid.Row="1"
-                MaxWidth="1160"
-                HorizontalAlignment="Center"
-                ColumnSpacing="18">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1.15*" />
-                    <ColumnDefinition Width="0.85*" />
-                </Grid.ColumnDefinitions>
-
+                MaxWidth="1000"
+                HorizontalAlignment="Stretch">
                 <StackPanel Spacing="14">
-                    <ContentControl x:Name="GameAdvancedSettingsPanelHost" />
-                    <settings:RuntimeMaintenancePanel />
-
                     <Border x:Name="GeneralSettingsCard" Style="{StaticResource SettingsSectionCardStyle}">
                         <StackPanel Spacing="12">
                             <TextBlock
@@ -238,7 +233,12 @@
                                 Style="{StaticResource SettingsSectionTitleTextStyle}"
                                 FontSize="18"
                                 Text="通用设置" />
-                            <Grid ColumnSpacing="12">
+                            <Grid ColumnSpacing="12" RowSpacing="10">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="140" />
                                     <ColumnDefinition Width="*" />
@@ -260,9 +260,96 @@
                                     <ComboBoxItem x:Name="CloseWindowTrayItem" Tag="tray">缩小到系统托盘 / 后台运行</ComboBoxItem>
                                     <ComboBoxItem x:Name="CloseWindowExitItem" Tag="exit">直接退出程序</ComboBoxItem>
                                 </ComboBox>
+                                <TextBlock
+                                    x:Name="ObservedEffectsLabelText"
+                                    Grid.Row="1"
+                                    VerticalAlignment="Center"
+                                    FontSize="13"
+                                    FontWeight="SemiBold"
+                                    Text="观察来源效果:" />
+                                <StackPanel Grid.Row="1" Grid.Column="1" Spacing="3">
+                                    <StackPanel Orientation="Horizontal" Spacing="14">
+                                        <ToggleSwitch
+                                            x:Name="SpectatedPlayerEffectsToggle"
+                                            Header="观战队友"
+                                            MinWidth="0"
+                                            OffContent="关"
+                                            OnContent="开"
+                                            Toggled="OnObservedEffectsToggled" />
+                                        <ToggleSwitch
+                                            x:Name="ReplayEffectsToggle"
+                                            Header="回放/演示"
+                                            MinWidth="0"
+                                            OffContent="关"
+                                            OnContent="开"
+                                            Toggled="OnObservedEffectsToggled" />
+                                        <ToggleSwitch
+                                            x:Name="ControlledBotEffectsToggle"
+                                            Header="机器人接管"
+                                            MinWidth="0"
+                                            OffContent="关"
+                                            OnContent="开"
+                                            Toggled="OnObservedEffectsToggled" />
+                                    </StackPanel>
+                                    <TextBlock
+                                        x:Name="ObservedEffectsHintText"
+                                        FontSize="10"
+                                        Text="三项默认开启，互不影响本地玩家主视角。"
+                                        TextWrapping="WrapWholeWords" />
+                                </StackPanel>
+                                <TextBlock
+                                    x:Name="SettingsBackupLabelText"
+                                    Grid.Row="2"
+                                    VerticalAlignment="Center"
+                                    FontSize="13"
+                                    FontWeight="SemiBold"
+                                    Text="设置备份:" />
+                                <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                    <Button
+                                        x:Name="ExportSettingsButton"
+                                        Click="OnExportSettingsClick"
+                                        Content="导出设置"
+                                        Style="{StaticResource SettingsHeaderButtonStyle}" />
+                                    <Button
+                                        x:Name="ImportSettingsButton"
+                                        Click="OnImportSettingsClick"
+                                        Content="导入设置"
+                                        Style="{StaticResource SettingsHeaderButtonStyle}" />
+                                    <TextBlock
+                                        x:Name="SettingsVersionText"
+                                        VerticalAlignment="Center"
+                                        FontSize="10"
+                                        Text="配置版本 2" />
+                                </StackPanel>
                             </Grid>
                         </StackPanel>
                     </Border>
+
+                    <Border x:Name="DisplayScalingCard" Style="{StaticResource SettingsSectionCardStyle}">
+                        <StackPanel Spacing="12">
+                            <TextBlock x:Name="DisplayScalingTitleText" Style="{StaticResource SettingsSectionTitleTextStyle}" FontSize="18" Text="高分辨率显示设置" />
+                            <TextBlock x:Name="DisplayScalingDescriptionText" Style="{StaticResource SettingsCaptionTextStyle}" Text="提高 2K/4K 屏幕上的控制面板可读性。" />
+                            <settings:DisplayScalingSettingsPanel x:Name="DisplayScalingSettingsPanel" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+
+            <Grid
+                x:Name="GamePageContent"
+                Grid.Row="1"
+                MaxWidth="1160"
+                HorizontalAlignment="Center"
+                ColumnSpacing="18"
+                Visibility="Collapsed">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.15*" />
+                    <ColumnDefinition Width="0.85*" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Spacing="14">
+                    <ContentControl x:Name="GameAdvancedSettingsPanelHost" />
+                    <settings:RuntimeMaintenancePanel />
 
                     <Border x:Name="VoicePackCollectionsCard" Style="{StaticResource SettingsSectionCardStyle}">
                         <StackPanel Spacing="14">

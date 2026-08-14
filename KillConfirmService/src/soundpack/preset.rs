@@ -251,6 +251,8 @@ mod tests {
             master_name: preset_name.to_string(),
             variant: None,
             base_dir: base_dir.to_string_lossy().replace('\\', "/"),
+            voice_picks: std::collections::HashMap::new(),
+            special_voice_priority: true,
         }
     }
 

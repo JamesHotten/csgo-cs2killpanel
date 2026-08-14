@@ -33,6 +33,8 @@ namespace KillConfirmGameBar.Services
             {
                 case GameStyleMode.Valorant:
                     return Valorant;
+                case GameStyleMode.Csol:
+                    return Csol;
                 case GameStyleMode.Battlefield1:
                     return Battlefield1;
                 case GameStyleMode.Battlefield5:
@@ -70,6 +72,27 @@ namespace KillConfirmGameBar.Services
             WarningField = Color.FromArgb(255, 255, 247, 234),
             WarningBorder = Color.FromArgb(255, 247, 190, 106),
             WarningText = Color.FromArgb(255, 138, 75, 0)
+        };
+
+        public static readonly GameThemePalette Csol = new GameThemePalette
+        {
+            Shell = Color.FromArgb(255, 238, 240, 242),
+            Panel = Color.FromArgb(250, 248, 249, 250),
+            Card = Color.FromArgb(255, 255, 255, 255),
+            Field = Color.FromArgb(255, 244, 246, 247),
+            SubtleField = Color.FromArgb(255, 236, 239, 241),
+            Border = Color.FromArgb(255, 176, 183, 190),
+            SoftBorder = Color.FromArgb(255, 213, 218, 222),
+            Text = Color.FromArgb(255, 30, 34, 39),
+            MutedText = Color.FromArgb(255, 92, 100, 108),
+            SubtleText = Color.FromArgb(255, 140, 148, 156),
+            Accent = Color.FromArgb(255, 194, 32, 40),
+            AccentSoft = Color.FromArgb(255, 255, 232, 233),
+            AccentText = Color.FromArgb(255, 116, 18, 24),
+            Secondary = Color.FromArgb(255, 222, 84, 35),
+            WarningField = Color.FromArgb(255, 246, 241, 234),
+            WarningBorder = Color.FromArgb(255, 205, 186, 160),
+            WarningText = Color.FromArgb(255, 130, 100, 62)
         };
 
         public static readonly GameThemePalette Valorant = new GameThemePalette

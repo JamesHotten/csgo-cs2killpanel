@@ -8,6 +8,7 @@ namespace KillConfirmGameBar
     public sealed partial class KillConfirmWidgetPage
     {
         private CrossfireAdvancedEffectsPanel _crossfireAdvancedEffectsPanel;
+        private CsolAdvancedEffectsPanel _csolAdvancedEffectsPanel;
         private ValorantAdvancedEffectsPanel _valorantAdvancedEffectsPanel;
         private Battlefield1AdvancedEffectsPanel _battlefield1AdvancedEffectsPanel;
         private Battlefield5AdvancedEffectsPanel _battlefield5AdvancedEffectsPanel;
@@ -103,6 +104,9 @@ namespace KillConfirmGameBar
                 case GameStyleMode.DeltaForce:
                     panel = EnsureDeltaForceAdvancedEffectsPanel();
                     break;
+                case GameStyleMode.Csol:
+                    panel = EnsureCsolAdvancedEffectsPanel();
+                    break;
                 case GameStyleMode.Crossfire:
                 default:
                     panel = EnsureCrossfireAdvancedEffectsPanel();
@@ -118,6 +122,13 @@ namespace KillConfirmGameBar
             ApplyAdvancedEffectsPanelTheme();
             SelectCurrentBattlefieldMoneyRewardMode();
             LoadSharedStreakMode(GameStyleService.Current);
+            if (GameStyleService.Current == GameStyleMode.Csol
+                && _csolAdvancedEffectsPanel != null)
+            {
+                LoadCsolGameplaySettings(_csolAdvancedEffectsPanel);
+            }
+
+            EventSoundRoutingPanel?.Configure(GameStyleService.Current);
         }
 
         private CrossfireAdvancedEffectsPanel EnsureCrossfireAdvancedEffectsPanel()
@@ -152,6 +163,18 @@ namespace KillConfirmGameBar
             }
 
             return _valorantAdvancedEffectsPanel;
+        }
+
+        private CsolAdvancedEffectsPanel EnsureCsolAdvancedEffectsPanel()
+        {
+            if (_csolAdvancedEffectsPanel == null)
+            {
+                _csolAdvancedEffectsPanel = new CsolAdvancedEffectsPanel();
+                _csolAdvancedEffectsPanel.VoiceSettingChanged += OnCsolGameplaySettingChanged;
+                LoadCsolGameplaySettings(_csolAdvancedEffectsPanel);
+            }
+
+            return _csolAdvancedEffectsPanel;
         }
 
         private Battlefield1AdvancedEffectsPanel EnsureBattlefield1AdvancedEffectsPanel()
@@ -245,6 +268,11 @@ namespace KillConfirmGameBar
                 _valorantAdvancedEffectsPanel.ApplyTheme(theme);
             }
 
+            if (_csolAdvancedEffectsPanel != null)
+            {
+                _csolAdvancedEffectsPanel.ApplyTheme(theme);
+            }
+
             if (_battlefield1AdvancedEffectsPanel != null)
             {
                 _battlefield1AdvancedEffectsPanel.ApplyTheme(theme);
@@ -274,6 +302,8 @@ namespace KillConfirmGameBar
             {
                 _deltaForceAdvancedEffectsPanel.ApplyTheme(theme);
             }
+
+            EventSoundRoutingPanel?.ApplyTheme(theme);
         }
 
         private void ApplyAdvancedEffectsPanelLanguage()
@@ -287,6 +317,11 @@ namespace KillConfirmGameBar
             if (_valorantAdvancedEffectsPanel != null)
             {
                 _valorantAdvancedEffectsPanel.ApplyLanguage(isChinese);
+            }
+
+            if (_csolAdvancedEffectsPanel != null)
+            {
+                _csolAdvancedEffectsPanel.ApplyLanguage(isChinese);
             }
 
             if (_battlefield1AdvancedEffectsPanel != null)
@@ -318,6 +353,8 @@ namespace KillConfirmGameBar
             {
                 _deltaForceAdvancedEffectsPanel.ApplyLanguage(isChinese);
             }
+
+            EventSoundRoutingPanel?.ApplyLanguage(isChinese);
         }
 
         private void SelectCurrentBattlefieldMoneyRewardMode()

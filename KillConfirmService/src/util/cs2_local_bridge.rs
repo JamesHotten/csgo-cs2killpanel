@@ -293,6 +293,9 @@ async fn is_missing_gsi_candidate(
 }
 
 async fn forward_missing_gsi_kill(app_state: Arc<AppState>, pending: PendingServerKill) {
+    let controlled_bot_effects_enabled = app_state
+        .controlled_bot_effects_enabled
+        .load(Ordering::Relaxed);
     let crossfire_mode_active = app_state.crossfire_mode_active.load(Ordering::Relaxed);
     let shared_mode_active = app_state.shared_streak_mode_active.load(Ordering::Relaxed);
     let streak_mode_active = crossfire_mode_active || shared_mode_active;
@@ -327,6 +330,13 @@ async fn forward_missing_gsi_kill(app_state: Arc<AppState>, pending: PendingServ
         mutable.cs2_local_log_round_kills = mutable.cs2_local_log_round_kills.saturating_add(1);
         mutable.cs2_local_log_unconfirmed_kills =
             mutable.cs2_local_log_unconfirmed_kills.saturating_add(1);
+
+        if !controlled_bot_effects_enabled {
+            mutable.has_first_kill_in_round = true;
+            mutable.pending_last_kill = None;
+            service_log("CS2 local controlled-bot effect suppressed by settings");
+            return;
+        }
 
         let elapsed = mutable
             .last_crossfire_kill_at

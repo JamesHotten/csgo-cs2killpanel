@@ -83,6 +83,7 @@ namespace KillConfirmGameBar.Controls
             asset.HeroFlame = await TryLoadValorantTextureAsync(root, "killicon_valorant_particle_hero_flame.png");
             asset.LargeSparks = await LoadValorantTextureAsync(root, "killicon_valorant_particle_large_sparks.png");
             asset.XSparks = await LoadValorantTextureAsync(root, "killicon_valorant_particle_x_sparks.png");
+            asset.Halo = CreateValorantHaloTexture(asset.Frame.Device, profile.Accent, profile.HaloRadius);
             return asset;
         }
 
@@ -148,7 +149,7 @@ namespace KillConfirmGameBar.Controls
                 null,
                 0,
                 0);
-            DrawValorantHalo(drawingSession, asset.Accent, cx, cy, elapsedMs, opacity, profile.HaloRadius);
+            DrawValorantHalo(drawingSession, asset.Halo, cx, cy, opacity);
 
             DrawValorantBars(drawingSession, asset, cx, cy, elapsedMs, opacity);
             DrawCenteredImageWithShadowAt(
@@ -311,38 +312,65 @@ namespace KillConfirmGameBar.Controls
             drawingSession.Blend = previousBlend;
         }
 
-        private static void DrawValorantHalo(CanvasDrawingSession drawingSession, Color accent, double cx, double cy, double elapsedMs, double opacity, double radius)
+        private static CanvasRenderTarget CreateValorantHaloTexture(CanvasDevice device, Color accent, double radius)
         {
             const int Segments = 72;
             double scaledRadius = radius * ValorantDemoVfxScale;
             double ringWidth = 2.2 * ValorantDemoVfxScale;
-            double rotation = (elapsedMs % 2200.0) / 2200.0 * Math.PI * 2.0;
-            double minY = cy - scaledRadius;
-            double maxY = cy + scaledRadius;
+            double padding = Math.Ceiling(ringWidth * 2.0 + 2.0);
+            float size = (float)Math.Ceiling((scaledRadius + padding) * 2.0);
+            double center = size / 2.0;
+            double minY = center - scaledRadius;
+            double maxY = center + scaledRadius;
             double yRange = Math.Max(0.001, maxY - minY);
-
-            for (int i = 0; i < Segments; i++)
+            var target = new CanvasRenderTarget(device, size, size, 96);
+            using (CanvasDrawingSession drawingSession = target.CreateDrawingSession())
             {
-                double a0 = (Math.PI * 2.0 * i / Segments) + rotation;
-                double a1 = (Math.PI * 2.0 * (i + 1) / Segments) + rotation;
-                double y0 = cy + Math.Sin(a0) * scaledRadius;
-                double y1 = cy + Math.Sin(a1) * scaledRadius;
-                double alphaFactor = Clamp01((maxY - ((y0 + y1) * 0.5)) / yRange);
-                byte alpha = (byte)Math.Max(0, Math.Min(255, Math.Round(opacity * alphaFactor * 255.0)));
-                if (alpha <= 2)
+                drawingSession.Clear(Colors.Transparent);
+                for (int i = 0; i < Segments; i++)
                 {
-                    continue;
-                }
+                    double a0 = Math.PI * 2.0 * i / Segments;
+                    double a1 = Math.PI * 2.0 * (i + 1) / Segments;
+                    double y0 = center + Math.Sin(a0) * scaledRadius;
+                    double y1 = center + Math.Sin(a1) * scaledRadius;
+                    double alphaFactor = Clamp01((maxY - ((y0 + y1) * 0.5)) / yRange);
+                    byte alpha = (byte)Math.Max(0, Math.Min(255, Math.Round(alphaFactor * 255.0)));
+                    if (alpha <= 2)
+                    {
+                        continue;
+                    }
 
-                Color color = Color.FromArgb(alpha, accent.R, accent.G, accent.B);
-                drawingSession.DrawLine(
-                    (float)(cx + Math.Cos(a0) * scaledRadius),
-                    (float)(cy + Math.Sin(a0) * scaledRadius),
-                    (float)(cx + Math.Cos(a1) * scaledRadius),
-                    (float)(cy + Math.Sin(a1) * scaledRadius),
-                    color,
-                    (float)ringWidth);
+                    Color color = Color.FromArgb(alpha, accent.R, accent.G, accent.B);
+                    drawingSession.DrawLine(
+                        (float)(center + Math.Cos(a0) * scaledRadius),
+                        (float)(center + Math.Sin(a0) * scaledRadius),
+                        (float)(center + Math.Cos(a1) * scaledRadius),
+                        (float)(center + Math.Sin(a1) * scaledRadius),
+                        color,
+                        (float)ringWidth);
+                }
             }
+
+            return target;
+        }
+
+        private static void DrawValorantHalo(
+            CanvasDrawingSession drawingSession,
+            CanvasRenderTarget halo,
+            double cx,
+            double cy,
+            double opacity)
+        {
+            if (halo == null || opacity <= 0)
+            {
+                return;
+            }
+
+            double width = halo.SizeInPixels.Width;
+            double height = halo.SizeInPixels.Height;
+            var target = new Rect(cx - width / 2.0, cy - height / 2.0, width, height);
+            var source = new Rect(0, 0, width, height);
+            drawingSession.DrawImage(halo, target, source, (float)Clamp01(opacity), CanvasImageInterpolation.Linear);
         }
 
         private static void DrawCenteredImageAt(CanvasDrawingSession drawingSession, CanvasBitmap image, double cx, double cy, double width, double height, double scale, double opacity)

@@ -97,6 +97,60 @@ namespace KillConfirmGameBar.Controls.GameStyles
             }
         }
 
+        public static void ApplySoftenedTree(DependencyObject root, GameThemePalette theme)
+        {
+            if (root == null || theme == null)
+            {
+                return;
+            }
+
+            ApplySoftenedTreeCore(root, theme);
+            if (root is FrameworkElement element && !element.IsLoaded)
+            {
+                RoutedEventHandler loadedHandler = null;
+                loadedHandler = (sender, args) =>
+                {
+                    element.Loaded -= loadedHandler;
+                    ApplySoftenedTreeCore(element, GameThemePalette.Current);
+                };
+                element.Loaded += loadedHandler;
+            }
+        }
+
+        private static void ApplySoftenedTreeCore(DependencyObject root, GameThemePalette theme)
+        {
+            if (root is Border border && border.Tag is string borderTag)
+            {
+                if (borderTag == "SoftChoiceCard")
+                {
+                    border.Background = Brush(theme.SubtleField);
+                    border.BorderBrush = Brush(theme.SoftBorder);
+                    border.BorderThickness = new Thickness(1);
+                }
+                else if (borderTag == "CircleChoiceIcon")
+                {
+                    border.Background = Brush(theme.Accent);
+                    border.BorderBrush = Brush(theme.Accent);
+                }
+            }
+            else if (root is ComboBox comboBox)
+            {
+                ApplyCombo(comboBox, theme.Text, theme.SubtleField, theme.SoftBorder);
+            }
+            else if (root is TextBlock textBlock
+                && textBlock.Tag is string textTag
+                && textTag == "SoftChoiceLabel")
+            {
+                textBlock.Foreground = Brush(theme.Text);
+            }
+
+            int childCount = VisualTreeHelper.GetChildrenCount(root);
+            for (int index = 0; index < childCount; index++)
+            {
+                ApplySoftenedTreeCore(VisualTreeHelper.GetChild(root, index), theme);
+            }
+        }
+
         private static SolidColorBrush Brush(Color color)
         {
             return new SolidColorBrush(color);

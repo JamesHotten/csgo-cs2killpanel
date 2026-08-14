@@ -27,6 +27,7 @@ namespace KillConfirmGameBar
         public App()
         {
             InitializeComponent();
+            Services.SettingsConfigurationService.EnsureMigrated();
             UnhandledException += OnUnhandledException;
             Suspending += OnSuspending;
             Log("App constructed.");
@@ -224,7 +225,18 @@ namespace KillConfirmGameBar
             var deferral = e.SuspendingOperation.GetDeferral();
             try
             {
-                await ShutdownCompanionFromCurrentFrameAsync();
+                bool settingsWindow =
+                    Window.Current.Content is Frame frame && frame.Content is MainPage;
+                bool keepRunning = settingsWindow
+                    && Services.CloseBehaviorSettingsStore.KeepRunningAfterSettingsClose;
+                if (keepRunning)
+                {
+                    Log("Settings window suspended; companion left running by close behavior.");
+                }
+                else
+                {
+                    await ShutdownCompanionFromCurrentFrameAsync();
+                }
                 _gameBarWidget = null;
                 Log("App suspending.");
             }

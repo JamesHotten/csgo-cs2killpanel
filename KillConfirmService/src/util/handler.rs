@@ -41,6 +41,52 @@ struct PreviousWeaponEvidence {
     fired_key: Option<String>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct WeaponKillContext {
+    is_knife: bool,
+    badge_key: Option<String>,
+    name: String,
+    money_reward: u16,
+}
+
+fn resolve_weapon_kill_context<'a>(
+    current: Option<&'a WeaponKillContext>,
+    recent: Option<&'a WeaponKillContext>,
+) -> Option<&'a WeaponKillContext> {
+    current.or(recent)
+}
+
+fn can_read_observed_combat_events(
+    observed_player_is_local: bool,
+    observed_feed_is_replay: bool,
+    spectated_player_effects_enabled: bool,
+    replay_effects_enabled: bool,
+) -> bool {
+    observed_player_is_local
+        || (observed_feed_is_replay && replay_effects_enabled)
+        || (!observed_feed_is_replay && spectated_player_effects_enabled)
+}
+
+fn is_local_observed_player(
+    spectarget: Option<&str>,
+    player_steamid: Option<&str>,
+    provider_steamid: Option<&str>,
+) -> bool {
+    if let Some(target) = spectarget.filter(|value| !value.is_empty()) {
+        return provider_steamid == Some(target);
+    }
+
+    match (
+        player_steamid.filter(|value| !value.is_empty()),
+        provider_steamid.filter(|value| !value.is_empty()),
+    ) {
+        (Some(player), Some(provider)) => player == provider,
+        // Missing identity fields without an explicit spectarget have always
+        // represented the local view in CS2/Legacy payloads. Preserve that path.
+        _ => true,
+    }
+}
+
 fn is_knife_weapon(weapon_name: &WeaponName, weapon_type: Option<&WeaponType>) -> bool {
     matches!(weapon_type, Some(WeaponType::Knife))
         || matches!(
@@ -68,13 +114,6 @@ fn is_knife_weapon(weapon_name: &WeaponName, weapon_type: Option<&WeaponType>) -
                 | WeaponName::KnifeTalon
                 | WeaponName::KnifeUrsus
         )
-}
-
-fn resolve_is_knife_kill(
-    current_weapon_is_knife: Option<bool>,
-    recent_weapon_is_knife: bool,
-) -> bool {
-    current_weapon_is_knife.unwrap_or(recent_weapon_is_knife)
 }
 
 fn map_weapon_badge_key(weapon_type: WeaponType) -> Option<&'static str> {
@@ -292,6 +331,21 @@ pub async fn update(
     let current_round_phase = round
         .map(|value| map_round_phase(&value.phase))
         .or_else(|| infer_round_phase_from_kills(ply_state.round_kills));
+    let observed_player_is_local = is_local_observed_player(
+        ply.spectarget.as_deref(),
+        ply.steam_id.as_deref(),
+        data.provider
+            .as_ref()
+            .map(|provider| provider.steam_id.as_str()),
+    );
+    let observed_feed_is_replay = !observed_player_is_local
+        && data.player.as_ref().is_some_and(|player| {
+            player.state.is_some()
+                && player
+                    .spectarget
+                    .as_deref()
+                    .is_some_and(|target| !target.is_empty())
+        });
 
     let current_active_weapon_entry = ply
         .weapons
@@ -363,27 +417,20 @@ pub async fn update(
     let previous_crossfire_kill_at = binding.last_crossfire_kill_at;
     let last_legacy_bridge_kill_at = binding.last_legacy_bridge_kill_at;
     let cs2_local_log_unconfirmed_kills = binding.cs2_local_log_unconfirmed_kills;
-    let recent_weapon_is_knife = binding.last_active_weapon_is_knife
-        && binding
-            .last_active_weapon_seen_at
-            .map(|seen_at| now.saturating_duration_since(seen_at) <= KNIFE_KILL_GRACE_WINDOW)
-            .unwrap_or(false);
-    let recent_weapon_badge_key = binding.last_active_weapon_badge_key.clone().filter(|_| {
-        binding
-            .last_active_weapon_seen_at
-            .map(|seen_at| now.saturating_duration_since(seen_at) <= KNIFE_KILL_GRACE_WINDOW)
-            .unwrap_or(false)
-    });
-    let recent_weapon_name = binding.last_active_weapon_name.clone().filter(|_| {
-        binding
-            .last_active_weapon_seen_at
-            .map(|seen_at| now.saturating_duration_since(seen_at) <= KNIFE_KILL_GRACE_WINDOW)
-            .unwrap_or(false)
-    });
-    let recent_weapon_money_reward = binding
+    let recent_weapon_context = binding
         .last_active_weapon_seen_at
         .filter(|seen_at| now.saturating_duration_since(*seen_at) <= KNIFE_KILL_GRACE_WINDOW)
-        .map(|_| binding.last_active_weapon_money_reward);
+        .and_then(|_| {
+            binding
+                .last_active_weapon_name
+                .as_ref()
+                .map(|name| WeaponKillContext {
+                    is_knife: binding.last_active_weapon_is_knife,
+                    badge_key: binding.last_active_weapon_badge_key.clone(),
+                    name: name.clone(),
+                    money_reward: binding.last_active_weapon_money_reward,
+                })
+        });
     drop(binding);
 
     let money_reward_mode =
@@ -396,6 +443,10 @@ pub async fn update(
         CrossfireStreakMode::from_u8(app_state.shared_streak_mode.load(Ordering::Relaxed));
     let shared_streak_window_ms = app_state.shared_streak_window_ms.load(Ordering::Relaxed);
     let shared_streak_mode_active = app_state.shared_streak_mode_active.load(Ordering::Relaxed);
+    let spectated_player_effects_enabled = app_state
+        .spectated_player_effects_enabled
+        .load(Ordering::Relaxed);
+    let replay_effects_enabled = app_state.replay_effects_enabled.load(Ordering::Relaxed);
     let active_streak_mode = if shared_streak_mode_active {
         shared_streak_mode
     } else {
@@ -458,15 +509,8 @@ pub async fn update(
     let previous_player_health = switched_view_baseline
         .map(|baseline| baseline.health)
         .unwrap_or(global_previous_player_health);
-    let recent_weapon_is_knife = player_identity_matches && recent_weapon_is_knife;
-    let recent_weapon_badge_key = player_identity_matches
-        .then_some(recent_weapon_badge_key)
-        .flatten();
-    let recent_weapon_name = player_identity_matches
-        .then_some(recent_weapon_name)
-        .flatten();
-    let recent_weapon_money_reward = player_identity_matches
-        .then_some(recent_weapon_money_reward)
+    let recent_weapon_context = player_identity_matches
+        .then_some(recent_weapon_context)
         .flatten();
     let (current_kills, observed_kill_delta) = resolve_main_view_kill_observation(
         is_initialized,
@@ -521,17 +565,25 @@ pub async fn update(
     let main_view_switch_kill = !player_identity_matches && observed_kill_delta > 0;
     let bridge_already_reported_kill =
         should_suppress_gsi_after_legacy_bridge(is_legacy, last_legacy_bridge_kill_at, now);
-    let can_emit_kill = kill_count_increased
+    let can_emit_observed_combat_events = can_read_observed_combat_events(
+        observed_player_is_local,
+        observed_feed_is_replay,
+        spectated_player_effects_enabled,
+        replay_effects_enabled,
+    );
+    let can_emit_kill = can_emit_observed_combat_events
+        && kill_count_increased
         && (player_identity_matches || main_view_switch_kill)
         && !suppress_death_round_end_kill
         && !bridge_already_reported_kill
         && !bomb_exploded;
-    let can_emit_assist = should_emit_assist(
-        is_initialized,
-        player_identity_matches,
-        current_assists,
-        original_assists,
-    );
+    let can_emit_assist = can_emit_observed_combat_events
+        && should_emit_assist(
+            is_initialized,
+            player_identity_matches,
+            current_assists,
+            original_assists,
+        );
     let pending_round_over_age =
         pending_round_over_at.map(|recorded_at| now.saturating_duration_since(recorded_at));
     let round_end_reordering_active = phase_transition_to_over
@@ -557,6 +609,7 @@ pub async fn update(
             round_end_reordering_active,
             player_identity_matches,
             can_emit_kill,
+            death_reset,
         ),
         crossfire_kill_delta,
     );
@@ -635,29 +688,28 @@ pub async fn update(
         let kill_weapon = kill_weapon_key
             .as_deref()
             .and_then(|key| ply.weapons.get(key));
-        let evidence_points_away_from_current = kill_weapon_key.as_deref().is_some()
-            && kill_weapon_key.as_deref() != current_active_weapon_key;
-        let kill_weapon_is_knife = kill_weapon
-            .map(|weapon| is_knife_weapon(&weapon.name, weapon.r#type.as_ref()))
-            .or(if evidence_points_away_from_current {
-                None
-            } else {
-                current_active_weapon_is_knife
-            });
-        let is_knife_kill = resolve_is_knife_kill(kill_weapon_is_knife, recent_weapon_is_knife);
-        let weapon_badge_key = kill_weapon
-            .and_then(|weapon| weapon.r#type.clone())
-            .and_then(map_weapon_badge_key)
-            .map(str::to_string)
-            .or_else(|| recent_weapon_badge_key.clone());
-        let weapon_name = kill_weapon
-            .map(|weapon| map_weapon_name(&weapon.name).to_string())
-            .or_else(|| recent_weapon_name.clone());
-        let kill_weapon_money_reward =
-            kill_weapon.map(|weapon| money_rules::weapon_kill_reward(&weapon.name, current_mode));
+        let kill_weapon_context = kill_weapon.map(|weapon| WeaponKillContext {
+            is_knife: is_knife_weapon(&weapon.name, weapon.r#type.as_ref()),
+            badge_key: weapon
+                .r#type
+                .clone()
+                .and_then(map_weapon_badge_key)
+                .map(str::to_string),
+            name: map_weapon_name(&weapon.name).to_string(),
+            money_reward: money_rules::weapon_kill_reward(&weapon.name, current_mode),
+        });
+        let weapon_context = resolve_weapon_kill_context(
+            kill_weapon_context.as_ref(),
+            recent_weapon_context.as_ref(),
+        );
+        let is_knife_kill = weapon_context
+            .map(|weapon| weapon.is_knife)
+            .unwrap_or(false);
+        let weapon_badge_key = weapon_context.and_then(|weapon| weapon.badge_key.clone());
+        let weapon_name = weapon_context.map(|weapon| weapon.name.clone());
         let rule_money_reward = if money_rules::uses_standard_cash_economy(current_mode) {
-            kill_weapon_money_reward
-                .or(recent_weapon_money_reward)
+            weapon_context
+                .map(|weapon| weapon.money_reward)
                 .unwrap_or_else(|| money_rules::default_kill_reward(current_mode))
         } else {
             0
@@ -1505,8 +1557,11 @@ fn should_reset_streak_before_kill(
     round_end_reordering_active: bool,
     player_identity_matches: bool,
     can_emit_kill: bool,
+    death_reset: bool,
 ) -> bool {
-    (round_reset && !round_end_reordering_active && !can_emit_kill) || !player_identity_matches
+    death_reset
+        || (round_reset && !round_end_reordering_active && !can_emit_kill)
+        || !player_identity_matches
 }
 
 fn should_suppress_death_round_end_kill(
@@ -1707,13 +1762,15 @@ fn round_end_allows_delayed_last_kill(
 #[cfg(test)]
 mod tests {
     use super::{
-        CrossfireStreakMode, bomb_state_is_exploded, is_knife_weapon, is_legacy_gsi_payload,
-        normalize_forward_compatible_enums, normalize_legacy_gsi_defaults,
-        opponent_team_display_name, parse_gsi_body, parse_gsi_frame, previous_weapon_evidence,
-        resolve_crossfire_streak_count, resolve_is_knife_kill, resolve_kill_delta,
+        CrossfireStreakMode, WeaponKillContext, bomb_state_is_exploded,
+        can_read_observed_combat_events, is_knife_weapon, is_legacy_gsi_payload,
+        is_local_observed_player, normalize_forward_compatible_enums,
+        normalize_legacy_gsi_defaults, opponent_team_display_name, parse_gsi_body, parse_gsi_frame,
+        previous_weapon_evidence, resolve_crossfire_streak_count, resolve_kill_delta,
         resolve_kill_observation, resolve_kill_weapon_key, resolve_main_view_kill_observation,
-        round_end_allows_delayed_last_kill, select_same_round_view_baseline, select_tracked_player,
-        should_emit_assist, should_mark_late_final_kill, should_promote_pending_last_kill,
+        resolve_weapon_kill_context, round_end_allows_delayed_last_kill,
+        select_same_round_view_baseline, select_tracked_player, should_emit_assist,
+        should_mark_late_final_kill, should_promote_pending_last_kill,
         should_reset_streak_before_kill, should_suppress_death_round_end_kill,
         should_suppress_gsi_after_legacy_bridge,
     };
@@ -1723,6 +1780,23 @@ mod tests {
     use gsi_cs2::weapon::WeaponName;
     use serde_json::json;
     use std::time::{Duration, Instant};
+
+    #[test]
+    fn spectator_toggle_never_disables_the_local_player_feed() {
+        assert!(can_read_observed_combat_events(true, false, false, false));
+        assert!(!can_read_observed_combat_events(false, false, false, true));
+        assert!(can_read_observed_combat_events(false, false, true, false));
+        assert!(!can_read_observed_combat_events(false, true, true, false));
+        assert!(can_read_observed_combat_events(false, true, false, true));
+
+        assert!(is_local_observed_player(None, Some("local"), Some("local")));
+        assert!(!is_local_observed_player(
+            Some("teammate"),
+            Some("local"),
+            Some("local")
+        ));
+        assert!(is_local_observed_player(None, None, Some("local")));
+    }
 
     #[test]
     fn bridge_deduplication_is_strictly_legacy_only() {
@@ -1778,18 +1852,27 @@ mod tests {
     }
 
     #[test]
-    fn knife_equipped_in_the_kill_update_is_detected_without_prior_history() {
-        assert!(resolve_is_knife_kill(Some(true), false));
-    }
-
-    #[test]
-    fn gun_kill_after_switching_from_knife_is_not_marked_as_a_knife_kill() {
-        assert!(!resolve_is_knife_kill(Some(false), true));
-    }
-
-    #[test]
-    fn recent_knife_is_used_only_when_the_kill_frame_has_no_weapon() {
-        assert!(resolve_is_knife_kill(None, true));
+    fn weapon_context_never_mixes_current_gun_with_recent_knife_metadata() {
+        let gun = WeaponKillContext {
+            is_knife: false,
+            badge_key: Some("assault".to_string()),
+            name: "AK-47".to_string(),
+            money_reward: 300,
+        };
+        let knife = WeaponKillContext {
+            is_knife: true,
+            badge_key: Some("knife".to_string()),
+            name: "Karambit".to_string(),
+            money_reward: 1500,
+        };
+        assert_eq!(
+            resolve_weapon_kill_context(Some(&gun), Some(&knife)),
+            Some(&gun)
+        );
+        assert_eq!(
+            resolve_weapon_kill_context(None, Some(&knife)),
+            Some(&knife)
+        );
     }
 
     #[test]
@@ -2695,22 +2778,37 @@ mod tests {
 
     #[test]
     fn round_end_does_not_reset_before_a_kill_from_the_same_update() {
-        assert!(!should_reset_streak_before_kill(true, true, true, true));
+        assert!(!should_reset_streak_before_kill(
+            true, true, true, true, false
+        ));
     }
 
     #[test]
     fn round_end_before_the_late_kill_preserves_the_streak_temporarily() {
-        assert!(!should_reset_streak_before_kill(true, true, true, false));
+        assert!(!should_reset_streak_before_kill(
+            true, true, true, false, false
+        ));
     }
 
     #[test]
     fn round_end_without_a_kill_still_resets_the_streak() {
-        assert!(should_reset_streak_before_kill(true, false, true, false));
+        assert!(should_reset_streak_before_kill(
+            true, false, true, false, false
+        ));
     }
 
     #[test]
     fn player_identity_change_still_resets_the_streak() {
-        assert!(should_reset_streak_before_kill(false, false, false, false));
+        assert!(should_reset_streak_before_kill(
+            false, false, false, false, false
+        ));
+    }
+
+    #[test]
+    fn death_and_kill_in_one_frame_starts_a_new_streak() {
+        assert!(should_reset_streak_before_kill(
+            false, false, true, true, true
+        ));
     }
 
     #[test]

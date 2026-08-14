@@ -70,7 +70,9 @@ namespace KillConfirmGameBar
                 await SyncMoneyRewardModeAsync();
                 await SyncAudioDeviceAsync();
                 await SyncCrossfireGameplaySettingsAsync();
+                await SyncCsolGameplaySettingsAsync();
                 await SyncSharedStreakSettingsAsync();
+                await SyncCombatEventSoundSettingsAsync();
                 return;
             }
 
@@ -93,7 +95,9 @@ namespace KillConfirmGameBar
                     await SyncMoneyRewardModeAsync();
                     await SyncAudioDeviceAsync();
                     await SyncCrossfireGameplaySettingsAsync();
+                    await SyncCsolGameplaySettingsAsync();
                     await SyncSharedStreakSettingsAsync();
+                    await SyncCombatEventSoundSettingsAsync();
                     return;
                 }
 
@@ -125,7 +129,9 @@ namespace KillConfirmGameBar
                     await SyncMoneyRewardModeAsync();
                     await SyncAudioDeviceAsync();
                     await SyncCrossfireGameplaySettingsAsync();
+                    await SyncCsolGameplaySettingsAsync();
                     await SyncSharedStreakSettingsAsync();
+                    await SyncCombatEventSoundSettingsAsync();
                 }
                 else
                 {
@@ -191,7 +197,9 @@ namespace KillConfirmGameBar
                 await SyncMoneyRewardModeAsync();
                 await SyncAudioDeviceAsync();
                 await SyncCrossfireGameplaySettingsAsync();
+                await SyncCsolGameplaySettingsAsync();
                 await SyncSharedStreakSettingsAsync();
+                await SyncCombatEventSoundSettingsAsync();
             }
             else
             {

@@ -12,11 +12,16 @@ This repository is the continued development fork at [JamesHotten/csgo-cs2killpa
 
 - Xbox Game Bar overlay with configurable position, scale, audio volume, and output device.
 - Normal kill, headshot, knife kill, first kill, final kill, round win, and round loss events.
-- CrossFire, Valorant, Battlefield 1/4/5/2042, PUBG, and Delta Force presentation styles.
+- CrossFire, Valorant, CSOL, Battlefield 1/4/5/2042, PUBG, and Delta Force presentation styles.
 - Multiple CrossFire voices and Valorant weapon-finisher sound packs.
 - Optional assist audio for CrossFire and Valorant, plus separate CF headshot/knife audio and icon priority controls.
+- CSOL 1–10 kill visuals, voice variants, special-event priority, and first/final-kill icon settings.
+- Per-event sound routing for supported Battlefield and Delta Force styles without changing visual event flags.
+- Automatic or fixed 100%–200% Game Bar control-panel scaling for high-resolution displays.
 - CS2, CS:GO Legacy, original bots, controlled bots, spectating, replay, and supported bot mods.
-- Per-observed-player kill and assist baselines prevent counters from leaking across spectator or replay target changes.
+- Per-observed-player kill and assist baselines prevent counters from leaking across spectator or replay target changes. Teammate spectating, replay views, and controlled-bot effects have separate switches.
+- Versioned JSON settings can be exported, imported on another PC, and migrated from older schemas.
+- The CFG panel lists every detected CS2 and Legacy installation with its individual install status.
 - Weapon attribution is captured at kill time, so switching weapons immediately after a kill does not relabel it.
 - Duplicate-event suppression and round-end ordering prevent a kill from being replayed after the victory effect.
 - CS-style cash rewards for supported modes, including weapon, objective, win, loss, and loss-streak awards.
@@ -74,7 +79,7 @@ The companion service listens only on:
 http://127.0.0.1:3000/
 ```
 
-The installer attempts to place `gamestate_integration_killconfirm.cfg` automatically. Manual locations are:
+The installer and local service can place `gamestate_integration_killconfirm.cfg` automatically. The folder picker accepts the Steam root, `steamapps`, `common`, the game root, `game`, `csgo`, or `cfg`. Manual locations are:
 
 ```text
 <CS2 root>\game\csgo\cfg\gamestate_integration_killconfirm.cfg
@@ -142,9 +147,12 @@ Build the integrated Release package:
 Create a transferable package or optional installer:
 
 ```powershell
+.\Build-Release.ps1
 .\Build-TransferPackage.ps1
 .\Build-Installer.ps1
 ```
+
+`Build-Release.ps1` is the one-command release build: it creates a transferable ZIP, test-certificate MSIX, certificate, and SHA-256 file without installing or replacing the current Game Bar package. The generated transfer installer validates Xbox Game Bar, backs up Game DVR registry values, repairs current-user switches, and changes machine-wide policy or service values only when administrator rights are available. Pack selections are mirrored to LocalState backup files, and observed-view effects can be controlled without disabling the local-player feed.
 
 Use `-DisableSigning` only for a developer registration workflow. Public distributions should use a trusted signing certificate or signing service.
 

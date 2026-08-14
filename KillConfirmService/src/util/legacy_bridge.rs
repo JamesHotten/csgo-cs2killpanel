@@ -223,6 +223,9 @@ fn parse_controlled_death(line: &str) -> Option<ControlledDeath> {
 }
 
 async fn emit_controlled_death(app_state: Arc<AppState>, death: ControlledDeath) {
+    let controlled_bot_effects_enabled = app_state
+        .controlled_bot_effects_enabled
+        .load(Ordering::Relaxed);
     let is_knife = is_knife_classname(&death.weapon);
     let is_last = death.enemies_alive_after == 0;
     let crossfire_mode_active = app_state.crossfire_mode_active.load(Ordering::Relaxed);
@@ -239,6 +242,14 @@ async fn emit_controlled_death(app_state: Arc<AppState>, death: ControlledDeath)
         app_state.crossfire_streak_window_ms.load(Ordering::Relaxed)
     };
     let now = Instant::now();
+    if !controlled_bot_effects_enabled {
+        let mut mutable = app_state.mutable.write().await;
+        mutable.last_legacy_bridge_kill_at = Some(now);
+        mutable.has_first_kill_in_round = true;
+        drop(mutable);
+        service_log("Legacy controlled-bot effect suppressed by settings");
+        return;
+    }
     let (round_number, money_epoch, kill_count, mode) = {
         let mut mutable = app_state.mutable.write().await;
         let elapsed = mutable

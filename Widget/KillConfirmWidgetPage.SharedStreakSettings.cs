@@ -85,6 +85,8 @@ namespace KillConfirmGameBar
             {
                 case GameStyleMode.Valorant:
                     return _valorantAdvancedEffectsPanel?.GetSelectedStreakMode(fallback) ?? fallback;
+                case GameStyleMode.Csol:
+                    return _csolAdvancedEffectsPanel?.GetSelectedStreakMode(fallback) ?? fallback;
                 case GameStyleMode.Battlefield1:
                     return _battlefield1AdvancedEffectsPanel?.GetSelectedStreakMode(fallback) ?? fallback;
                 case GameStyleMode.Battlefield5:
@@ -108,6 +110,9 @@ namespace KillConfirmGameBar
             {
                 case GameStyleMode.Valorant:
                     _valorantAdvancedEffectsPanel?.SelectStreakMode(value);
+                    break;
+                case GameStyleMode.Csol:
+                    _csolAdvancedEffectsPanel?.SelectStreakMode(value);
                     break;
                 case GameStyleMode.Battlefield1:
                     _battlefield1AdvancedEffectsPanel?.SelectStreakMode(value);
@@ -177,6 +182,20 @@ namespace KillConfirmGameBar
             catch (Exception ex)
             {
                 App.Log("Set shared streak mode failed: " + ex);
+            }
+
+            await SyncObservedEffectsAsync();
+        }
+
+        private async Task SyncObservedEffectsAsync()
+        {
+            try
+            {
+                await SharedStreakSettingsStore.SyncObservedEffectsAsync();
+            }
+            catch (Exception ex)
+            {
+                App.Log("Set spectated player kill effects failed: " + ex);
             }
         }
     }

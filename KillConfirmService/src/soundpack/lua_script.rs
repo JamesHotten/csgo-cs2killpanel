@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use mlua::{Lua, LuaSerdeExt, Value};
 use serde::Serialize;
+use std::collections::HashMap;
 use std::fs;
 
 /// Context passed to Lua script for sound selection
@@ -20,6 +21,10 @@ pub struct SoundContext {
     pub master_name: String,
     pub variant: Option<String>,
     pub base_dir: String,
+    /// CSOL per-event voice selection ("random" or a concrete file name).
+    pub voice_picks: HashMap<String, String>,
+    /// Whether headshot/knife voices override the streak voice in CSOL.
+    pub special_voice_priority: bool,
 }
 
 /// Holds a compiled Lua script for a soundpack

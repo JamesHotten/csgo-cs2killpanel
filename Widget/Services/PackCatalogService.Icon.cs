@@ -208,6 +208,7 @@ namespace KillConfirmGameBar.Services
             if (item != null)
             {
                 item.IsVisibleInWidget = isVisible;
+                SaveVisibilityOverride("icon", item.Key, isVisible);
                 await SaveAsync(catalog);
             }
         }

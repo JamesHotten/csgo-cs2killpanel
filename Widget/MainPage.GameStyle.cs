@@ -18,6 +18,7 @@ namespace KillConfirmGameBar
     public sealed partial class MainPage
     {
         private CrossfireAdvancedSettingsPanel _crossfireAdvancedSettingsPanel;
+        private CsolAdvancedEffectsPanel _csolAdvancedEffectsPanel;
         private ValorantAdvancedEffectsPanel _valorantAdvancedEffectsPanel;
         private Battlefield1AdvancedEffectsPanel _battlefield1AdvancedEffectsPanel;
         private Battlefield5AdvancedEffectsPanel _battlefield5AdvancedEffectsPanel;
@@ -59,6 +60,12 @@ namespace KillConfirmGameBar
             SetText(GameStyleLabelText, theme.Text);
             SetText(GeneralSettingsTitleText, theme.Text);
             SetText(CloseBehaviorLabelText, theme.MutedText);
+            SetText(ObservedEffectsLabelText, theme.MutedText);
+            SetText(ObservedEffectsHintText, theme.MutedText);
+            SetText(SettingsBackupLabelText, theme.MutedText);
+            SetText(SettingsVersionText, theme.MutedText);
+            SetText(DisplayScalingTitleText, theme.Text);
+            SetText(DisplayScalingDescriptionText, theme.MutedText);
             SetText(VoiceCollectionsTitleText, theme.Text);
             SetText(VoiceCollectionsHintText, theme.MutedText);
             SetText(IconCollectionsTitleText, theme.Text);
@@ -83,6 +90,10 @@ namespace KillConfirmGameBar
             SetText(TipsBodyText, theme.MutedText);
 
             ApplyCardTheme(GeneralSettingsCard, theme);
+            ApplyCardTheme(DisplayScalingCard, theme);
+            DisplayScalingSettingsPanel.ApplyTheme(theme);
+            ApplyButtonTheme(ExportSettingsButton, theme, false);
+            ApplyButtonTheme(ImportSettingsButton, theme, false);
             ApplyCardTheme(VoicePackCollectionsCard, theme);
             ApplyCardTheme(IconPackCollectionsCard, theme);
             ApplyCardTheme(VoiceCollectionsCard, theme);
@@ -144,6 +155,7 @@ namespace KillConfirmGameBar
 
             if (GameStyleSelector?.SelectedItem is ComboBoxItem selected && selected.Tag is string key)
             {
+                SetSettingsPage(false);
                 GameStyleMode newMode = GameStyleService.FromKey(key);
                 if (GameStyleService.Current != newMode)
                 {
@@ -165,6 +177,9 @@ namespace KillConfirmGameBar
             {
                 case GameStyleMode.Valorant:
                     panel = EnsureValorantAdvancedSettingsPanel();
+                    break;
+                case GameStyleMode.Csol:
+                    panel = EnsureCsolAdvancedSettingsPanel();
                     break;
                 case GameStyleMode.Battlefield1:
                     panel = EnsureBattlefield1AdvancedSettingsPanel();
@@ -201,6 +216,69 @@ namespace KillConfirmGameBar
         private CrossfireAdvancedSettingsPanel EnsureCrossfireAdvancedSettingsPanel()
         {
             return _crossfireAdvancedSettingsPanel ?? (_crossfireAdvancedSettingsPanel = new CrossfireAdvancedSettingsPanel());
+        }
+
+        private CsolAdvancedEffectsPanel EnsureCsolAdvancedSettingsPanel()
+        {
+            if (_csolAdvancedEffectsPanel == null)
+            {
+                _csolAdvancedEffectsPanel = new CsolAdvancedEffectsPanel();
+                _csolAdvancedEffectsPanel.VoiceSettingChanged += OnCsolDesktopSettingChanged;
+            }
+
+            CsolVoiceSettingsValues settings = CsolVoiceSettingsStore.Load();
+            _csolAdvancedEffectsPanel.SelectSettings(
+                SharedStreakSettingsStore.Load(GameStyleMode.Csol),
+                settings.SpecialVoicePriority,
+                settings.FirstLastIcon,
+                settings.VoicePicks);
+            return _csolAdvancedEffectsPanel;
+        }
+
+        private async void OnCsolDesktopSettingChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_csolAdvancedEffectsPanel == null)
+            {
+                return;
+            }
+
+            string streak = _csolAdvancedEffectsPanel.GetSelectedStreakMode(SharedStreakSettingsStore.LifeMode);
+            SharedStreakSettingsStore.Save(GameStyleMode.Csol, streak);
+            CsolVoiceSettingsStore.Save(new CsolVoiceSettingsValues
+            {
+                VoicePicks = _csolAdvancedEffectsPanel.GetVoicePicks(),
+                FirstLastIcon = _csolAdvancedEffectsPanel.GetFirstLastIcon(CsolVoiceSettingsStore.RevengeIcon),
+                SpecialVoicePriority = _csolAdvancedEffectsPanel.GetSpecialVoicePriority(true)
+            });
+            await SyncCsolDesktopSettingsAsync(streak);
+        }
+
+        private async Task SyncCsolDesktopSettingsAsync(string streak)
+        {
+            try
+            {
+                CsolVoiceSettingsValues settings = CsolVoiceSettingsStore.Load();
+                var picks = new JsonObject();
+                foreach (var pair in settings.VoicePicks)
+                {
+                    picks[pair.Key] = JsonValue.CreateStringValue(pair.Value ?? CsolVoiceSettingsStore.RandomPick);
+                }
+                var request = new JsonObject
+                {
+                    ["voice_picks"] = picks,
+                    ["special_voice_priority"] = JsonValue.CreateBooleanValue(settings.SpecialVoicePriority)
+                };
+                using (var client = await LocalServiceAuth.CreateHttpClientAsync())
+                using (var content = new HttpStringContent(request.Stringify(), UnicodeEncoding.Utf8, "application/json"))
+                {
+                    await client.PostAsync(new Uri("http://127.0.0.1:3000/csol/settings"), content);
+                }
+                await TrySyncSharedStreakSettingsAsync(GameStyleMode.Csol, streak);
+            }
+            catch (Exception ex)
+            {
+                App.Log("Sync CSOL settings from desktop failed: " + ex.Message);
+            }
         }
 
         private ValorantAdvancedEffectsPanel EnsureValorantAdvancedSettingsPanel()
@@ -366,6 +444,7 @@ namespace KillConfirmGameBar
         {
             GameThemePalette theme = GameThemePalette.Current;
             if (_crossfireAdvancedSettingsPanel != null) _crossfireAdvancedSettingsPanel.ApplyTheme(theme);
+            if (_csolAdvancedEffectsPanel != null) _csolAdvancedEffectsPanel.ApplyTheme(theme);
             if (_valorantAdvancedEffectsPanel != null) _valorantAdvancedEffectsPanel.ApplyTheme(theme);
             if (_battlefield1AdvancedEffectsPanel != null) _battlefield1AdvancedEffectsPanel.ApplyTheme(theme);
             if (_battlefield5AdvancedEffectsPanel != null) _battlefield5AdvancedEffectsPanel.ApplyTheme(theme);
@@ -379,6 +458,7 @@ namespace KillConfirmGameBar
         {
             bool isChinese = LocalizationManager.Current == UiLanguage.SimplifiedChinese;
             if (_crossfireAdvancedSettingsPanel != null) _crossfireAdvancedSettingsPanel.ApplyLanguage(isChinese);
+            if (_csolAdvancedEffectsPanel != null) _csolAdvancedEffectsPanel.ApplyLanguage(isChinese);
             if (_valorantAdvancedEffectsPanel != null) _valorantAdvancedEffectsPanel.ApplyLanguage(isChinese);
             if (_battlefield1AdvancedEffectsPanel != null) _battlefield1AdvancedEffectsPanel.ApplyLanguage(isChinese);
             if (_battlefield5AdvancedEffectsPanel != null) _battlefield5AdvancedEffectsPanel.ApplyLanguage(isChinese);
