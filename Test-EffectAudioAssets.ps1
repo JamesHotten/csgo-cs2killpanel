@@ -59,6 +59,20 @@ foreach ($resourceKey in @(
     }
 }
 
+# The shared streak selector is hosted inside half-width advanced-effect grids.
+# Keep it in the same responsive card layout as the neighbouring controls so a
+# fixed label column cannot collapse the ComboBox at narrow/scaled widths.
+$streakEditorXaml = Get-Content -LiteralPath (Join-Path $repoRoot 'Widget\Controls\GameStyles\StreakWindowEditor.xaml') -Raw
+$checks++
+if ($streakEditorXaml -notmatch '<Border Style="\{StaticResource CompactChoiceCardStyle\}">' -or
+    $streakEditorXaml -notmatch 'x:Name="StreakModeSelector"[\s\S]*Style="\{StaticResource CompactSettingsComboBoxStyle\}"') {
+    $errors.Add('The shared streak selector is not using the responsive compact-card layout.')
+}
+$checks++
+if ($streakEditorXaml -match '<ColumnDefinition Width="110"') {
+    $errors.Add('The shared streak selector still reserves a fixed label column that can collapse the ComboBox.')
+}
+
 # Legacy/remastered CrossFire animation sheets.
 $legacyKeys = @(
     '1killre', '2killre', '3killre', '4killre', '5killre', '6killre',
@@ -267,6 +281,10 @@ if ($transferBuildSource -notmatch 'function Ensure-OverlayPackageVersion') {
 $checks++
 if ($transferBuildSource -notmatch 'RegisterByFamilyName[\s\S]*Ensure-OverlayPackageVersion -Identity \$msixIdentity') {
     $errors.Add('The portable installer cannot activate a staged overlay update while preserving application data.')
+}
+$checks++
+if ([regex]::Matches($transferBuildSource, '\$ExpectedPackageFamilyName = "KillConfirmGameBar\.Overlay_5jgcw66eyez0m"').Count -lt 2) {
+    $errors.Add('The generated portable installer does not define the expected package family name used for staged update activation.')
 }
 
 if (-not $SkipRustTests) {

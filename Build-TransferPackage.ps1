@@ -110,6 +110,7 @@ $ErrorActionPreference = "Stop"
 $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $OverlayRoot = Join-Path $ScriptRoot "OverlayPackage"
 $PackageName = "KillConfirmGameBar.Overlay"
+$ExpectedPackageFamilyName = "KillConfirmGameBar.Overlay_5jgcw66eyez0m"
 $PackageFamilyName = $null
 $LogPath = Join-Path $env:TEMP "KillConfirmGameBar_Install.log"
 $RuntimeLogRoot = $null
