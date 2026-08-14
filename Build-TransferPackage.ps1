@@ -304,6 +304,8 @@ function Get-AppxIdentityFromPackageFile {
                 Name = $manifest.Package.Identity.Name
                 Version = [version]$manifest.Package.Identity.Version
                 Publisher = $manifest.Package.Identity.Publisher
+                Architecture = [string]$manifest.Package.Identity.ProcessorArchitecture
+                ResourceId = [string]$manifest.Package.Identity.ResourceId
             }
         }
         finally {
@@ -391,6 +393,53 @@ function Update-InstalledPackageContext {
     $script:PackageFamilyName = $package.PackageFamilyName
     $script:RuntimeLogRoot = Join-Path $env:LOCALAPPDATA "Packages\$PackageFamilyName\LocalState"
     return $package
+}
+
+function Ensure-OverlayPackageVersion {
+    param([object]$Identity)
+
+    if (-not $Identity) {
+        throw "The installed overlay version cannot be validated because the MSIX identity is unavailable."
+    }
+
+    $package = Get-AppxPackage -Name $Identity.Name -ErrorAction SilentlyContinue |
+        Sort-Object Version -Descending |
+        Select-Object -First 1
+    if ($package -and [version]$package.Version -ge $Identity.Version) {
+        return
+    }
+
+    $addCommand = Get-Command Add-AppxPackage -ErrorAction Stop
+    if (-not $addCommand.Parameters.ContainsKey("RegisterByFamilyName")) {
+        throw "MSIX $($Identity.Version) was staged, but this Windows version cannot activate it by package family name. Sign out and run the installer again."
+    }
+
+    $familyPrefix = "$($Identity.Name)_"
+    if (-not $ExpectedPackageFamilyName.StartsWith($familyPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Unexpected package family name: $ExpectedPackageFamilyName"
+    }
+
+    $publisherId = $ExpectedPackageFamilyName.Substring($familyPrefix.Length)
+    $architecture = if ($Identity.Architecture) { $Identity.Architecture } else { "x64" }
+    $resourceId = if ($Identity.ResourceId) { $Identity.ResourceId } else { "" }
+    $packageFullName = "{0}_{1}_{2}_{3}_{4}" -f `
+        $Identity.Name, $Identity.Version, $architecture, $resourceId, $publisherId
+
+    Write-InstallLog "The update is staged but the current user is still registered to an older version. Activating: $packageFullName"
+    Add-AppxPackage `
+        -RegisterByFamilyName `
+        -MainPackage $packageFullName `
+        -ForceApplicationShutdown `
+        -ErrorAction Stop
+
+    $package = Get-AppxPackage -Name $Identity.Name -ErrorAction SilentlyContinue |
+        Sort-Object Version -Descending |
+        Select-Object -First 1
+    if (-not $package -or [version]$package.Version -lt $Identity.Version) {
+        throw "MSIX $($Identity.Version) was staged, but the active registration is still $($package.Version)."
+    }
+
+    Write-InstallLog "Staged MSIX activated for the current user: $($package.PackageFullName)"
 }
 
 function Remove-DevelopmentOverlayPackageIfNeeded {
@@ -672,6 +721,7 @@ function Install-OverlayPackage {
         Write-InstallLog "MSIX identity: $($msixIdentity.Name) $($msixIdentity.Version)"
     }
     Add-AppxPackageCompat -PackagePath $msix.FullName -ForceUpdate -DeferWhenInUse
+    Ensure-OverlayPackageVersion -Identity $msixIdentity
 }
 
 function Test-OverlayPackageInstalled {

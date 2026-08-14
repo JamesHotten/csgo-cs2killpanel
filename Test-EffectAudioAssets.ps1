@@ -43,6 +43,22 @@ Get-ChildItem (Join-Path $repoRoot 'Widget') -Recurse -Filter '*.xaml' | ForEach
     }
 }
 
+# Shared control-panel styles must live at application scope because both the
+# standalone settings page and the Game Bar widget instantiate these controls.
+$appXamlPath = Join-Path $repoRoot 'Widget\App.xaml'
+$appXaml = Get-Content -LiteralPath $appXamlPath -Raw
+foreach ($resourceKey in @(
+    'CompactSettingsComboBoxStyle',
+    'CompactChoiceCardStyle',
+    'CompactCircleIconStyle',
+    'CompactChoiceLabelStyle'
+)) {
+    $checks++
+    if ($appXaml -notmatch ('x:Key="' + [regex]::Escape($resourceKey) + '"')) {
+        $errors.Add("Missing application XAML resource: $resourceKey")
+    }
+}
+
 # Legacy/remastered CrossFire animation sheets.
 $legacyKeys = @(
     '1killre', '2killre', '3killre', '4killre', '5killre', '6killre',
@@ -238,6 +254,19 @@ $csConfigSource = Get-Content -LiteralPath (Join-Path $repoRoot 'Widget\KillConf
 $checks++
 if ([regex]::Matches($csConfigSource, 'await TryAutoDetectCsFolderAsync\(\);').Count -lt 2) {
     $errors.Add('CS2 CFG auto-detection is not used when saved folder access is unavailable.')
+}
+
+# A deferred MSIX update can stage the new package while leaving the current
+# user registered to the previous version. The portable installer must detect
+# that state and activate the staged package without deleting application data.
+$transferBuildSource = Get-Content -LiteralPath (Join-Path $repoRoot 'Build-TransferPackage.ps1') -Raw
+$checks++
+if ($transferBuildSource -notmatch 'function Ensure-OverlayPackageVersion') {
+    $errors.Add('The portable installer does not validate the active overlay version after staging an update.')
+}
+$checks++
+if ($transferBuildSource -notmatch 'RegisterByFamilyName[\s\S]*Ensure-OverlayPackageVersion -Identity \$msixIdentity') {
+    $errors.Add('The portable installer cannot activate a staged overlay update while preserving application data.')
 }
 
 if (-not $SkipRustTests) {
