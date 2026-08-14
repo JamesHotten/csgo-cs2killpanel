@@ -30,30 +30,59 @@ namespace KillConfirmGameBar
 
         private async Task InitializePackSelectorsAsync()
         {
-            await PopulateVoicePackSelectorAsync();
-            await PopulateIconPackSelectorAsync();
-            LoadIconPackSetting();
-            LoadEliteEffectSetting();
-            LoadKillFxSetting();
-            LoadWeaponBadgeSetting();
-            LoadMainAnimationStyleSetting();
-            LoadVoicePackSetting();
-            ApplyGameStyleUi();
+            await _packSelectorInitializationLock.WaitAsync();
+            bool previousVoiceSuppression = _suppressVoicePackEvents;
+            bool previousIconSuppression = _suppressIconPackEvents;
+            _suppressVoicePackEvents = true;
+            _suppressIconPackEvents = true;
+            try
+            {
+                await PopulateVoicePackSelectorAsync();
+                await PopulateIconPackSelectorAsync();
+                LoadIconPackSetting();
+                LoadEliteEffectSetting();
+                LoadKillFxSetting();
+                LoadWeaponBadgeSetting();
+                LoadMainAnimationStyleSetting();
+                LoadVoicePackSetting();
+                ApplyGameStyleUi();
+                if (_isPageActive)
+                {
+                    _ = WarmStartupAnimationCacheAsync(0);
+                }
+            }
+            finally
+            {
+                _suppressVoicePackEvents = previousVoiceSuppression;
+                _suppressIconPackEvents = previousIconSuppression;
+                _packSelectorInitializationLock.Release();
+            }
+        }
+
+        private async Task InitializePackSelectorsAndServiceAsync()
+        {
+            try
+            {
+                await InitializePackSelectorsAsync();
+            }
+            catch (Exception ex)
+            {
+                App.Log("Initialize pack selectors before service sync failed: " + ex);
+            }
+
             if (_isPageActive)
             {
-                _ = WarmStartupAnimationCacheAsync(0);
+                await EnsureServiceAvailableAsync();
             }
         }
 
         private async Task PopulateVoicePackSelectorAsync()
         {
             GameStyleMode style = GameStyleService.Current;
-            string preferredPreset = ApplicationData.Current.LocalSettings.Values[VoicePackSettingKey] as string;
-            if (string.IsNullOrWhiteSpace(preferredPreset)
-                || GameStyleService.GetStyleForPackKey(preferredPreset) != style)
-            {
-                preferredPreset = GameStyleService.DefaultVoicePackKey(style);
-            }
+            string preferredPreset = LoadPackSettingForStyle(
+                VoicePackSettingKey,
+                style,
+                GameStyleService.DefaultVoicePackKey(style));
 
             var visiblePacks = await PackCatalogService.GetVisibleVoicePacksAsync();
             VoicePackSelector.Items.Clear();
@@ -77,12 +106,10 @@ namespace KillConfirmGameBar
         private async Task PopulateIconPackSelectorAsync()
         {
             GameStyleMode style = GameStyleService.Current;
-            string preferredIconPack = ApplicationData.Current.LocalSettings.Values[IconPackSettingKey] as string;
-            if (string.IsNullOrWhiteSpace(preferredIconPack)
-                || GameStyleService.GetStyleForPackKey(preferredIconPack) != style)
-            {
-                preferredIconPack = GameStyleService.DefaultIconPackKey(style);
-            }
+            string preferredIconPack = LoadPackSettingForStyle(
+                IconPackSettingKey,
+                style,
+                GameStyleService.DefaultIconPackKey(style));
 
             var visiblePacks = await PackCatalogService.GetVisibleIconPacksAsync();
             IconPackSelector.Items.Clear();

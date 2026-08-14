@@ -124,6 +124,8 @@ namespace KillConfirmGameBar
         private static readonly Uri SoundPackUri = new Uri("http://127.0.0.1:3000/soundpack");
         private static readonly Uri AudioReloadUri = new Uri("http://127.0.0.1:3000/audio/reload");
         private static readonly Uri AudioVolumeUri = new Uri("http://127.0.0.1:3000/audio/volume");
+        private static readonly Uri AudioDeviceUri = new Uri("http://127.0.0.1:3000/audio/device");
+        private const string AudioDeviceSettingKey = "AudioOutputDevice";
         private static readonly Uri MoneyRewardModeUri = new Uri("http://127.0.0.1:3000/money/mode");
         private static readonly Uri CrossfireSettingsUri = new Uri("http://127.0.0.1:3000/crossfire/settings");
         private static readonly Uri SharedStreakSettingsUri = new Uri("http://127.0.0.1:3000/streak/settings");
@@ -168,6 +170,7 @@ namespace KillConfirmGameBar
         private bool _suppressVisualAdjustmentEvents;
         private bool _suppressVoicePackEvents;
         private bool _suppressIconPackEvents;
+        private readonly SemaphoreSlim _packSelectorInitializationLock = new SemaphoreSlim(1, 1);
         private bool _suppressEliteEffectEvents;
         private bool _suppressKillFxEvents;
         private bool _suppressWeaponBadgeEvents;
@@ -238,11 +241,10 @@ namespace KillConfirmGameBar
             LoadAnimationPlacementSettings();
             _controlPanelStateTimer.Start();
             _statusHintTimer.Start();
-            _ = InitializePackSelectorsAsync();
 
             StartKillEventClient();
             ConfigureWidgetCapabilities();
-            _ = EnsureServiceAvailableAsync();
+            _ = InitializePackSelectorsAndServiceAsync();
             _ = LoadSavedCsFolderAsync();
             UpdateControlPanelVisibility();
             base.OnNavigatedTo(e);

@@ -27,7 +27,7 @@ namespace KillConfirmGameBar
                     return;
                 }
 
-                ApplicationData.Current.LocalSettings.Values[VoicePackSettingKey] = preset;
+                SavePackSettingForStyle(VoicePackSettingKey, GameStyleService.Current, preset);
                 TrySyncValorantIconPackForVoiceSelection(preset);
                 TrySyncBattlefieldIconPackForVoiceSelection(preset);
 
@@ -49,7 +49,7 @@ namespace KillConfirmGameBar
             }
 
             string iconPack = GetSelectedIconPack();
-            ApplicationData.Current.LocalSettings.Values[IconPackSettingKey] = iconPack;
+            SavePackSettingForStyle(IconPackSettingKey, GameStyleService.Current, iconPack);
             if (TrySyncValorantVoicePackForIconSelection(iconPack)
                 || TrySyncBattlefieldVoicePackForIconSelection(iconPack))
             {
@@ -74,18 +74,17 @@ namespace KillConfirmGameBar
         private void LoadIconPackSetting()
         {
             GameStyleMode style = GameStyleService.Current;
-            string iconPack = ApplicationData.Current.LocalSettings.Values[IconPackSettingKey] as string;
-            if (string.IsNullOrWhiteSpace(iconPack)
-                || GameStyleService.GetStyleForPackKey(iconPack) != style)
-            {
-                iconPack = GameStyleService.DefaultIconPackKey(style);
-            }
+            string iconPack = LoadPackSettingForStyle(
+                IconPackSettingKey,
+                style,
+                GameStyleService.DefaultIconPackKey(style));
 
-            ApplicationData.Current.LocalSettings.Values[IconPackSettingKey] = iconPack;
             TryApplyValorantLoadedIconPack(iconPack);
             SelectIconPack(iconPack);
-            Controls.KillConfirmAnimation.ConfigureIconPack(GetSelectedIconPack());
-            _ = ApplyCustomPackOverlaySupportAsync(GetSelectedIconPack());
+            iconPack = GetSelectedIconPack();
+            SavePackSettingForStyle(IconPackSettingKey, style, iconPack);
+            Controls.KillConfirmAnimation.ConfigureIconPack(iconPack);
+            _ = ApplyCustomPackOverlaySupportAsync(iconPack);
             UpdateEliteEffectSelectorState();
             UpdateKillFxSelectorState();
             UpdateWeaponBadgeSelectorState();
@@ -100,7 +99,11 @@ namespace KillConfirmGameBar
                 return tag;
             }
 
-            string stored = ApplicationData.Current.LocalSettings.Values[IconPackSettingKey] as string;
+            GameStyleMode style = GameStyleService.Current;
+            string stored = LoadPackSettingForStyle(
+                IconPackSettingKey,
+                style,
+                GameStyleService.DefaultIconPackKey(style));
             if (!string.IsNullOrWhiteSpace(stored))
             {
                 return stored;
@@ -116,6 +119,7 @@ namespace KillConfirmGameBar
 
         private void SelectIconPack(string iconPack)
         {
+            bool previousSuppression = _suppressIconPackEvents;
             _suppressIconPackEvents = true;
             try
             {
@@ -134,7 +138,7 @@ namespace KillConfirmGameBar
             }
             finally
             {
-                _suppressIconPackEvents = false;
+                _suppressIconPackEvents = previousSuppression;
             }
         }
 

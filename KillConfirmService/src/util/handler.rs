@@ -218,20 +218,20 @@ pub async fn update(
     State(app_state): State<Arc<AppState>>,
     body: Bytes,
 ) -> Result<StatusCode, ApiError> {
-    app_state.gsi_posts.fetch_add(1, Ordering::Relaxed);
-    app_state
-        .last_gsi_post_unix_ms
-        .store(unix_time_ms(), Ordering::Relaxed);
-
     let parsed = match parse_gsi_frame(&body) {
         Ok(parsed) => parsed,
         Err(error) => {
-            app_state.gsi_parse_errors.fetch_add(1, Ordering::Relaxed);
+            let errors = app_state.gsi_parse_errors.fetch_add(1, Ordering::Relaxed) + 1;
             app_state
                 .last_gsi_parse_error_unix_ms
                 .store(unix_time_ms(), Ordering::Relaxed);
             warn!("failed to parse GSI payload: {error}");
-            service_log(&format!("failed to parse GSI payload: {error}"));
+            if errors <= 3 || errors % 100 == 0 {
+                service_log(&format!(
+                    "GSI payload rejected: {error} (accepted_posts={}, errors={errors})",
+                    app_state.gsi_posts.load(Ordering::Relaxed)
+                ));
+            }
             let status = if matches!(&error, GsiBodyError::Unauthorized) {
                 StatusCode::UNAUTHORIZED
             } else {
@@ -240,6 +240,17 @@ pub async fn update(
             return Ok(status);
         }
     };
+    let posts = app_state.gsi_posts.fetch_add(1, Ordering::Relaxed) + 1;
+    app_state
+        .last_gsi_post_unix_ms
+        .store(unix_time_ms(), Ordering::Relaxed);
+    if posts % 100 == 0 {
+        service_log(&format!(
+            "GSI receiving: accepted_posts={posts}, parse_errors={}",
+            app_state.gsi_parse_errors.load(Ordering::Relaxed)
+        ));
+    }
+
     let is_legacy = parsed.is_legacy;
     let data = parsed.body;
 

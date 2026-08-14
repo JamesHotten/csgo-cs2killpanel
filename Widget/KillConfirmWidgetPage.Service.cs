@@ -68,6 +68,7 @@ namespace KillConfirmGameBar
 
                 await SyncSelectedVoicePackAsync();
                 await SyncMoneyRewardModeAsync();
+                await SyncAudioDeviceAsync();
                 await SyncCrossfireGameplaySettingsAsync();
                 await SyncSharedStreakSettingsAsync();
                 return;
@@ -90,6 +91,7 @@ namespace KillConfirmGameBar
                     UpdateConnectionState(KillEventConnectionState.Connected);
                     await SyncSelectedVoicePackAsync();
                     await SyncMoneyRewardModeAsync();
+                    await SyncAudioDeviceAsync();
                     await SyncCrossfireGameplaySettingsAsync();
                     await SyncSharedStreakSettingsAsync();
                     return;
@@ -121,6 +123,7 @@ namespace KillConfirmGameBar
                     HideServiceDiagnostic();
                     await SyncSelectedVoicePackAsync();
                     await SyncMoneyRewardModeAsync();
+                    await SyncAudioDeviceAsync();
                     await SyncCrossfireGameplaySettingsAsync();
                     await SyncSharedStreakSettingsAsync();
                 }
@@ -133,6 +136,40 @@ namespace KillConfirmGameBar
             {
                 App.Log("EnsureServiceAvailableAsync: leaving startup gate.");
                 ServiceStartupGate.Release();
+            }
+        }
+
+        private async Task SyncAudioDeviceAsync()
+        {
+            string saved = ApplicationData.Current.LocalSettings.Values[AudioDeviceSettingKey] as string;
+            if (string.IsNullOrWhiteSpace(saved)
+                || string.Equals(saved, "default", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            try
+            {
+                var request = new JsonObject
+                {
+                    ["device"] = JsonValue.CreateStringValue(saved)
+                };
+                using (var client = await LocalServiceAuth.CreateHttpClientAsync())
+                using (var content = new HttpStringContent(
+                    request.Stringify(),
+                    UnicodeEncoding.Utf8,
+                    "application/json"))
+                using (HttpResponseMessage response = await client.PostAsync(AudioDeviceUri, content))
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        App.Log("Set audio device failed: status=" + response.StatusCode);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                App.Log("Set audio device failed: " + ex);
             }
         }
 
@@ -152,6 +189,7 @@ namespace KillConfirmGameBar
                 HideServiceDiagnostic();
                 await SyncSelectedVoicePackAsync();
                 await SyncMoneyRewardModeAsync();
+                await SyncAudioDeviceAsync();
                 await SyncCrossfireGameplaySettingsAsync();
                 await SyncSharedStreakSettingsAsync();
             }

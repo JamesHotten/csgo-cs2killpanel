@@ -198,6 +198,48 @@ if ([regex]::Matches($animationPageSource, 'GetDisplayedMoneyReward\(killEvent\)
     $errors.Add('Not every reward-capable game style uses the assist-safe money reward.')
 }
 
+# Selectively ported upstream robustness fixes must remain compatible with the
+# existing WebSocket/Legacy implementation and per-style pack model.
+$handlerSource = Get-Content -LiteralPath (Join-Path $repoRoot 'KillConfirmService\src\util\handler.rs') -Raw
+$parsePosition = $handlerSource.IndexOf('let parsed = match parse_gsi_frame(&body)')
+$acceptedPostPosition = $handlerSource.IndexOf('let posts = app_state.gsi_posts.fetch_add')
+$checks++
+if ($parsePosition -lt 0 -or $acceptedPostPosition -le $parsePosition) {
+    $errors.Add('Rejected GSI payloads are being counted as accepted posts.')
+}
+
+$eventStreamSource = Get-Content -LiteralPath (Join-Path $repoRoot 'KillConfirmService\src\util\event_stream.rs') -Raw
+$checks++
+if ([regex]::Matches($eventStreamSource, 'else if previous_active \{[\s\S]{0,300}assist_audio_setting_active[\s\S]{0,80}store\(false').Count -lt 2) {
+    $errors.Add('Inactive CF/shared modes can leave assist-audio settings active.')
+}
+
+$loggingSource = Get-Content -LiteralPath (Join-Path $repoRoot 'KillConfirmService\src\util\logging.rs') -Raw
+$checks++
+if ($loggingSource -notmatch 'MAX_SERVICE_LOG_BYTES[\s\S]*rotate_if_needed\(&log_path\)[\s\S]*with_extension\("log\.old"\)') {
+    $errors.Add('Bounded service.log rotation is missing.')
+}
+
+$packPersistenceSource = Get-Content -LiteralPath (Join-Path $repoRoot 'Widget\KillConfirmWidgetPage.PackSettings.Persistence.cs') -Raw
+$checks++
+if ($packPersistenceSource -notmatch 'GetPackSettingKey\(legacySettingKey, style\)' -or
+    $packPersistenceSource -notmatch 'GameStyleService\.GetStyleForPackKey\(value\) == style') {
+    $errors.Add('Icon/voice pack settings are not isolated by game style.')
+}
+
+$servicePageSource = Get-Content -LiteralPath (Join-Path $repoRoot 'Widget\KillConfirmWidgetPage.Service.cs') -Raw
+$checks++
+if ($servicePageSource -notmatch 'AudioOutputDevice' -and
+    $servicePageSource -notmatch 'SyncAudioDeviceAsync') {
+    $errors.Add('The selected audio device is not restored after service reconnect.')
+}
+
+$csConfigSource = Get-Content -LiteralPath (Join-Path $repoRoot 'Widget\KillConfirmWidgetPage.CsConfig.cs') -Raw
+$checks++
+if ([regex]::Matches($csConfigSource, 'await TryAutoDetectCsFolderAsync\(\);').Count -lt 2) {
+    $errors.Add('CS2 CFG auto-detection is not used when saved folder access is unavailable.')
+}
+
 if (-not $SkipRustTests) {
     & cargo test --manifest-path (Join-Path $repoRoot 'KillConfirmService\Cargo.toml') `
         every_builtin_audio_route_points_to_an_existing_decodable_file --quiet

@@ -4,6 +4,8 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+const MAX_SERVICE_LOG_BYTES: u64 = 512 * 1024;
+
 #[link(name = "kernel32")]
 unsafe extern "system" {
     fn GetCurrentPackageFamilyName(
@@ -52,6 +54,8 @@ pub fn service_log(message: &str) {
         let _ = fs::create_dir_all(parent);
     }
 
+    rotate_if_needed(&log_path);
+
     let timestamp_ms = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_millis())
@@ -61,5 +65,47 @@ pub fn service_log(message: &str) {
 
     if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(&log_path) {
         let _ = file.write_all(line.as_bytes());
+    }
+}
+
+fn rotate_if_needed(log_path: &Path) {
+    let Ok(metadata) = fs::metadata(log_path) else {
+        return;
+    };
+    if metadata.len() <= MAX_SERVICE_LOG_BYTES {
+        return;
+    }
+
+    let old_path = log_path.with_extension("log.old");
+    let _ = fs::remove_file(&old_path);
+    let _ = fs::rename(log_path, old_path);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn oversized_service_log_is_rotated() {
+        let test_dir = env::temp_dir().join(format!(
+            "killconfirm-log-rotation-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("system clock")
+                .as_nanos()
+        ));
+        fs::create_dir_all(&test_dir).expect("create test directory");
+        let log_path = test_dir.join("service.log");
+        let file = fs::File::create(&log_path).expect("create service log");
+        file.set_len(MAX_SERVICE_LOG_BYTES + 1)
+            .expect("grow service log");
+        drop(file);
+
+        rotate_if_needed(&log_path);
+
+        assert!(!log_path.exists());
+        assert!(test_dir.join("service.log.old").exists());
+        fs::remove_dir_all(test_dir).expect("remove test directory");
     }
 }

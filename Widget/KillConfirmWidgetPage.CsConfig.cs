@@ -73,7 +73,7 @@ namespace KillConfirmGameBar
             string token = ApplicationData.Current.LocalSettings.Values[CsInstallFolderTokenSettingKey] as string;
             if (string.IsNullOrWhiteSpace(token))
             {
-                UpdateCfgStatus(CfgDetectionState.NotSelected, null, LocalizationManager.Text("CfgSelectRootHint"));
+                await TryAutoDetectCsFolderAsync();
                 return;
             }
 
@@ -86,7 +86,7 @@ namespace KillConfirmGameBar
             {
                 App.Log("Failed to restore CS folder access: " + ex);
                 _csInstallFolder = null;
-                UpdateCfgStatus(CfgDetectionState.NotSelected, null, LocalizationManager.Text("CfgSelectRootHint"));
+                await TryAutoDetectCsFolderAsync();
             }
         }
 
