@@ -11,9 +11,10 @@ use tokio::time::sleep;
 use super::event_stream::detect_counter_strike_roots;
 use super::handler::resolve_crossfire_streak_count;
 use super::legacy_bridge::{
-    is_knife_classname, weapon_badge_key, weapon_display_name, weapon_money_reward,
+    is_knife_classname, weapon_badge_key, weapon_display_name, weapon_money_reward_for,
 };
 use super::logging::service_log;
+use super::money_rules::EconomyVersion;
 use super::state::{AppState, CrossfireStreakMode, KillEvent, PendingLastKill};
 use crate::soundpack::sound::play_audio;
 
@@ -353,8 +354,11 @@ async fn forward_missing_gsi_kill(app_state: Arc<AppState>, pending: PendingServ
         mutable.last_crossfire_kill_at = Some(now);
 
         let is_knife = is_knife_classname(&pending.kill.weapon);
-        let money_reward =
-            weapon_money_reward(&pending.kill.weapon, mutable.last_game_mode.as_ref());
+        let money_reward = weapon_money_reward_for(
+            &pending.kill.weapon,
+            mutable.last_game_mode.as_ref(),
+            EconomyVersion::Cs2,
+        );
         let is_first = !pending.is_last && !mutable.has_first_kill_in_round;
         let kill_count = if streak_mode_active {
             streak_count

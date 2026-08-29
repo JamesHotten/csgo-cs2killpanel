@@ -1108,7 +1108,7 @@ pub async fn test_event(
             .filter(|value| !value.trim().is_empty())
             .or_else(|| Some("AK-47".to_string())),
         money_reward: if query.assist.unwrap_or(false) {
-            money_rules::assist_reward()
+            money_rules::assist_reward_for(money_rules::EconomyVersion::Cs2)
         } else {
             query.money_reward.unwrap_or_else(|| {
                 if query.knife.unwrap_or(false) {

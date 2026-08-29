@@ -12,6 +12,7 @@ use tokio::time::sleep;
 use super::event_stream::detect_counter_strike_roots;
 use super::handler::resolve_crossfire_streak_count;
 use super::logging::{local_state_dir, service_log};
+use super::money_rules::EconomyVersion;
 use super::state::{AppState, CrossfireStreakMode, KillEvent};
 use crate::soundpack::sound::play_audio;
 
@@ -290,7 +291,11 @@ async fn emit_controlled_death(app_state: Arc<AppState>, death: ControlledDeath)
         event_kind: Some("kill".to_string()),
         weapon_badge_key: weapon_badge_key(&death.weapon).map(str::to_string),
         weapon_name: Some(weapon_display_name(&death.weapon)),
-        money_reward: weapon_money_reward(&death.weapon, mode.as_ref()),
+        money_reward: weapon_money_reward_for(
+            &death.weapon,
+            mode.as_ref(),
+            EconomyVersion::CsgoLegacy,
+        ),
         round_number,
         money_epoch,
         player_name: death.attacker_name,
@@ -342,7 +347,11 @@ pub(crate) fn weapon_badge_key(weapon: &str) -> Option<&'static str> {
     }
 }
 
-pub(crate) fn weapon_money_reward(weapon: &str, mode: Option<&Mode>) -> u16 {
+pub(crate) fn weapon_money_reward_for(
+    weapon: &str,
+    mode: Option<&Mode>,
+    economy: EconomyVersion,
+) -> u16 {
     let multiplier = match mode {
         Some(Mode::Casual) => 1,
         Some(Mode::Competitive | Mode::Wingman) | None => 2,
@@ -353,8 +362,12 @@ pub(crate) fn weapon_money_reward(weapon: &str, mode: Option<&Mode>) -> u16 {
     }
     let competitive_reward = match weapon {
         "mag7" | "nova" | "sawedoff" => 900,
-        "bizon" | "mac10" | "mp5sd" | "mp7" | "mp9" | "ump45" | "xm1014" => 600,
-        "awp" | "taser" => 100,
+        "xm1014" if matches!(economy, EconomyVersion::CsgoLegacy) => 900,
+        "xm1014" | "bizon" | "mac10" | "mp5sd" | "mp7" | "mp9" | "ump45" => 600,
+        "awp" => 100,
+        "taser" if matches!(economy, EconomyVersion::CsgoLegacy) => 0,
+        "taser" => 100,
+        "cz75a" if matches!(economy, EconomyVersion::CsgoLegacy) => 100,
         _ => 300,
     };
     competitive_reward / 2 * multiplier
@@ -405,8 +418,9 @@ fn knife_display_name(weapon: &str) -> String {
 mod tests {
     use super::{
         ControlledDeath, TailState, is_knife_classname, parse_controlled_death,
-        read_appended_lines, weapon_badge_key, weapon_display_name, weapon_money_reward,
+        read_appended_lines, weapon_badge_key, weapon_display_name, weapon_money_reward_for,
     };
+    use crate::util::money_rules::EconomyVersion;
     use std::fs;
 
     #[test]
@@ -433,16 +447,76 @@ mod tests {
         assert_eq!(weapon_badge_key("knife_butterfly"), Some("knife"));
         assert_eq!(weapon_display_name("knife_butterfly"), "Butterfly Knife");
         assert_eq!(
-            weapon_money_reward("knife_karambit", Some(&gsi_cs2::map::Mode::Competitive)),
+            weapon_money_reward_for(
+                "knife_karambit",
+                Some(&gsi_cs2::map::Mode::Competitive),
+                EconomyVersion::CsgoLegacy,
+            ),
             1500
         );
         assert_eq!(
-            weapon_money_reward("m4a1_silencer", Some(&gsi_cs2::map::Mode::Competitive)),
+            weapon_money_reward_for(
+                "m4a1_silencer",
+                Some(&gsi_cs2::map::Mode::Competitive),
+                EconomyVersion::CsgoLegacy,
+            ),
             300
         );
         assert_eq!(
-            weapon_money_reward("nova", Some(&gsi_cs2::map::Mode::Casual)),
+            weapon_money_reward_for(
+                "nova",
+                Some(&gsi_cs2::map::Mode::Casual),
+                EconomyVersion::CsgoLegacy,
+            ),
             450
+        );
+        assert_eq!(
+            weapon_money_reward_for(
+                "xm1014",
+                Some(&gsi_cs2::map::Mode::Competitive),
+                EconomyVersion::CsgoLegacy,
+            ),
+            900
+        );
+        assert_eq!(
+            weapon_money_reward_for(
+                "cz75a",
+                Some(&gsi_cs2::map::Mode::Casual),
+                EconomyVersion::CsgoLegacy,
+            ),
+            50
+        );
+        assert_eq!(
+            weapon_money_reward_for(
+                "taser",
+                Some(&gsi_cs2::map::Mode::Competitive),
+                EconomyVersion::CsgoLegacy,
+            ),
+            0
+        );
+        assert_eq!(
+            weapon_money_reward_for(
+                "xm1014",
+                Some(&gsi_cs2::map::Mode::Competitive),
+                EconomyVersion::Cs2,
+            ),
+            600
+        );
+        assert_eq!(
+            weapon_money_reward_for(
+                "cz75a",
+                Some(&gsi_cs2::map::Mode::Competitive),
+                EconomyVersion::Cs2,
+            ),
+            300
+        );
+        assert_eq!(
+            weapon_money_reward_for(
+                "taser",
+                Some(&gsi_cs2::map::Mode::Competitive),
+                EconomyVersion::Cs2,
+            ),
+            100
         );
     }
 

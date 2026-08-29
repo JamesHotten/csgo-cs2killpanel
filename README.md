@@ -102,11 +102,13 @@ The service control API uses a per-installation token stored in app local data. 
 
 The default `rules` mode calculates rewards from Counter-Strike rules rather than treating every money delta as a reward.
 
-It distinguishes weapon kill rewards, bomb and hostage objectives, round wins, round losses, planted-bomb compensation, and loss streaks. Casual, Competitive, and Wingman use their separate values.
+It distinguishes the CS2 and CS:GO Legacy values for weapon kills, bomb and hostage objectives, round wins, round losses, planted-bomb compensation, loss streaks, and short-handed income. CS2 Competitive/Wingman also includes the newer `$50` team award paid to every CT for each Terrorist eliminated; Legacy does not receive it.
 
 Arms Race, Deathmatch, Demolition, Survival, Training, and unknown custom modes do not display a fabricated cash reward because they do not use the supported standard cash economy.
 
 An experimental GSI-delta mode remains available for validation, but `rules` is the recommended and default mode.
+
+See the [complete CS2 and CS:GO Legacy economy matrix](docs/CS2_CSGO_ECONOMY_RULES.zh-CN.md) (Chinese) for every value and edge case.
 
 ## Legacy Bridge
 

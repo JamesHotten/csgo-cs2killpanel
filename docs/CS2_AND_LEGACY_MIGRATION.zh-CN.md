@@ -235,7 +235,7 @@ Legacy controlled-bot bridge connected: ...
 - CS2 不读取 Legacy 身份缓存。
 - CS2 不参与 SourceMod 桥接去重。
 - SourceMod 日志只补充 Legacy 的受控人机击杀。
-- 普通 GSI 音效、动画、经济奖励和武器判断继续共用同一套服务。
+- 普通 GSI 音效、动画和武器判断继续共用同一套服务；经济奖励会根据 GSI 来源自动选择 CS2 或 CS:GO Legacy 的规则版本。
 
 同一时间建议只运行一个会向 `127.0.0.1:3000` 发送 GSI 的 Counter-Strike 客户端。
 

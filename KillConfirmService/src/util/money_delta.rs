@@ -26,13 +26,31 @@ pub fn round_reward(
     current_money: u32,
     fallback: u16,
     already_assigned: u16,
+    possible_short_handed_reward: u16,
+    possible_ct_elimination_reward: u16,
 ) -> u16 {
     let Some(delta) = positive_delta(previous_money, current_money) else {
         return fallback;
     };
 
     let remaining = delta.saturating_sub(already_assigned);
-    if remaining > 0 && remaining <= MAX_ROUND_DELTA && remaining == fallback {
+    let additional = remaining.saturating_sub(fallback);
+    let ct_reward_is_valid = additional > 0
+        && possible_ct_elimination_reward > 0
+        && additional <= possible_ct_elimination_reward
+        && additional % 50 == 0;
+    let short_handed_and_ct = additional.saturating_sub(possible_short_handed_reward);
+    let combined_reward_is_valid = possible_short_handed_reward > 0
+        && additional >= possible_short_handed_reward
+        && (short_handed_and_ct == 0
+            || (possible_ct_elimination_reward > 0
+                && short_handed_and_ct <= possible_ct_elimination_reward
+                && short_handed_and_ct % 50 == 0));
+
+    if remaining > 0
+        && remaining <= MAX_ROUND_DELTA
+        && (remaining == fallback || ct_reward_is_valid || combined_reward_is_valid)
+    {
         remaining
     } else {
         fallback
@@ -69,17 +87,34 @@ mod tests {
 
     #[test]
     fn round_reward_uses_rules_when_the_cash_cap_truncates_the_delta() {
-        assert_eq!(round_reward(Some(15000), 16000, 3250, 0), 3250);
+        assert_eq!(round_reward(Some(15000), 16000, 3250, 0, 1000, 250), 3250);
     }
 
     #[test]
     fn round_reward_rejects_an_unrelated_positive_cash_delta() {
-        assert_eq!(round_reward(Some(1000), 2000, 3250, 0), 3250);
+        assert_eq!(round_reward(Some(1000), 2000, 3250, 0, 1000, 250), 3250);
     }
 
     #[test]
     fn round_reward_accepts_an_exact_delta_after_the_kill_reward() {
-        assert_eq!(round_reward(Some(1000), 4550, 3250, 300), 3250);
+        assert_eq!(round_reward(Some(1000), 4550, 3250, 300, 1000, 250), 3250);
+    }
+
+    #[test]
+    fn round_reward_accepts_observed_short_handed_income() {
+        assert_eq!(round_reward(Some(1000), 5250, 3250, 0, 1000, 250), 4250);
+    }
+
+    #[test]
+    fn round_reward_accepts_cs2_ct_elimination_team_income() {
+        assert_eq!(round_reward(Some(1000), 4500, 3250, 0, 1000, 250), 3500);
+        assert_eq!(round_reward(Some(1000), 5500, 3250, 0, 1000, 250), 4500);
+    }
+
+    #[test]
+    fn round_reward_rejects_invalid_cs2_ct_elimination_income() {
+        assert_eq!(round_reward(Some(1000), 4510, 3250, 0, 1000, 250), 3250);
+        assert_eq!(round_reward(Some(1000), 4550, 3250, 0, 1000, 250), 3250);
     }
 
     #[test]
