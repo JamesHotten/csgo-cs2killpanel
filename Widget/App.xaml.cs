@@ -1,35 +1,41 @@
 using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using KillConfirmGameBar.Helpers;
 using Microsoft.Gaming.XboxGameBar;
 using Windows.ApplicationModel;
 using Windows.ApplicationModel.Activation;
-using Windows.ApplicationModel.Core;
 using Windows.Storage;
 using Windows.UI.Core;
+using Windows.UI.Core.Preview;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 using Windows.UI.ViewManagement;
+using Windows.Web.Http;
 
 namespace KillConfirmGameBar
 {
     sealed partial class App : Application
     {
         private const string WidgetId = "KillConfirmWidget";
-        private const string SettingsWindowTitle = "Kill Confirm Overlay 控制面板";
+        private const string SettingsWindowTitle = "Kill Confirm Overlay Advanced Settings";
         private const string RuntimeLogFileName = "gamebar-widget.log";
         private const long MaxRuntimeLogBytes = 512 * 1024;
-        private static int? _guideViewId;
 
         private XboxGameBarWidget _gameBarWidget;
+        private SystemNavigationManagerPreview _systemNavigationPreview;
+        private bool _currentWindowIsWidget;
+        private static int _fullExitLaunchStarted;
 
         public App()
         {
             InitializeComponent();
-            Services.SettingsConfigurationService.EnsureMigrated();
             UnhandledException += OnUnhandledException;
             Suspending += OnSuspending;
+            ProcessPriorityBoost.EnsureProcessBoosted();
             Log("App constructed.");
         }
 
@@ -54,6 +60,7 @@ namespace KillConfirmGameBar
                     }
 
                     ApplySettingsWindowTitle();
+                    ConfigureWindowCloseHandling(false);
                     Window.Current.Activate();
                 }
             }
@@ -95,6 +102,7 @@ namespace KillConfirmGameBar
 
                         guideFrame.Navigate(typeof(MainPage));
                         ApplySettingsWindowTitle();
+                        ConfigureWindowCloseHandling(false);
                         Window.Current.Activate();
                         return;
                     }
@@ -115,7 +123,7 @@ namespace KillConfirmGameBar
                 Window.Current.Content = rootFrame;
 
                 _gameBarWidget = new XboxGameBarWidget(widgetArgs, Window.Current.CoreWindow, rootFrame);
-                Window.Current.Closed += OnWidgetWindowClosed;
+                ConfigureWindowCloseHandling(true);
 
                 rootFrame.Navigate(typeof(KillConfirmWidgetPage), _gameBarWidget);
                 Window.Current.Activate();
@@ -129,7 +137,13 @@ namespace KillConfirmGameBar
 
         private Frame CreateRootFrame()
         {
-            var rootFrame = new Frame();
+            var rootFrame = new Frame
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                VerticalContentAlignment = VerticalAlignment.Stretch
+            };
             rootFrame.NavigationFailed += OnNavigationFailed;
             return rootFrame;
         }
@@ -146,99 +160,52 @@ namespace KillConfirmGameBar
             }
         }
 
-        internal static async System.Threading.Tasks.Task<bool> TryShowGuideWindowAsync()
-        {
-            try
-            {
-                if (_guideViewId.HasValue)
-                {
-                    bool shownExisting = await ApplicationViewSwitcher.TryShowAsStandaloneAsync(_guideViewId.Value);
-                    Log("TryShowGuideWindowAsync existing view shown=" + shownExisting);
-                    if (shownExisting)
-                    {
-                        return true;
-                    }
-
-                    _guideViewId = null;
-                }
-
-                int newViewId = 0;
-                CoreApplicationView newView = CoreApplication.CreateNewView();
-                await newView.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
-                {
-                    Frame guideFrame = new Frame();
-                    guideFrame.NavigationFailed += Current_NavigationFailed;
-                    guideFrame.Navigate(typeof(MainPage));
-                    Window.Current.Content = guideFrame;
-                    Window.Current.Activate();
-
-                    ApplicationView view = ApplicationView.GetForCurrentView();
-                    view.Title = SettingsWindowTitle;
-                    view.Consolidated += OnGuideViewConsolidated;
-                    newViewId = view.Id;
-                });
-
-                bool shown = await ApplicationViewSwitcher.TryShowAsStandaloneAsync(newViewId);
-                Log("TryShowGuideWindowAsync new view shown=" + shown + ", viewId=" + newViewId);
-                if (shown)
-                {
-                    _guideViewId = newViewId;
-                }
-
-                return shown;
-            }
-            catch (Exception ex)
-            {
-                Log("TryShowGuideWindowAsync failed: " + ex);
-                return false;
-            }
-        }
-
-        private static void Current_NavigationFailed(object sender, NavigationFailedEventArgs e)
-        {
-            throw new InvalidOperationException("Failed to load page " + e.SourcePageType.FullName, e.Exception);
-        }
-
-        private static void OnGuideViewConsolidated(ApplicationView sender, ApplicationViewConsolidatedEventArgs args)
-        {
-            if (_guideViewId == sender.Id)
-            {
-                _guideViewId = null;
-            }
-        }
-
         private void OnNavigationFailed(object sender, NavigationFailedEventArgs e)
         {
             throw new InvalidOperationException("Failed to load page " + e.SourcePageType.FullName, e.Exception);
         }
 
-        private void OnWidgetWindowClosed(object sender, CoreWindowEventArgs e)
+        private void ConfigureWindowCloseHandling(bool isWidget)
         {
-            Window.Current.Closed -= OnWidgetWindowClosed;
-            ShutdownCompanionFromCurrentFrame();
-            _gameBarWidget = null;
-            Log("Widget window closed.");
-        }
+            Window.Current.Closed -= OnCurrentWindowClosed;
+            Window.Current.Closed += OnCurrentWindowClosed;
+            _currentWindowIsWidget = isWidget;
 
-        private async void OnSuspending(object sender, SuspendingEventArgs e)
-        {
-            var deferral = e.SuspendingOperation.GetDeferral();
+            if (_systemNavigationPreview != null)
+            {
+                _systemNavigationPreview.CloseRequested -= OnWindowCloseRequested;
+            }
+
             try
             {
-                bool settingsWindow =
-                    Window.Current.Content is Frame frame && frame.Content is MainPage;
-                bool keepRunning = settingsWindow
-                    && Services.CloseBehaviorSettingsStore.KeepRunningAfterSettingsClose;
-                if (keepRunning)
-                {
-                    Log("Settings window suspended; companion left running by close behavior.");
-                }
-                else
+                _systemNavigationPreview = SystemNavigationManagerPreview.GetForCurrentView();
+                _systemNavigationPreview.CloseRequested += OnWindowCloseRequested;
+            }
+            catch (Exception ex)
+            {
+                _systemNavigationPreview = null;
+                Log("Close-request preview unavailable: " + ex.Message);
+            }
+        }
+
+        private async void OnWindowCloseRequested(
+            object sender,
+            SystemNavigationCloseRequestedPreviewEventArgs e)
+        {
+            if (Services.CloseBehaviorSettingsStore.KeepRunningAfterSettingsClose)
+            {
+                return;
+            }
+
+            e.Handled = true;
+            var deferral = e.GetDeferral();
+            try
+            {
+                if (!await RequestFullExitAsync())
                 {
                     await ShutdownCompanionFromCurrentFrameAsync();
+                    Application.Current.Exit();
                 }
-                _gameBarWidget = null;
-                Log("App suspending.");
             }
             finally
             {
@@ -246,9 +213,84 @@ namespace KillConfirmGameBar
             }
         }
 
-        private void ShutdownCompanionFromCurrentFrame()
+        private async void OnCurrentWindowClosed(object sender, CoreWindowEventArgs e)
         {
-            var ignored = ShutdownCompanionFromCurrentFrameAsync();
+            Window.Current.Closed -= OnCurrentWindowClosed;
+            if (_systemNavigationPreview != null)
+            {
+                _systemNavigationPreview.CloseRequested -= OnWindowCloseRequested;
+                _systemNavigationPreview = null;
+            }
+
+            if (!Services.CloseBehaviorSettingsStore.KeepRunningAfterSettingsClose)
+            {
+                await RequestFullExitAsync();
+            }
+            else if (_currentWindowIsWidget)
+            {
+                await ShutdownCompanionFromCurrentFrameAsync();
+            }
+
+            _gameBarWidget = null;
+            Log(_currentWindowIsWidget ? "Widget window closed." : "Settings window closed.");
+        }
+
+        internal static async Task<bool> RequestFullExitAsync()
+        {
+            if (Interlocked.CompareExchange(ref _fullExitLaunchStarted, 1, 0) != 0)
+            {
+                return true;
+            }
+
+            bool launched = await TryRequestFullExitFromServiceAsync();
+            if (!launched)
+            {
+                launched = await KillConfirmWidgetPage.TryLaunchFullTrustHelperAsync(
+                    KillConfirmWidgetPage.ExitAllParameterGroupId);
+            }
+            if (!launched)
+            {
+                Interlocked.Exchange(ref _fullExitLaunchStarted, 0);
+            }
+            return launched;
+        }
+
+        private static async Task<bool> TryRequestFullExitFromServiceAsync()
+        {
+            try
+            {
+                using (var client = await Services.LocalServiceAuth.CreateHttpClientAsync())
+                using (var content = new HttpStringContent(string.Empty))
+                using (var response = await client.PostAsync(
+                    Services.LocalServiceEndpoints.Build("/exit-all"),
+                    content))
+                {
+                    return response.IsSuccessStatusCode;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log("Full exit through companion failed: " + ex.Message);
+                return false;
+            }
+        }
+
+        private async void OnSuspending(object sender, SuspendingEventArgs e)
+        {
+            var deferral = e.SuspendingOperation.GetDeferral();
+            try
+            {
+                // Suspending is the last reliable callback UWP receives during
+                // normal app shutdown. Always release this process's service
+                // lease; the companion also watches the PID for crash/kill cases.
+                await ShutdownCompanionFromCurrentFrameAsync();
+                _gameBarWidget = null;
+                Log("App suspending.");
+            }
+            finally
+            {
+                deferral.Complete();
+            }
         }
 
         private async System.Threading.Tasks.Task ShutdownCompanionFromCurrentFrameAsync()
@@ -269,18 +311,18 @@ namespace KillConfirmGameBar
             }
         }
 
-        private void OnUnhandledException(object sender, Windows.UI.Xaml.UnhandledExceptionEventArgs e)
-        {
-            Log("Unhandled exception: " + e.Exception);
-            ShowFallback("Unhandled exception", e.Exception);
-            e.Handled = true;
-        }
+       private void OnUnhandledException(object sender, Windows.UI.Xaml.UnhandledExceptionEventArgs e)
+       {
+            LogCrash("Unhandled exception: " + e.Exception);
+           ShowFallback("Unhandled exception", e.Exception);
+           e.Handled = true;
+       }
 
-        private void ShowFallback(string title, Exception ex)
-        {
-            Log(title + ": " + ex);
+       private void ShowFallback(string title, Exception ex)
+       {
+            LogCrash(title + ": " + ex);
 
-            var panel = new StackPanel
+           var panel = new StackPanel
             {
                 Margin = new Thickness(24),
                 VerticalAlignment = VerticalAlignment.Center
@@ -314,7 +356,24 @@ namespace KillConfirmGameBar
             Window.Current.Activate();
         }
 
-        internal static void Log(string message)
+       internal static void Log(string message)
+       {
+           if (!Services.DeveloperModeSettingsStore.IsEnabled)
+           {
+               return;
+           }
+
+            WriteLog(message);
+        }
+
+        // Crash and fatal-activation diagnostics must always be captured so users
+        // can report them, regardless of developer mode. Routine logs stay gated.
+        internal static void LogCrash(string message)
+        {
+            WriteLog(message);
+        }
+
+        private static void WriteLog(string message)
         {
             try
             {

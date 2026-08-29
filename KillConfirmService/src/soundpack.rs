@@ -1,7 +1,8 @@
-pub mod lua_script;
+pub mod gain;
+pub mod manifest;
 mod preset;
 pub mod sound;
 
-pub use lua_script::SoundContext;
+pub use manifest::{SoundContext, SoundEntry};
 pub use preset::Preset;
 pub use preset::list;

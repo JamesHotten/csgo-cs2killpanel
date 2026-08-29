@@ -1,0 +1,248 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      uploadToRelease:
+        type: boolean
+        required: false
+        default: false
+      createDraftRelease:
+        type: boolean
+        required: false
+        default: false
+      releaseTag:
+        type: string
+        required: false
+        default: ''
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (MSVC)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: KillConfirmService
+
+      - name: Cache Inno Setup
+        id: cache-innosetup
+        uses: actions/cache@v4
+        with:
+          path: 'C:\Program Files (x86)\Inno Setup 6'
+          key: ${{ runner.os }}-innosetup-v6
+
+      - name: Install Inno Setup 6
+        if: steps.cache-innosetup.outputs.cache-hit != 'true'
+        run: choco install innosetup --no-progress -y
+
+      - name: Add Inno Setup to PATH
+        run: echo "C:\Program Files (x86)\Inno Setup 6" >> $env:GITHUB_PATH
+
+      - name: Verify offline prerequisite packages
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $VclibsRoot = Join-Path $env:GITHUB_WORKSPACE "Vclibs"
+          if (-not (Test-Path $VclibsRoot)) {
+            throw "Vclibs folder was not found at $VclibsRoot"
+          }
+          $requiredFiles = @(
+            "Microsoft.UI.Xaml.Appx",
+            "vclibs.appx",
+            "vclibs2.appx",
+            "Microsoft.NET.Native.Framework.2.2.x64.appx",
+            "Microsoft.NET.Native.Runtime.2.2.x64.appx",
+            "gamebar.AppxBundle"
+          )
+          $missingFiles = @($requiredFiles | Where-Object {
+            $candidatePath = Join-Path $VclibsRoot $_
+            (-not (Test-Path -LiteralPath $candidatePath -PathType Leaf)) -or ((Get-Item -LiteralPath $candidatePath).Length -le 0)
+          })
+          if ($missingFiles.Count -gt 0) {
+            throw "Missing offline prerequisite packages: $($missingFiles -join ', ')"
+          }
+          $requiredFiles | ForEach-Object {
+            $package = Get-Item -LiteralPath (Join-Path $VclibsRoot $_)
+            Write-Host ("{0} {1}" -f $package.Name, $package.Length)
+          }
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.wapproj', '**/*.props') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Sync package version to release tag
+        if: inputs.releaseTag != ''
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $tag = "${{ inputs.releaseTag }}".TrimStart('v')
+          if ($tag -notmatch '^\d+\.\d+\.\d+\.\d+$') {
+              throw "Release tag is not a valid 4-part version (x.y.z.w): $tag"
+          }
+          foreach ($relativePath in @("Package\Package.appxmanifest", "Widget\Package.appxmanifest")) {
+              $manifestPath = Join-Path $env:GITHUB_WORKSPACE $relativePath
+              [xml]$manifest = Get-Content $manifestPath
+              $manifest.Package.Identity.Version = $tag
+              $manifest.Save($manifestPath)
+              Write-Host "$relativePath version synced to $tag"
+          }
+
+      - name: Decode signing certificate
+        shell: pwsh
+        env:
+          SIGNING_PFX: ${{ secrets.SIGNING_PFX }}
+          SIGNING_CER: ${{ secrets.SIGNING_CER }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          if (-not $env:SIGNING_PFX -or -not $env:SIGNING_CER -or -not $env:SIGNING_PASSWORD) {
+              throw "Missing SIGNING_PFX/SIGNING_CER/SIGNING_PASSWORD secrets"
+          }
+          $pfx = Join-Path $env:RUNNER_TEMP "KillConfirmGameBar.pfx"
+          $cer = Join-Path $env:RUNNER_TEMP "KillConfirmGameBar.cer"
+          $pfxBase64 = $env:SIGNING_PFX -replace '\s', ''
+          $cerBase64 = $env:SIGNING_CER -replace '\s', ''
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($pfxBase64))
+          [IO.File]::WriteAllBytes($cer, [Convert]::FromBase64String($cerBase64))
+          $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
+              $pfx,
+              $env:SIGNING_PASSWORD,
+              [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet)
+          $publicCert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($cer)
+          if (-not $cert.HasPrivateKey) {
+              throw "SIGNING_PFX does not contain a private key"
+          }
+          if ($cert.Subject -ne "CN=TestXboxGameBar") {
+              throw "Signing certificate subject must be CN=TestXboxGameBar, but was $($cert.Subject)"
+          }
+          if ($cert.Thumbprint -ne $publicCert.Thumbprint) {
+              throw "SIGNING_PFX and SIGNING_CER do not contain the same certificate"
+          }
+          if ($cert.NotAfter -le (Get-Date).AddDays(30)) {
+              throw "Signing certificate expires too soon: $($cert.NotAfter)"
+          }
+          Import-Certificate -FilePath $cer -CertStoreLocation "Cert:\LocalMachine\TrustedPeople" | Out-Null
+          "CERT_PFX=$pfx" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "CERT_CER=$cer" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "CERT_PASSWORD=$env:SIGNING_PASSWORD" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "CERT_THUMBPRINT=$($cert.Thumbprint)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Signing cert: $($cert.Subject), thumbprint $($cert.Thumbprint), valid to $($cert.NotAfter)"
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsInstall = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+          $msbuild = Join-Path $vsInstall "MSBuild\Current\Bin\amd64\MSBuild.exe"
+          if (-not (Test-Path $msbuild)) {
+              $msbuild = Join-Path $vsInstall "MSBuild\Current\Bin\MSBuild.exe"
+          }
+          if (-not (Test-Path $msbuild)) { throw "MSBuild not found via vswhere at $vsInstall" }
+          Write-Host "MSBuild: $msbuild"
+          $buildArgs = @{
+              CertificatePfxPath = $env:CERT_PFX
+              CertificatePassword = $env:CERT_PASSWORD
+              CertificateCerPath = $env:CERT_CER
+              CertificateThumbprint = $env:CERT_THUMBPRINT
+              MsBuildPath = $msbuild
+          }
+          if ('${{ github.repository }}' -like '*-dev') {
+              $buildArgs.SkipWithDependencies = $true
+              Write-Host "Dev repository detected: building dependency-free installer only."
+          }
+          else {
+              Write-Host "Production repository: building both installers."
+          }
+          .\Build-Installer.ps1 @buildArgs
+
+      - name: Create or update draft release
+        if: inputs.createDraftRelease || inputs.uploadToRelease
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $ver = ([xml](Get-Content Package/Package.appxmanifest)).Package.Identity.Version
+          $requestedTag = "${{ inputs.releaseTag }}".Trim()
+          $tag = $requestedTag
+          if (-not $tag) {
+              $tag = "v$ver"
+          }
+          if ($requestedTag -and $tag.TrimStart('v') -ne $ver) {
+              throw "Requested release tag $tag does not match the built package version $ver"
+          }
+
+          $noDependencies = Join-Path $env:GITHUB_WORKSPACE ("Output\KillConfirmGameBar_Setup_{0}_无依赖-更新用.exe" -f $ver)
+          if (-not (Test-Path $noDependencies)) { throw "Missing $noDependencies" }
+          # Release asset names must be ASCII and unique. GitHub's upload path can
+          # strip the Chinese suffixes, which made both installers resolve to the
+          # same name and caused the second upload to fail with HTTP 404.
+          $releaseAssetRoot = Join-Path $env:RUNNER_TEMP "kill-confirm-release-assets"
+          New-Item -ItemType Directory -Path $releaseAssetRoot -Force | Out-Null
+          $releaseNoDependencies = Join-Path $releaseAssetRoot ("KillConfirmGameBar_Setup_{0}_NoDependencies.exe" -f $ver)
+          Copy-Item -LiteralPath $noDependencies -Destination $releaseNoDependencies -Force
+          $assets = @($releaseNoDependencies)
+          if ('${{ github.repository }}' -notlike '*-dev') {
+              $withDependencies = Join-Path $env:GITHUB_WORKSPACE ("Output\KillConfirmGameBar_Setup_{0}_有依赖-新人用.exe" -f $ver)
+              if (-not (Test-Path $withDependencies)) { throw "Missing $withDependencies" }
+              $releaseWithDependencies = Join-Path $releaseAssetRoot ("KillConfirmGameBar_Setup_{0}_WithDependencies.exe" -f $ver)
+              Copy-Item -LiteralPath $withDependencies -Destination $releaseWithDependencies -Force
+              $assets += $releaseWithDependencies
+          }
+
+          $releaseJson = gh release view $tag --json isDraft,url 2>$null
+          if ($LASTEXITCODE -eq 0) {
+              $release = $releaseJson | ConvertFrom-Json
+              if (-not $release.isDraft) {
+                  if ($requestedTag) {
+                      throw "Requested release $tag is already published. Increase the package version or choose a new tag."
+                  }
+                  $tag = "v$ver-build"
+                  Write-Host "Version v$ver is already published; using rolling CI draft tag $tag."
+                  $releaseJson = gh release view $tag --json isDraft,url 2>$null
+              }
+          }
+
+          if ($LASTEXITCODE -ne 0) {
+              Write-Host "Creating draft release $tag after a successful build."
+              gh release create $tag `
+                  --draft `
+                  --title "Kill Confirm Overlay $tag" `
+                  --generate-notes `
+                  --target "${{ github.sha }}"
+              if ($LASTEXITCODE -ne 0) {
+                  throw "Failed to create draft release $tag"
+              }
+          }
+          else {
+              $release = $releaseJson | ConvertFrom-Json
+              if (-not $release.isDraft) {
+                  throw "Release $tag is already published. Increase the package version before publishing another build."
+              }
+              Write-Host "Updating existing draft release: $($release.url)"
+          }
+
+          gh release upload $tag @assets --clobber
+          if ($LASTEXITCODE -ne 0) {
+              throw "Failed to upload installer EXE files to draft release $tag"
+          }
+          Write-Host "Draft release $tag now contains $($assets.Count) installer EXE file(s)."
+
+      - name: Upload build artifacts
+        if: ${{ !inputs.createDraftRelease && !inputs.uploadToRelease }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: kill-confirm-build
+          path: Output/
+          retention-days: 3

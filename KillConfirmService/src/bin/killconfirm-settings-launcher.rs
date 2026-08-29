@@ -3,6 +3,7 @@
 use std::env;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
+use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::thread;
@@ -16,6 +17,8 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     GetWindowThreadProcessId, IsIconic, IsWindowVisible, SW_RESTORE, SW_SHOW, SetForegroundWindow,
     ShowWindow,
 };
+
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[link(name = "kernel32")]
 unsafe extern "system" {
@@ -62,6 +65,7 @@ fn open_settings_window() -> Result<(), String> {
 
     let child = Command::new("explorer.exe")
         .arg(&app_shell_target)
+        .creation_flags(CREATE_NO_WINDOW)
         .spawn()
         .map_err(|error| format!("failed to start explorer for app entry: {error}"))?;
     log(&format!("explorer app-entry spawned. pid={}", child.id()));
@@ -177,6 +181,10 @@ fn bring_window_to_front(hwnd: HWND) {
 }
 
 fn log(message: &str) {
+    if !env::args_os().any(|arg| arg == "--developer-mode") {
+        return;
+    }
+
     let Some(log_path) = trace_log_path("settings-launcher.log") else {
         return;
     };

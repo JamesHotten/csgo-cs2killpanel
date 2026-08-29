@@ -6,12 +6,15 @@ Package/obj/
 target/
 Output/
 Package/AppPackages/
-InstalledPackage*/
-InstallDataBackup/
 
 # Generated transfer/install packages
 KillConfirmGameBar_Transfer_*/
 KillConfirmGameBar_Transfer_*.zip
+Widget/BundleArtifacts/
+Package/BundleArtifacts/
+
+# Release upload logs
+.release-upload-*.log
 *.msix
 *.msixbundle
 *.appx
@@ -19,6 +22,10 @@ KillConfirmGameBar_Transfer_*.zip
 *.appxsym
 *.exe
 *.pdb
+
+# Allow offline prerequisite packages in Vclibs
+!Vclibs/
+!Vclibs/*
 
 # Generated copies refreshed from SourceAssets by Build-IntegratedPackage.ps1
 Widget/Assets/KillConfirm/

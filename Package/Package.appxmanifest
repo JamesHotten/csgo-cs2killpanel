@@ -11,12 +11,12 @@
   <Identity
     Name="KillConfirmGameBar.Overlay"
     Publisher="CN=TestXboxGameBar"
-    Version="3.1.0.4" />
+    Version="4.5.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="8f70c4bd-4270-4a4f-a7d1-91ae48dbe9f4" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
 
   <Properties>
-    <DisplayName>Kill Confirm Overlay</DisplayName>
+    <DisplayName>ms-resource:PackageDisplayName</DisplayName>
     <PublisherDisplayName>KillConfirmGameBar</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -34,10 +34,10 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="KillConfirmGameBar.App">
       <uap:VisualElements
-        DisplayName="Kill Confirm Overlay Setting"
+        DisplayName="ms-resource:AppDisplayName"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png"
-        Description="Shows kill confirmation animations in Xbox Game Bar"
+        Description="ms-resource:AppDescription"
         BackgroundColor="transparent">
         <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
         <uap:SplashScreen Image="Assets\SplashScreen.png" />
@@ -48,8 +48,8 @@
           <uap3:AppExtension
             Name="microsoft.gameBarUIExtension"
             Id="KillConfirmWidget"
-            DisplayName="Kill Confirm Overlay"
-            Description="Shows kill confirmation animations in Xbox Game Bar"
+            DisplayName="ms-resource:GameBarDisplayName"
+            Description="ms-resource:AppDescription"
             PublicFolder="GameBar">
             <uap3:Properties>
               <GameBarWidget Type="Standard">
@@ -62,10 +62,10 @@
                   <Size>
                     <Height>600</Height>
                     <Width>550</Width>
-                    <MinHeight>120</MinHeight>
-                    <MinWidth>160</MinWidth>
-                    <MaxHeight>720</MaxHeight>
-                    <MaxWidth>720</MaxWidth>
+                    <MinHeight>80</MinHeight>
+                    <MinWidth>120</MinWidth>
+                    <MaxHeight>2160</MaxHeight>
+                    <MaxWidth>3840</MaxWidth>
                   </Size>
                   <ResizeSupported>
                     <Horizontal>true</Horizontal>
@@ -81,10 +81,24 @@
         </uap:Extension>
         <desktop:Extension Category="windows.fullTrustProcess" Executable="KillConfirmService\cskillconfirm.exe">
           <desktop:FullTrustProcess>
-            <desktop:ParameterGroup GroupId="CrossfirePreset" Parameters="--preset crossfire_swat_gr" />
-            <desktop:ParameterGroup GroupId="FreeServicePort" Parameters="--free-port 3000" />
+            <desktop:ParameterGroup GroupId="CrossfirePreset" Parameters="--preset crossfire_swat_gr --exit-with-ui" />
+            <desktop:ParameterGroup GroupId="CrossfirePresetDeveloper" Parameters="--preset crossfire_swat_gr --developer-mode --exit-with-ui" />
+            <desktop:ParameterGroup GroupId="FreeServicePort" Parameters="--free-port 10087" />
             <desktop:ParameterGroup GroupId="OpenRuntimeLogs" Parameters="--open-logs" />
+            <desktop:ParameterGroup GroupId="ExitAll" Parameters="--exit-all" />
+            <desktop:ParameterGroup GroupId="OpenUninstaller" Parameters="--open-uninstaller" />
             <desktop:ParameterGroup GroupId="OpenSettingsWindow" Parameters="--open-settings-launcher" />
+            <desktop:ParameterGroup GroupId="OpenSettingsWindowDeveloper" Parameters="--open-settings-launcher --developer-mode" />
+            <desktop:ParameterGroup GroupId="OpenQuarkUpdate" Parameters="--open-quark-update" />
+            <desktop:ParameterGroup GroupId="OpenAuthorGitHub" Parameters="--open-author-github" />
+            <desktop:ParameterGroup GroupId="OpenAuthorBilibili" Parameters="--open-author-bilibili" />
+            <desktop:ParameterGroup GroupId="ServicePort10087" Parameters="--port 10087 --exit-with-ui" />
+            <desktop:ParameterGroup GroupId="ServicePort10088" Parameters="--port 10088 --exit-with-ui" />
+            <desktop:ParameterGroup GroupId="ServicePort10089" Parameters="--port 10089 --exit-with-ui" />
+            <desktop:ParameterGroup GroupId="ServicePort10090" Parameters="--port 10090 --exit-with-ui" />
+            <desktop:ParameterGroup GroupId="ServicePort10091" Parameters="--port 10091 --exit-with-ui" />
+            <desktop:ParameterGroup GroupId="ServicePort10092" Parameters="--port 10092 --exit-with-ui" />
+            <desktop:ParameterGroup GroupId="ServicePortCustom" Parameters="--port-from-file --exit-with-ui" />
           </desktop:FullTrustProcess>
         </desktop:Extension>
       </Extensions>
