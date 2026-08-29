@@ -6,6 +6,12 @@ pub struct Mutable {
     pub last_bomb_state: Option<String>,
     pub last_bomb_player: Option<String>,
     pub last_round_bomb_state: Option<String>,
+    pub last_game_mode: Option<gsi_cs2::map::Mode>,
+    pub last_legacy_bridge_kill_at: Option<Instant>,
+    pub last_cs2_gsi_kill_at: Option<Instant>,
+    pub cs2_local_log_round: u8,
+    pub cs2_local_log_round_kills: u16,
+    pub cs2_local_log_unconfirmed_kills: u16,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -73,6 +73,8 @@ pub struct AppState {
     pub stop_previous_kill_audio: AtomicBool,
     pub kill_audio_sinks: std::sync::Mutex<Vec<Arc<Sink>>>,
     pub spectated_kill_effects_enabled: AtomicBool,
+    pub replay_effects_enabled: AtomicBool,
+    pub controlled_bot_effects_enabled: AtomicBool,
     pub bomb_audio_paths: std::sync::Mutex<BombAudioPaths>,
     pub gsi_game_version: AtomicU8,
     pub events: EventJournal,

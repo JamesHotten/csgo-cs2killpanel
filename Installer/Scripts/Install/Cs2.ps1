@@ -100,6 +100,61 @@ function Get-CounterStrikeInstallRoot {
     return $null
 }
 
+function Get-CounterStrikeInstallRoots {
+    $roots = New-Object System.Collections.Generic.List[string]
+    $steamRoots = New-Object System.Collections.Generic.List[string]
+    foreach ($registryPath in @(
+        "HKLM:\Software\WOW6432Node\Valve\Steam",
+        "HKLM:\Software\Valve\Steam",
+        "HKCU:\Software\Valve\Steam"
+    )) {
+        try {
+            $steam = Get-ItemProperty -Path $registryPath -ErrorAction Stop
+            foreach ($property in @("InstallPath", "SteamPath")) {
+                $candidate = $steam.$property
+                if ($candidate -and (Test-Path -LiteralPath $candidate -PathType Container)) {
+                    $full = [System.IO.Path]::GetFullPath(($candidate -replace "/", "\"))
+                    if (-not $steamRoots.Contains($full)) { $steamRoots.Add($full) }
+                }
+            }
+        }
+        catch { }
+    }
+
+    $libraries = New-Object System.Collections.Generic.List[string]
+    foreach ($steamRoot in $steamRoots) {
+        if (-not $libraries.Contains($steamRoot)) { $libraries.Add($steamRoot) }
+        $vdf = Join-Path $steamRoot "steamapps\libraryfolders.vdf"
+        if (Test-Path -LiteralPath $vdf -PathType Leaf) {
+            foreach ($line in Get-Content -LiteralPath $vdf -ErrorAction SilentlyContinue) {
+                if ($line -match '^\s*(?:"\d+"|"path")\s+"([^"]+)"') {
+                    $candidate = $matches[1] -replace "\\\\", "\"
+                    if (Test-Path -LiteralPath $candidate -PathType Container) {
+                        $full = [System.IO.Path]::GetFullPath($candidate)
+                        if (-not $libraries.Contains($full)) { $libraries.Add($full) }
+                    }
+                }
+            }
+        }
+    }
+
+    foreach ($library in $libraries) {
+        $common = Join-Path $library "steamapps\common"
+        if (-not (Test-Path -LiteralPath $common -PathType Container)) { continue }
+        foreach ($folder in Get-ChildItem -LiteralPath $common -Directory -ErrorAction SilentlyContinue) {
+            $root = $folder.FullName
+            $hasCs2 = Test-Path -LiteralPath (Join-Path $root "game\csgo\cfg") -PathType Container
+            $hasLegacy = (Test-Path -LiteralPath (Join-Path $root "csgo.exe") -PathType Leaf) -and
+                (Test-Path -LiteralPath (Join-Path $root "csgo\cfg") -PathType Container)
+            if (($hasCs2 -or $hasLegacy) -and -not $roots.Contains($root)) { $roots.Add($root) }
+        }
+    }
+
+    $primary = Get-CounterStrikeInstallRoot
+    if ($primary -and -not $roots.Contains($primary)) { $roots.Add($primary) }
+    return $roots
+}
+
 function New-Cs2GsiConfigText {
     param(
         [ValidateRange(1024, 65535)]
@@ -128,6 +183,11 @@ function New-Cs2GsiConfigText {
         '   "player_state"       "1"',
         '   "player_weapons"     "1"',
         '   "player_match_stats" "1"',
+        '   "player_position"    "1"',
+        '   "allplayers_id"          "1"',
+        '   "allplayers_state"       "1"',
+        '   "allplayers_weapons"     "1"',
+        '   "allplayers_match_stats" "1"',
         ' }',
         '}'
     )
@@ -183,10 +243,25 @@ function Get-Cs2GsiServicePort {
 function Install-Cs2GsiConfig {
 
     $installed = $false
-    $installRoot = Get-CounterStrikeInstallRoot
-    if ($installRoot) {
-        $cfgRoot = Join-Path $installRoot "game\csgo\cfg"
-        if (Test-Path -LiteralPath $cfgRoot -PathType Container) {
+    $localServerLogText = @(
+        '// KillConfirm CS2 local listen-server logging.',
+        '// Local practice/listen servers only; remote online servers require server-side support.',
+        'sv_logsdir "killconfirm_logs"',
+        'sv_logfile 1',
+        'sv_logflush 1',
+        'log off',
+        'log on',
+        'echo "KillConfirm local server logging enabled"'
+    ) -join "`r`n"
+
+    foreach ($installRoot in Get-CounterStrikeInstallRoots) {
+        foreach ($layout in @(
+            @{ Version = "CS2"; Path = (Join-Path $installRoot "game\csgo\cfg"); IsCs2 = $true },
+            @{ Version = "CS:GO Legacy"; Path = (Join-Path $installRoot "csgo\cfg"); IsCs2 = $false }
+        )) {
+            $cfgRoot = $layout.Path
+            if (-not (Test-Path -LiteralPath $cfgRoot -PathType Container)) { continue }
+            if (-not $layout.IsCs2 -and -not (Test-Path -LiteralPath (Join-Path $installRoot "csgo.exe") -PathType Leaf)) { continue }
             $cfgPath = Join-Path $cfgRoot "gamestate_integration_killconfirm.cfg"
             $servicePort = Get-Cs2GsiServicePort -CfgPath $cfgPath -AppPackageFamilyName $PackageFamilyName
             if ($servicePort -ne 10087) {
@@ -195,21 +270,72 @@ function Install-Cs2GsiConfig {
 
             $configText = New-Cs2GsiConfigText -ServicePort $servicePort
             [System.IO.File]::WriteAllText($cfgPath, $configText, [System.Text.Encoding]::ASCII)
-            Write-InstallLog "CS2 GSI config installed: $cfgPath (port=$servicePort)"
-            Add-InstallResult -Status Success -Item "CS2 GSI 配置" -Detail "已写入：$cfgPath（端口 $servicePort）"
+            Write-InstallLog "$($layout.Version) GSI config installed: $cfgPath (port=$servicePort)"
+            Add-InstallResult -Status Success -Item "$($layout.Version) GSI 配置" -Detail "已写入：$cfgPath（端口 $servicePort）"
+            if ($layout.IsCs2) {
+                $localServerCfg = Join-Path $cfgRoot "killconfirm_local_server.cfg"
+                [System.IO.File]::WriteAllText($localServerCfg, $localServerLogText + "`r`n", [System.Text.Encoding]::ASCII)
+                Write-InstallLog "CS2 local controlled-bot logging cfg installed: $localServerCfg"
+            }
             $installed = $true
         }
     }
 
     if (-not $installed) {
-        Write-Warning "CS2 cfg folder was not found. If kill events do not trigger, install gamestate_integration_killconfirm.cfg manually."
-        Add-InstallResult -Status Warning -Item "CS2 GSI 配置" -Detail "没有找到 CS2 的 game\csgo\cfg 目录；可在插件内稍后配置"
+        Write-Warning "No CS2 or CS:GO Legacy cfg folder was found. Install the GSI cfg manually or use the CFG page later."
+        Add-InstallResult -Status Warning -Item "Counter-Strike GSI 配置" -Detail "没有找到 CS2/Legacy CFG 目录；可在插件内稍后配置"
     }
 
-    $runningCs2 = @(Get-Process -Name "cs2" -ErrorAction SilentlyContinue)
+    $runningCs2 = @(Get-Process -Name "cs2", "csgo" -ErrorAction SilentlyContinue)
     if ($runningCs2.Count -gt 0) {
         $message = "CS2 is currently running. Close and reopen CS2 so it reloads gamestate_integration_killconfirm.cfg."
         Write-InstallLog $message
         Write-Warning $message
+    }
+}
+
+function Install-LegacyControlledBotBridge {
+    $installedPackage = Get-InstalledOverlayPackage
+    $bridgeRoot = Join-Path $installedPackage.InstallLocation "KillConfirmService\legacy_bridge"
+    $smxSource = Join-Path $bridgeRoot "killconfirm_bridge.smx"
+    $spSource = Join-Path $bridgeRoot "killconfirm_bridge.sp"
+    if (-not (Test-Path -LiteralPath $smxSource -PathType Leaf)) {
+        Write-InstallLog "Legacy bridge payload is not present; skipping SourceMod bridge installation."
+        return
+    }
+
+    $roots = New-Object System.Collections.Generic.List[string]
+    foreach ($root in Get-CounterStrikeInstallRoots) {
+        if (-not $roots.Contains($root)) { $roots.Add($root) }
+    }
+    if ($PackageFamilyName -and $env:LOCALAPPDATA) {
+        $configuredServers = Join-Path $env:LOCALAPPDATA "Packages\$PackageFamilyName\LocalState\legacy-bridge-servers.txt"
+        if (Test-Path -LiteralPath $configuredServers -PathType Leaf) {
+            foreach ($line in Get-Content -LiteralPath $configuredServers -ErrorAction SilentlyContinue) {
+                $candidate = $line.Trim().Trim('"')
+                if (-not $candidate -or $candidate.StartsWith('#')) { continue }
+                foreach ($resolved in @($candidate, (Join-Path $candidate "server"))) {
+                    if ((Test-Path -LiteralPath (Join-Path $resolved "srcds.exe") -PathType Leaf) -and
+                        -not $roots.Contains($resolved)) {
+                        $roots.Add([System.IO.Path]::GetFullPath($resolved))
+                    }
+                }
+            }
+        }
+    }
+
+    foreach ($root in $roots) {
+        $sourcemod = Join-Path $root "csgo\addons\sourcemod"
+        if (-not (Test-Path -LiteralPath $sourcemod -PathType Container)) { continue }
+        $plugins = Join-Path $sourcemod "plugins"
+        New-Item -ItemType Directory -Force -Path $plugins | Out-Null
+        Copy-Item -LiteralPath $smxSource -Destination (Join-Path $plugins "killconfirm_bridge.smx") -Force
+        $scripting = Join-Path $sourcemod "scripting"
+        if ((Test-Path -LiteralPath $spSource -PathType Leaf) -and
+            (Test-Path -LiteralPath $scripting -PathType Container)) {
+            Copy-Item -LiteralPath $spSource -Destination (Join-Path $scripting "killconfirm_bridge.sp") -Force
+        }
+        Write-InstallLog "Legacy SourceMod controlled-bot bridge installed: $root"
+        Add-InstallResult -Status Success -Item "Legacy 接管机器人桥" -Detail "已安装到：$root"
     }
 }

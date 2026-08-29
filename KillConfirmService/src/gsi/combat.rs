@@ -111,6 +111,30 @@ pub fn detect_bomb_defused_action(
     previous_bomb_player: Option<&str>,
     steamid: &str,
 ) -> bool {
+    detect_bomb_defused_action_for(
+        player_team,
+        mode,
+        previous_round_bomb,
+        current_round_bomb,
+        previous_player_money,
+        current_player_money,
+        previous_bomb_player,
+        steamid,
+        money_rules::EconomyVersion::Cs2,
+    )
+}
+
+pub fn detect_bomb_defused_action_for(
+    player_team: Option<&TeamClass>,
+    mode: &gsi_cs2::map::Mode,
+    previous_round_bomb: Option<&str>,
+    current_round_bomb: Option<&str>,
+    previous_player_money: Option<u32>,
+    current_player_money: u32,
+    previous_bomb_player: Option<&str>,
+    steamid: &str,
+    economy_version: money_rules::EconomyVersion,
+) -> bool {
     let became_defused =
         previous_round_bomb != Some("defused") && current_round_bomb == Some("defused");
     if !became_defused {
@@ -124,7 +148,10 @@ pub fn detect_bomb_defused_action(
     let money_delta = previous_player_money
         .map(|prev| current_player_money.saturating_sub(prev))
         .unwrap_or(0);
-    let expected_reward = u32::from(money_rules::bomb_objective_reward(mode));
+    let expected_reward = u32::from(money_rules::bomb_objective_reward_for(
+        mode,
+        economy_version,
+    ));
     let is_local_defuse = is_ct && money_delta == expected_reward;
 
     is_spectated_defuse || is_local_defuse
@@ -224,6 +251,28 @@ fn resolve_kill_weapon_feedback(
     mode: &gsi_cs2::map::Mode,
     now: Instant,
 ) -> KillWeaponFeedback {
+    resolve_kill_weapon_feedback_for(
+        weapon,
+        grenade,
+        is_headshot,
+        previous_money,
+        current_money,
+        mode,
+        money_rules::EconomyVersion::Cs2,
+        now,
+    )
+}
+
+fn resolve_kill_weapon_feedback_for(
+    weapon: Option<&WeaponKillContext>,
+    grenade: Option<&ActiveGrenadeTracker>,
+    is_headshot: bool,
+    previous_money: Option<u32>,
+    current_money: u32,
+    mode: &gsi_cs2::map::Mode,
+    economy_version: money_rules::EconomyVersion,
+    now: Instant,
+) -> KillWeaponFeedback {
     let is_grenade_kill = resolve_grenade_kill(
         weapon, grenade, is_headshot, previous_money, current_money, now,
     );
@@ -241,9 +290,15 @@ fn resolve_kill_weapon_feedback(
             weapon.map(|weapon| weapon.name.clone())
         },
         rule_money_reward: if is_grenade_kill {
-            money_rules::weapon_kill_reward(&WeaponName::HEGrenade, mode)
+            money_rules::weapon_kill_reward_for(
+                &WeaponName::HEGrenade,
+                mode,
+                economy_version,
+            )
         } else {
-            weapon.map(|weapon| weapon.money_reward).unwrap_or(300)
+            weapon.map(|weapon| weapon.money_reward).unwrap_or_else(|| {
+                money_rules::default_kill_reward_for(mode, economy_version)
+            })
         },
     }
 }
@@ -280,6 +335,17 @@ fn can_read_observed_combat_events(
     spectated_effects_enabled: bool,
 ) -> bool {
     observed_player_is_local || spectated_effects_enabled
+}
+
+fn can_read_observed_combat_events_for_feed(
+    observed_player_is_local: bool,
+    observed_feed_is_replay: bool,
+    spectated_effects_enabled: bool,
+    replay_effects_enabled: bool,
+) -> bool {
+    observed_player_is_local
+        || (observed_feed_is_replay && replay_effects_enabled)
+        || (!observed_feed_is_replay && spectated_effects_enabled)
 }
 
 fn map_weapon_name(weapon_name: &WeaponName) -> &'static str {

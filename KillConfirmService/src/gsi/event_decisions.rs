@@ -22,7 +22,7 @@
             &steamid,
         );
 
-        let is_defuse = detect_bomb_defused_action(
+        let is_defuse = detect_bomb_defused_action_for(
             player_team,
             current_mode,
             previous_round_bomb_state.as_deref(),
@@ -31,6 +31,7 @@
             current_player_money,
             previous_bomb_player.as_deref(),
             &steamid,
+            economy_version,
         );
 
         let completed_bomb_action = if is_plant {
@@ -56,7 +57,10 @@
                 event_kind: Some(event_kind.to_string()),
                 weapon_badge_key: None,
                 weapon_name: None,
-                money_reward: money_rules::bomb_objective_reward(current_mode),
+                money_reward: money_rules::bomb_objective_reward_for(
+                    current_mode,
+                    economy_version,
+                ),
                 round_number: current_round,
                 money_epoch: current_money_epoch,
                 player_name: player_name.clone(),
@@ -80,13 +84,14 @@
             weapon_badge_key,
             weapon_name,
             rule_money_reward,
-        } = resolve_kill_weapon_feedback(
+        } = resolve_kill_weapon_feedback_for(
             weapon_context,
             current_active_grenade.as_ref(),
             is_headshot,
             previous_player_money_for_delta,
             current_player_money,
             current_mode,
+            economy_version,
             now,
         );
 
@@ -305,23 +310,46 @@
             round.and_then(|value| value.win_team.as_ref()),
         ) {
             let did_win = same_team(player_team, win_team);
-            let rule_money_reward = if did_win {
-                money_rules::round_win_bonus(
+            let base_rule_money_reward = if did_win {
+                money_rules::round_win_bonus_for(
                     win_team,
                     round_data.bomb.as_ref(),
                     current_mode,
                     &map_data.name,
                     latest_round_outcome,
+                    economy_version,
                 )
             } else {
                 let team_info = team_info_for(player_team, &map_data.team_ct, &map_data.team_t);
-                money_rules::loss_bonus(
+                money_rules::loss_bonus_for(
                     team_info.consecutive_round_losses,
                     current_mode,
                     player_team,
                     round_data.bomb.as_ref(),
+                    latest_round_outcome,
+                    economy_version,
+                    ply_state.health > 0,
                 )
             };
+            let known_eliminated_terrorists = if matches!(player_team, TeamClass::CT) {
+                observed_eliminated_terrorists.max(ply_state.round_kills)
+            } else {
+                0
+            };
+            let known_ct_elimination_reward = money_rules::ct_elimination_team_reward_for(
+                known_eliminated_terrorists,
+                current_mode,
+                economy_version,
+            );
+            let rule_money_reward =
+                base_rule_money_reward.saturating_add(known_ct_elimination_reward);
+            let maximum_ct_elimination_reward = money_rules::ct_elimination_team_reward_for(
+                u16::MAX,
+                current_mode,
+                economy_version,
+            );
+            let possible_unobserved_ct_elimination_reward =
+                maximum_ct_elimination_reward.saturating_sub(known_ct_elimination_reward);
             let already_assigned_money = kill_event_to_send
                 .as_ref()
                 .or(badge_only_event_to_send.as_ref())
@@ -339,6 +367,8 @@
                     current_player_money,
                     rule_money_reward,
                     already_assigned_money,
+                    money_rules::short_handed_bonus_for(current_mode, economy_version),
+                    possible_unobserved_ct_elimination_reward,
                 ),
                 MoneyRewardMode::Rules => rule_money_reward,
             };
@@ -405,10 +435,11 @@
             current_player_money,
             already_assigned_money,
         ) {
-            if let Some(event_kind) = money_rules::hostage_objective_kind(
+            if let Some(event_kind) = money_rules::hostage_objective_kind_for(
                 money_reward,
                 current_mode,
                 is_hostage_rescue_round,
+                economy_version,
             ) {
                 hostage_objective_event_to_send = Some(KillEvent {
                     event_channel: EventChannel::Economy,

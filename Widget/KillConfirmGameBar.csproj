@@ -440,6 +440,8 @@
     <Compile Include="Services\Settings\Audio\BombAudioSettingsStore.cs" />
     <Compile Include="Services\Settings\General\ProcessPrioritySettingsStore.cs" />
     <Compile Include="Services\Settings\General\SharedStreakSettingsStore.cs" />
+    <Compile Include="Services\SettingsBackupService.cs" />
+    <Compile Include="Services\SettingsConfigurationService.cs" />
     <Compile Include="Services\Settings\General\KillFeedbackVisibilitySettingsStore.cs" />
     <Compile Include="Services\Settings\General\DeveloperModeSettingsStore.cs" />
     <Compile Include="Services\Settings\Games\GsiGameVersionSettingsStore.cs" />

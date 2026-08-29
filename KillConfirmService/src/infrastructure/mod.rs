@@ -7,3 +7,5 @@ pub mod runtime;
 pub mod signal;
 pub mod steam;
 pub mod watchers;
+pub mod cs2_local_bridge;
+pub mod legacy_bridge;

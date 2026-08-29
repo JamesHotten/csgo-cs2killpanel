@@ -3,9 +3,13 @@ using System.Threading.Tasks;
 using KillConfirmGameBar.Controls.GameStyles;
 using KillConfirmGameBar.Services;
 using Windows.Storage;
+using Windows.Storage.Pickers;
+using Windows.Storage.Provider;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
+using Windows.UI.Popups;
+using System.Collections.Generic;
 
 namespace KillConfirmGameBar.Controls.Settings
 {
@@ -41,6 +45,25 @@ namespace KillConfirmGameBar.Controls.Settings
                 LocalizationManager.Text("SpectatedKillEffectsHint");
             SpectatedKillEffectsToggle.OffContent = LocalizationManager.Text("Off");
             SpectatedKillEffectsToggle.OnContent = LocalizationManager.Text("On");
+            bool isChinese = LocalizationManager.Current == UiLanguage.SimplifiedChinese;
+            ReplayEffectsLabelText.Text = isChinese ? "回放击杀特效" : "Replay kill effects";
+            ReplayEffectsHintText.Text = isChinese
+                ? "在 GOTV、Demo 或主视角回放中显示当前观察目标的新击杀"
+                : "Show new kills for the current target in GOTV, demos, and replay feeds.";
+            ControlledBotEffectsLabelText.Text = isChinese ? "接管机器人击杀特效" : "Controlled-bot kill effects";
+            ControlledBotEffectsHintText.Text = isChinese
+                ? "通过 CS2 本地日志桥或 Legacy SourceMod 桥显示接管击杀"
+                : "Show takeover kills detected by the CS2 log or Legacy SourceMod bridge.";
+            ReplayEffectsToggle.OffContent = LocalizationManager.Text("Off");
+            ReplayEffectsToggle.OnContent = LocalizationManager.Text("On");
+            ControlledBotEffectsToggle.OffContent = LocalizationManager.Text("Off");
+            ControlledBotEffectsToggle.OnContent = LocalizationManager.Text("On");
+            SettingsBackupLabelText.Text = isChinese ? "设置导出与导入" : "Export and import settings";
+            SettingsBackupHintText.Text = isChinese
+                ? "备份位置、尺寸、颜色、风格与音效选项；不会导出令牌和安装路径"
+                : "Back up placement, size, colors, styles, and audio; tokens and install paths are excluded.";
+            ExportSettingsButton.Content = isChinese ? "导出" : "Export";
+            ImportSettingsButton.Content = isChinese ? "导入" : "Import";
             BombAudioPanel?.ApplyLanguage();
             AutoCloseOnGameExitLabelText.Text =
                 LocalizationManager.Text("AutoCloseOnGameExitLabel");
@@ -54,7 +77,6 @@ namespace KillConfirmGameBar.Controls.Settings
                 LocalizationManager.Text("InterruptPreviousKillAudioHint");
             InterruptPreviousKillAudioToggle.OffContent = LocalizationManager.Text("Off");
             InterruptPreviousKillAudioToggle.OnContent = LocalizationManager.Text("On");
-            bool isChinese = LocalizationManager.Current == UiLanguage.SimplifiedChinese;
             StreakGainLabelText.Text = isChinese ? "连杀音量递增" : "Streak volume gain";
             StreakGainHintText.Text = isChinese
                 ? "对所有游戏和语音包生效，连杀越多音量越高"
@@ -73,6 +95,9 @@ namespace KillConfirmGameBar.Controls.Settings
             }
 
             SpectatedKillEffectsHintText.Foreground = new SolidColorBrush(theme.MutedText);
+            ReplayEffectsHintText.Foreground = new SolidColorBrush(theme.MutedText);
+            ControlledBotEffectsHintText.Foreground = new SolidColorBrush(theme.MutedText);
+            SettingsBackupHintText.Foreground = new SolidColorBrush(theme.MutedText);
             BombAudioPanel?.ApplyTheme(theme);
             AutoCloseOnGameExitHintText.Foreground = new SolidColorBrush(theme.MutedText);
             InterruptPreviousKillAudioHintText.Foreground = new SolidColorBrush(theme.MutedText);
@@ -95,7 +120,9 @@ namespace KillConfirmGameBar.Controls.Settings
             try
             {
                 SpectatedKillEffectsToggle.IsOn =
-                    SharedStreakSettingsStore.LoadSpectatedKillEffects();
+                    SharedStreakSettingsStore.LoadSpectatedPlayerEffects();
+                ReplayEffectsToggle.IsOn = SharedStreakSettingsStore.LoadReplayEffects();
+                ControlledBotEffectsToggle.IsOn = SharedStreakSettingsStore.LoadControlledBotEffects();
             }
             finally
             {
@@ -105,21 +132,94 @@ namespace KillConfirmGameBar.Controls.Settings
 
         private async void OnSpectatedKillEffectsToggled(object sender, RoutedEventArgs e)
         {
+            await SaveObservedEffectsAsync();
+        }
+
+        private async void OnObservedEffectsToggled(object sender, RoutedEventArgs e)
+        {
+            await SaveObservedEffectsAsync();
+        }
+
+        private async Task SaveObservedEffectsAsync()
+        {
             if (_suppressSpectatedKillEffectsEvents)
             {
                 return;
             }
 
-            SharedStreakSettingsStore.SaveSpectatedKillEffects(SpectatedKillEffectsToggle.IsOn);
+            SharedStreakSettingsStore.SaveObservedEffects(
+                SpectatedKillEffectsToggle.IsOn,
+                ReplayEffectsToggle.IsOn,
+                ControlledBotEffectsToggle.IsOn);
             try
             {
-                await SharedStreakSettingsStore.SyncSpectatedKillEffectsAsync();
+                await SharedStreakSettingsStore.SyncObservedEffectsAsync();
             }
             catch (Exception ex)
             {
                 // The local value is authoritative and will be synchronized at service startup.
                 App.Log("Set spectated player kill effects failed: " + ex);
             }
+        }
+
+        private async void OnExportSettingsClick(object sender, RoutedEventArgs e)
+        {
+            var picker = new FileSavePicker
+            {
+                SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
+                SuggestedFileName = "KillConfirmSettings-" + DateTimeOffset.Now.ToString("yyyyMMdd-HHmmss")
+            };
+            picker.FileTypeChoices.Add("JSON", new List<string> { ".json" });
+            StorageFile file = await picker.PickSaveFileAsync();
+            if (file == null) return;
+            try
+            {
+                CachedFileManager.DeferUpdates(file);
+                await SettingsBackupService.ExportAsync(file);
+                if (await CachedFileManager.CompleteUpdatesAsync(file) != FileUpdateStatus.Complete)
+                {
+                    throw new InvalidOperationException("Windows could not finalize the settings file.");
+                }
+                await ShowSettingsMessageAsync(LocalizationManager.Current == UiLanguage.SimplifiedChinese
+                    ? "设置已导出。" : "Settings exported.");
+            }
+            catch (Exception ex)
+            {
+                App.Log("Export settings failed: " + ex);
+                await ShowSettingsMessageAsync(ex.Message);
+            }
+        }
+
+        private async void OnImportSettingsClick(object sender, RoutedEventArgs e)
+        {
+            var picker = new FileOpenPicker
+            {
+                SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
+                ViewMode = PickerViewMode.List
+            };
+            picker.FileTypeFilter.Add(".json");
+            StorageFile file = await picker.PickSingleFileAsync();
+            if (file == null) return;
+            try
+            {
+                int count = await SettingsBackupService.ImportAsync(file);
+                RefreshSettings();
+                await SharedStreakSettingsStore.SyncObservedEffectsAsync();
+                await ShowSettingsMessageAsync(LocalizationManager.Current == UiLanguage.SimplifiedChinese
+                    ? $"已导入 {count} 项设置；重新打开小组件后全部生效。"
+                    : $"Imported {count} settings. Reopen the widget to apply every value.");
+            }
+            catch (Exception ex)
+            {
+                App.Log("Import settings failed: " + ex);
+                await ShowSettingsMessageAsync(ex.Message);
+            }
+        }
+
+        private static async Task ShowSettingsMessageAsync(string message)
+        {
+            try { await new MessageDialog(message, "Kill Confirm Overlay").ShowAsync(); }
+            catch { }
         }
 
         private void SelectAutoCloseOnGameExit()

@@ -57,11 +57,23 @@ pub async fn set_spectator_settings(
     State(app_state): State<Arc<AppState>>,
     Json(request): Json<SpectatorSettingsRequest>,
 ) -> Json<SpectatorSettingsResponse> {
+    let legacy = request.enabled;
+    let spectated_player_enabled = request.spectated_player_enabled.or(legacy).unwrap_or_else(|| {
+        app_state.spectated_kill_effects_enabled.load(Ordering::Relaxed)
+    });
+    let replay_enabled = request.replay_enabled.or(legacy).unwrap_or_else(|| {
+        app_state.replay_effects_enabled.load(Ordering::Relaxed)
+    });
+    let controlled_bot_enabled = request.controlled_bot_enabled.or(legacy).unwrap_or_else(|| {
+        app_state.controlled_bot_effects_enabled.load(Ordering::Relaxed)
+    });
     let previous = app_state
         .spectated_kill_effects_enabled
-        .swap(request.enabled, Ordering::Relaxed);
+        .swap(spectated_player_enabled, Ordering::Relaxed);
+    app_state.replay_effects_enabled.store(replay_enabled, Ordering::Relaxed);
+    app_state.controlled_bot_effects_enabled.store(controlled_bot_enabled, Ordering::Relaxed);
 
-    if previous != request.enabled {
+    if previous != spectated_player_enabled {
         // Treat the next GSI sample as a baseline so enabling this setting cannot
         // replay kills that happened before the user changed it.
         let mut mutable = app_state.mutable.write().await;
@@ -70,8 +82,8 @@ pub async fn set_spectator_settings(
     }
 
     service_log(&format!(
-        "spectated player kill effects enabled: {}",
-        request.enabled
+        "observed effects: spectated={}, replay={}, controlled_bot={}",
+        spectated_player_enabled, replay_enabled, controlled_bot_enabled
     ));
     Json(spectator_settings_response(&app_state))
 }

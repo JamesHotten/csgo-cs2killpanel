@@ -183,6 +183,20 @@ if ($copiedSoundPackCount -eq 0) {
 }
 Write-Host "  已从 SourceAssets 同步 $copiedSoundPackCount 个内置语音包。" -ForegroundColor DarkGray
 
+$LegacyBridgeSource = Join-Path $ServiceRoot "legacy_bridge"
+$PackagedLegacyBridge = Join-Path $PackagedServiceRoot "legacy_bridge"
+if (Test-Path -LiteralPath $PackagedLegacyBridge) {
+    Remove-Item -LiteralPath $PackagedLegacyBridge -Recurse -Force
+}
+New-Item -ItemType Directory -Force -Path $PackagedLegacyBridge | Out-Null
+foreach ($bridgeFile in @("killconfirm_bridge.smx", "killconfirm_bridge.sp")) {
+    $source = Join-Path $LegacyBridgeSource $bridgeFile
+    if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+        throw "Legacy bridge resource missing: $source"
+    }
+    Copy-Item -LiteralPath $source -Destination (Join-Path $PackagedLegacyBridge $bridgeFile) -Force
+}
+
 # 3. 编译打包 MSIX Bundle。正式与开发安装都必须使用 Bundle，确保
 # 已由 Bundle 注册的主包和语言资源包可以沿用 Windows 的正常升级链。
 Write-Host "`n[2/4] 调用 MSBuild 编译打包 MSIX Bundle ($Configuration/$Platform)..." -ForegroundColor Yellow

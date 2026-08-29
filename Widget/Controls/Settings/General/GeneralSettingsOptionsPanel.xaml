@@ -128,6 +128,63 @@
             </Grid>
         </Border>
 
+        <Border Style="{StaticResource FluentCardStyle}">
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Border Style="{StaticResource FluentIconStyle}">
+                    <FontIcon HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{StaticResource FluentBodyText}" Glyph="&#xE714;" />
+                </Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                    <TextBlock x:Name="ReplayEffectsLabelText" Style="{StaticResource FluentCardTitle}" Text="回放击杀特效" />
+                    <TextBlock x:Name="ReplayEffectsHintText" Style="{StaticResource FluentCardHint}" Text="在 GOTV、Demo 或主视角回放中显示当前观察目标的新击杀" />
+                </StackPanel>
+                <ToggleSwitch x:Name="ReplayEffectsToggle" Grid.Column="2" VerticalAlignment="Center" MinWidth="0" OffContent="关" OnContent="开" Toggled="OnObservedEffectsToggled" />
+            </Grid>
+        </Border>
+
+        <Border Style="{StaticResource FluentCardStyle}">
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Border Style="{StaticResource FluentIconStyle}">
+                    <FontIcon HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{StaticResource FluentBodyText}" Glyph="&#xE99A;" />
+                </Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                    <TextBlock x:Name="ControlledBotEffectsLabelText" Style="{StaticResource FluentCardTitle}" Text="接管机器人击杀特效" />
+                    <TextBlock x:Name="ControlledBotEffectsHintText" Style="{StaticResource FluentCardHint}" Text="本地 CS2 日志桥和 Legacy SourceMod 桥检测到接管击杀时显示效果" />
+                </StackPanel>
+                <ToggleSwitch x:Name="ControlledBotEffectsToggle" Grid.Column="2" VerticalAlignment="Center" MinWidth="0" OffContent="关" OnContent="开" Toggled="OnObservedEffectsToggled" />
+            </Grid>
+        </Border>
+
+        <Border Style="{StaticResource FluentCardStyle}">
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Border Style="{StaticResource FluentIconStyle}">
+                    <FontIcon HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{StaticResource FluentBodyText}" Glyph="&#xE74E;" />
+                </Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                    <TextBlock x:Name="SettingsBackupLabelText" Style="{StaticResource FluentCardTitle}" Text="设置导出与导入" />
+                    <TextBlock x:Name="SettingsBackupHintText" Style="{StaticResource FluentCardHint}" Text="备份位置、尺寸、颜色、风格与音效选项；不会导出令牌和安装路径" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                    <Button x:Name="ExportSettingsButton" Style="{StaticResource FluentActionBtnStyle}" Content="导出" Click="OnExportSettingsClick" />
+                    <Button x:Name="ImportSettingsButton" Style="{StaticResource FluentActionBtnStyle}" Content="导入" Click="OnImportSettingsClick" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
         <!-- 4. Auto-Close on Game Exit Card -->
         <Border Style="{StaticResource FluentCardStyle}">
             <Grid ColumnSpacing="12">

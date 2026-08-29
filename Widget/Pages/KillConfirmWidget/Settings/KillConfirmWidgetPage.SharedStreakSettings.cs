@@ -255,7 +255,7 @@ namespace KillConfirmGameBar
         {
             try
             {
-                await SharedStreakSettingsStore.SyncSpectatedKillEffectsAsync();
+                await SharedStreakSettingsStore.SyncObservedEffectsAsync();
             }
             catch (Exception ex)
             {

@@ -176,7 +176,14 @@ pub struct EventSoundSettingsRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct SpectatorSettingsRequest {
-    pub enabled: bool,
+    #[serde(default)]
+    pub enabled: Option<bool>,
+    #[serde(default)]
+    pub spectated_player_enabled: Option<bool>,
+    #[serde(default)]
+    pub replay_enabled: Option<bool>,
+    #[serde(default)]
+    pub controlled_bot_enabled: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -320,6 +327,9 @@ pub struct EventSoundSettingsResponse {
 #[derive(Debug, Serialize)]
 pub struct SpectatorSettingsResponse {
     pub enabled: bool,
+    pub spectated_player_enabled: bool,
+    pub replay_enabled: bool,
+    pub controlled_bot_enabled: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -376,4 +386,4 @@ pub struct CounterStrikeRootQuery {
 }
 
 const GSI_CONFIG_FILE_NAME: &str = "gamestate_integration_killconfirm.cfg";
-const GSI_CONFIG_TEXT_TEMPLATE: &str = "\"KillConfirmGameBar\"\r\n{\r\n \"uri\" \"http://127.0.0.1:__KILLCONFIRM_PORT__/\"\r\n \"timeout\" \"0.5\"\r\n \"buffer\"  \"0.01\"\r\n \"throttle\" \"0.0\"\r\n \"heartbeat\" \"15.0\"\r\n \"auth\"\r\n {\r\n   \"token\" \"killconfirm\"\r\n }\r\n \"data\"\r\n {\r\n   \"provider\"           \"1\"\r\n   \"map\"                \"1\"\r\n   \"round\"              \"1\"\r\n   \"bomb\"               \"1\"\r\n   \"player_id\"          \"1\"\r\n   \"player_state\"       \"1\"\r\n   \"player_weapons\"     \"1\"\r\n   \"player_match_stats\" \"1\"\r\n }\r\n}\r\n";
+const GSI_CONFIG_TEXT_TEMPLATE: &str = "\"KillConfirmGameBar\"\r\n{\r\n \"uri\" \"http://127.0.0.1:__KILLCONFIRM_PORT__/\"\r\n \"timeout\" \"0.5\"\r\n \"buffer\"  \"0.01\"\r\n \"throttle\" \"0.0\"\r\n \"heartbeat\" \"15.0\"\r\n \"auth\"\r\n {\r\n   \"token\" \"killconfirm\"\r\n }\r\n \"data\"\r\n {\r\n   \"provider\"           \"1\"\r\n   \"map\"                \"1\"\r\n   \"round\"              \"1\"\r\n   \"bomb\"               \"1\"\r\n   \"player_id\"          \"1\"\r\n   \"player_state\"       \"1\"\r\n   \"player_weapons\"     \"1\"\r\n   \"player_match_stats\" \"1\"\r\n   \"player_position\"    \"1\"\r\n   \"allplayers_id\"          \"1\"\r\n   \"allplayers_state\"       \"1\"\r\n   \"allplayers_weapons\"     \"1\"\r\n   \"allplayers_match_stats\" \"1\"\r\n }\r\n}\r\n";

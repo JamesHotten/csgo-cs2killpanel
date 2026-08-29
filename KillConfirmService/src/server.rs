@@ -24,6 +24,8 @@ use crate::infrastructure::runtime::{
 };
 use crate::infrastructure::signal::shutdown_signal;
 use crate::infrastructure::watchers::{monitor_default_output_device, monitor_ui_processes};
+use crate::infrastructure::cs2_local_bridge::watch_cs2_local_server_logs;
+use crate::infrastructure::legacy_bridge::watch_legacy_bridge_logs;
 use crate::soundpack::gain::{
     DEFAULT_STREAK_GAIN_MAXIMUM_PERCENT, DEFAULT_STREAK_GAIN_STEP_PERCENT,
 };
@@ -185,6 +187,12 @@ pub(crate) async fn run(mut args: Args) -> Result<()> {
             last_bomb_state: None,
             last_bomb_player: None,
             last_round_bomb_state: None,
+            last_game_mode: None,
+            last_legacy_bridge_kill_at: None,
+            last_cs2_gsi_kill_at: None,
+            cs2_local_log_round: 0,
+            cs2_local_log_round_kills: 0,
+            cs2_local_log_unconfirmed_kills: 0,
         }),
         control_token,
         stream_handle: RwLock::new(output_stream),
@@ -237,6 +245,8 @@ pub(crate) async fn run(mut args: Args) -> Result<()> {
         stop_previous_kill_audio: AtomicBool::new(true),
         kill_audio_sinks: std::sync::Mutex::new(Vec::new()),
         spectated_kill_effects_enabled: AtomicBool::new(false),
+        replay_effects_enabled: AtomicBool::new(false),
+        controlled_bot_effects_enabled: AtomicBool::new(true),
         bomb_audio_paths: std::sync::Mutex::new(Default::default()),
         gsi_game_version: AtomicU8::new(GsiGameVersion::DEFAULT.as_u8()),
         events: EventJournal::default(),
@@ -253,6 +263,16 @@ pub(crate) async fn run(mut args: Args) -> Result<()> {
     let watcher_state = app_state.clone();
     tokio::spawn(async move {
         monitor_default_output_device(watcher_state).await;
+    });
+
+    let cs2_bridge_state = app_state.clone();
+    tokio::spawn(async move {
+        watch_cs2_local_server_logs(cs2_bridge_state).await;
+    });
+
+    let legacy_bridge_state = app_state.clone();
+    tokio::spawn(async move {
+        watch_legacy_bridge_logs(legacy_bridge_state).await;
     });
 
     if app_state.args.exit_with_ui {

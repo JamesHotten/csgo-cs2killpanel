@@ -328,7 +328,7 @@ fn should_reset_stored_streak(
     round_reset || observed_player_changed || death_reset
 }
 
-fn resolve_crossfire_streak_count(
+pub(crate) fn resolve_crossfire_streak_count(
     previous_count: u16,
     elapsed_since_last_kill: Option<Duration>,
     mode: CrossfireStreakMode,

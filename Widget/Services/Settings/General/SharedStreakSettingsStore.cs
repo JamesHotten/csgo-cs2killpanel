@@ -31,7 +31,6 @@ namespace KillConfirmGameBar.Services
         private const string LoopModePrefix = "loop:";
         private const string SettingPrefix = "KillStreakMode_";
         private const string LegacySharedSettingKey = "SharedStreakMode";
-        private const string SpectatedKillEffectsSettingKey = "SpectatedKillEffectsEnabled";
         private static readonly Uri SpectatorSettingsUri =
             LocalServiceEndpoints.Build("/spectator/settings");
 
@@ -40,32 +39,42 @@ namespace KillConfirmGameBar.Services
             return style != GameStyleMode.Crossfire;
         }
 
-        public static bool LoadSpectatedKillEffects()
+        public static bool LoadSpectatedPlayerEffects()
         {
-            object value = ApplicationData.Current.LocalSettings.Values[SpectatedKillEffectsSettingKey];
-            if (value is bool enabled)
-            {
-                return enabled;
-            }
-
-            if (value is string text && bool.TryParse(text, out bool parsed))
-            {
-                return parsed;
-            }
-
-            return false;
+            return SettingsConfigurationService.ReadBooleanSetting(
+                SettingsConfigurationService.SpectatedPlayerEffectsKey);
         }
 
-        public static void SaveSpectatedKillEffects(bool enabled)
+        public static bool LoadReplayEffects()
         {
-            ApplicationData.Current.LocalSettings.Values[SpectatedKillEffectsSettingKey] = enabled;
+            return SettingsConfigurationService.ReadBooleanSetting(
+                SettingsConfigurationService.ReplayEffectsKey);
         }
 
-        public static async Task SyncSpectatedKillEffectsAsync()
+        public static bool LoadControlledBotEffects()
+        {
+            return SettingsConfigurationService.ReadBooleanSetting(
+                SettingsConfigurationService.ControlledBotEffectsKey);
+        }
+
+        public static void SaveObservedEffects(
+            bool spectatedPlayerEnabled,
+            bool replayEnabled,
+            bool controlledBotEnabled)
+        {
+            var values = ApplicationData.Current.LocalSettings.Values;
+            values[SettingsConfigurationService.SpectatedPlayerEffectsKey] = spectatedPlayerEnabled;
+            values[SettingsConfigurationService.ReplayEffectsKey] = replayEnabled;
+            values[SettingsConfigurationService.ControlledBotEffectsKey] = controlledBotEnabled;
+        }
+
+        public static async Task SyncObservedEffectsAsync()
         {
             var request = new JsonObject
             {
-                ["enabled"] = JsonValue.CreateBooleanValue(LoadSpectatedKillEffects())
+                ["spectated_player_enabled"] = JsonValue.CreateBooleanValue(LoadSpectatedPlayerEffects()),
+                ["replay_enabled"] = JsonValue.CreateBooleanValue(LoadReplayEffects()),
+                ["controlled_bot_enabled"] = JsonValue.CreateBooleanValue(LoadControlledBotEffects())
             };
 
             using (var client = await LocalServiceAuth.CreateHttpClientAsync())

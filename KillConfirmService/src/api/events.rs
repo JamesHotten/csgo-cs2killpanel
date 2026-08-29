@@ -378,10 +378,18 @@ fn event_sound_route_response(route: &EventSoundRoute) -> EventSoundRouteRespons
 }
 
 fn spectator_settings_response(app_state: &AppState) -> SpectatorSettingsResponse {
+    let spectated_player_enabled = app_state
+        .spectated_kill_effects_enabled
+        .load(Ordering::Relaxed);
+    let replay_enabled = app_state.replay_effects_enabled.load(Ordering::Relaxed);
+    let controlled_bot_enabled = app_state
+        .controlled_bot_effects_enabled
+        .load(Ordering::Relaxed);
     SpectatorSettingsResponse {
-        enabled: app_state
-            .spectated_kill_effects_enabled
-            .load(Ordering::Relaxed),
+        enabled: spectated_player_enabled && replay_enabled && controlled_bot_enabled,
+        spectated_player_enabled,
+        replay_enabled,
+        controlled_bot_enabled,
     }
 }
 

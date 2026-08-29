@@ -187,6 +187,7 @@ try {
     if (-not $SkipGsiConfig) {
         try {
             Install-Cs2GsiConfig
+            Install-LegacyControlledBotBridge
         }
         catch {
             Add-InstallResult -Status Error -Item "CS2 GSI 配置" -Detail ((Get-ErrorReason $_) + "；不影响继续处理回环配置")

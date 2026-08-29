@@ -31,6 +31,19 @@ pub async fn update(
             return Ok(status);
         }
     };
+    let economy_version = money_rules::EconomyVersion::from_legacy(matches!(
+        gsi_game_version,
+        GsiGameVersion::CsgoLegacy
+    ));
+    let observed_eliminated_terrorists = data
+        .allplayers
+        .values()
+        .filter(|player| {
+            matches!(player.team, Some(TeamClass::T))
+                && player.state.as_ref().is_some_and(|state| state.health == 0)
+        })
+        .count()
+        .min(u16::MAX as usize) as u16;
 
     // Only count posts the service could authenticate and decode. A wrong GSI
     // token still sends a payload every ~100ms; counting it would light up the
@@ -115,7 +128,11 @@ pub async fn update(
             .and_then(map_weapon_badge_key)
             .map(str::to_string),
         name: map_weapon_name(&weapon.name).to_string(),
-        money_reward: money_rules::weapon_kill_reward(&weapon.name, current_mode),
+        money_reward: money_rules::weapon_kill_reward_for(
+            &weapon.name,
+            current_mode,
+            economy_version,
+        ),
     });
     let current_weapon_ammo = ply
         .weapons
@@ -145,6 +162,9 @@ pub async fn update(
         resolve_observed_player_id(spectarget, player_steamid, provider_steamid, &player_name);
     let observed_player_is_local =
         is_local_observed_player(spectarget, player_steamid, provider_steamid);
+    let observed_feed_is_replay = !observed_player_is_local
+        && ply.state.is_some()
+        && spectarget.is_some();
 
     let binding = app_state.mutable.read().await;
     let tracked_player = binding.active_player.clone();
@@ -191,6 +211,8 @@ pub async fn update(
     let previous_round_bomb_state = binding.last_round_bomb_state.clone();
     let previous_crossfire_streak_kills = tracked_player.crossfire_streak_kills;
     let previous_crossfire_kill_at = tracked_player.last_crossfire_kill_at;
+    let last_legacy_bridge_kill_at = binding.last_legacy_bridge_kill_at;
+    let cs2_local_log_unconfirmed_kills = binding.cs2_local_log_unconfirmed_kills;
     drop(binding);
 
     let money_reward_mode =
@@ -206,6 +228,7 @@ pub async fn update(
     let spectated_kill_effects_enabled = app_state
         .spectated_kill_effects_enabled
         .load(Ordering::Relaxed);
+    let replay_effects_enabled = app_state.replay_effects_enabled.load(Ordering::Relaxed);
     let active_streak_mode = if shared_streak_mode_active {
         shared_streak_mode
     } else {
@@ -262,9 +285,25 @@ pub async fn update(
     } else {
         previous_player_money
     };
-    let can_emit_observed_combat_events =
-        can_read_observed_combat_events(observed_player_is_local, spectated_kill_effects_enabled);
+    let can_emit_observed_combat_events = can_read_observed_combat_events_for_feed(
+        observed_player_is_local,
+        observed_feed_is_replay,
+        spectated_kill_effects_enabled,
+        replay_effects_enabled,
+    );
+    let observed_kill_delta = current_kills.saturating_sub(original_kills);
+    let cs2_local_log_confirmed_delta = if matches!(gsi_game_version, GsiGameVersion::CsgoLegacy) {
+        0
+    } else {
+        observed_kill_delta.min(cs2_local_log_unconfirmed_kills)
+    };
+    let bridge_already_reported_legacy_kill = matches!(gsi_game_version, GsiGameVersion::CsgoLegacy)
+        && last_legacy_bridge_kill_at.is_some_and(|at| {
+            now.saturating_duration_since(at) <= Duration::from_millis(750)
+        });
     let can_emit_kill = can_emit_observed_combat_events
+        && observed_kill_delta > cs2_local_log_confirmed_delta
+        && !bridge_already_reported_legacy_kill
         && should_emit_player_kill(is_initialized, current_kills, original_kills, bomb_exploded);
     // Spectator mode follows the observed player's complete normal combat feed,
     // including assists. Kill modifiers are emitted with the kill event below.
@@ -337,6 +376,18 @@ pub async fn update(
     binding.last_bomb_player = current_bomb_player;
     binding.last_round_bomb_state = current_round_bomb_state;
     binding.active_observed_player_id = Some(steamid.clone());
+    binding.last_game_mode = Some(current_mode.clone());
+    binding.cs2_local_log_unconfirmed_kills = if matches!(
+        gsi_game_version,
+        GsiGameVersion::CsgoLegacy
+    ) || round_changed {
+        0
+    } else {
+        cs2_local_log_unconfirmed_kills.saturating_sub(cs2_local_log_confirmed_delta)
+    };
+    if matches!(gsi_game_version, GsiGameVersion::Cs2) && can_emit_kill {
+        binding.last_cs2_gsi_kill_at = Some(now);
+    }
 
     let tracked_player = &mut binding.active_player;
     tracked_player.initialized = true;

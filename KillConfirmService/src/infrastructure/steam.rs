@@ -9,6 +9,28 @@ pub(crate) fn detect_cs2_root() -> Option<PathBuf> {
     detect_counter_strike_root(GsiGameVersion::Cs2)
 }
 
+/// Return every Counter-Strike installation Steam currently exposes. The
+/// controlled-bot log bridges use this instead of assuming a single library.
+pub(crate) fn detect_counter_strike_roots() -> Vec<PathBuf> {
+    const COUNTER_STRIKE_APP_ID: u32 = 730;
+    let mut roots = Vec::new();
+    for steam_dir in steam_dir_candidates() {
+        let Ok(Some((app, library))) = steam_dir.find_app(COUNTER_STRIKE_APP_ID) else {
+            continue;
+        };
+        let root = library.resolve_app_dir(&app);
+        if roots.iter().any(|existing: &PathBuf| {
+            existing
+                .to_string_lossy()
+                .eq_ignore_ascii_case(&root.to_string_lossy())
+        }) {
+            continue;
+        }
+        roots.push(root);
+    }
+    roots
+}
+
 pub(crate) fn detect_counter_strike_root(version: GsiGameVersion) -> Option<PathBuf> {
     const COUNTER_STRIKE_APP_ID: u32 = 730;
 

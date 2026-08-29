@@ -152,6 +152,11 @@ namespace KillConfirmGameBar
             "   \"player_state\"       \"1\"\r\n" +
             "   \"player_weapons\"     \"1\"\r\n" +
             "   \"player_match_stats\" \"1\"\r\n" +
+            "   \"player_position\"    \"1\"\r\n" +
+            "   \"allplayers_id\"          \"1\"\r\n" +
+            "   \"allplayers_state\"       \"1\"\r\n" +
+            "   \"allplayers_weapons\"     \"1\"\r\n" +
+            "   \"allplayers_match_stats\" \"1\"\r\n" +
             " }\r\n" +
             "}\r\n";
 
