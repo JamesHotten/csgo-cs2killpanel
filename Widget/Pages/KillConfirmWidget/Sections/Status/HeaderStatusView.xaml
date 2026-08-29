@@ -173,6 +173,7 @@
 
         <Button
             x:Name="UpdateButton" x:FieldModifier="public"
+            Visibility="Collapsed"
             Grid.Column="2"
             Width="132"
             Height="24"
@@ -205,7 +206,7 @@
                     FontSize="9"
                     FontWeight="SemiBold"
                     Foreground="#8A6A36"
-                    Text="版本：作者 Zac" />
+                    Text="版本" />
             </Grid>
         </Button>
     </Grid>

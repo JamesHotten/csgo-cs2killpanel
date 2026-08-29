@@ -194,6 +194,7 @@
 
                                         <Border
                                             x:Name="AdvancedEffectsCreditsCard" x:FieldModifier="public"
+                                            Visibility="Collapsed"
                                             Padding="12"
                                             BorderThickness="1"
                                             CornerRadius="18">

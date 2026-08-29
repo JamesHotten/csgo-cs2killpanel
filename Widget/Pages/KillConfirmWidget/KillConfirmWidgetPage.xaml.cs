@@ -429,7 +429,6 @@ namespace KillConfirmGameBar
             _ = InitializeWidgetLayoutAsync();
             _ = InitializePackSelectorsAndServiceAsync();
             _ = LoadSavedCsFolderAsync();
-            _ = CheckForUpdatesAsync(false);
             UpdateControlPanelVisibility();
             base.OnNavigatedTo(e);
         }

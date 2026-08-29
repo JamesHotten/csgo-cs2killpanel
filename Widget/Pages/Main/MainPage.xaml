@@ -203,11 +203,6 @@
                                 Style="{StaticResource StudioTabButtonStyle}"
                                 Content="进阶设置"
                                 Click="OnHomeTabDisplayClick" />
-                            <Button
-                                x:Name="HomeTabAboutButton"
-                                Style="{StaticResource StudioTabButtonStyle}"
-                                Content="关于本版本"
-                                Click="OnHomeTabAboutClick" />
                         </StackPanel>
                     </Border>
 

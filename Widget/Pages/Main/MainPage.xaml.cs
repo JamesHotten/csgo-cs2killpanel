@@ -37,7 +37,6 @@ namespace KillConfirmGameBar
         private void OnHomeTabGeneralClick(object sender, RoutedEventArgs e) => SelectHomeTab("general");
         private void OnHomeTabPortClick(object sender, RoutedEventArgs e) => SelectHomeTab("port");
         private void OnHomeTabDisplayClick(object sender, RoutedEventArgs e) => SelectHomeTab("display");
-        private void OnHomeTabAboutClick(object sender, RoutedEventArgs e) => SelectHomeTab("about");
 
         private void OnGameTabCombatClick(object sender, RoutedEventArgs e) => SelectGameTab("combat");
         private void OnGameTabVoiceClick(object sender, RoutedEventArgs e) => SelectGameTab("voice");
@@ -100,7 +99,6 @@ namespace KillConfirmGameBar
             UpdateTabBtn(HomeTabGeneralButton, _activeHomeTab == "general", theme);
             UpdateTabBtn(HomeTabPortButton, _activeHomeTab == "port", theme);
             UpdateTabBtn(HomeTabDisplayButton, _activeHomeTab == "display", theme);
-            UpdateTabBtn(HomeTabAboutButton, _activeHomeTab == "about", theme);
         }
 
         private void UpdateGameTabButtonsTheme()

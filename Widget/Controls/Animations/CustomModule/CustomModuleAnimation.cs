@@ -51,7 +51,8 @@ namespace KillConfirmGameBar.Controls
                     }
                     if (!ready)
                     {
-                        CustomSequenceStatusChanged?.Invoke(this, "Missing animation for this level / 当前等级没有可播放的素材。");
+                        CustomSequenceStatusChanged?.Invoke(this, "Missing animation for this level; using the built-in fallback / 当前等级没有素材，已使用内置动画。");
+                        PlayCodeKill(headshot ? "headshot" : "multi" + Math.Max(1, Math.Min(6, kills)));
                         return;
                     }
                 }
@@ -80,8 +81,9 @@ namespace KillConfirmGameBar.Controls
                 App.Log("Custom sequence playback: " + ex.Message);
                 if (token == _playToken)
                 {
-                    _customSequencePlaying = false; Visibility = Visibility.Collapsed;
-                    CustomSequenceStatusChanged?.Invoke(this, ex.Message);
+                    _customSequencePlaying = false;
+                    CustomSequenceStatusChanged?.Invoke(this, ex.Message + " / 已使用内置动画。");
+                    PlayCodeKill(headshot ? "headshot" : "multi" + Math.Max(1, Math.Min(6, kills)));
                 }
             }
         }

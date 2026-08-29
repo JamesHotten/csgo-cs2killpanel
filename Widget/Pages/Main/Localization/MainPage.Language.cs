@@ -94,7 +94,6 @@ namespace KillConfirmGameBar
             if (HomeTabGeneralButton != null) HomeTabGeneralButton.Content = LocalizationManager.Text("HomeTabGeneral");
             if (HomeTabPortButton != null) HomeTabPortButton.Content = LocalizationManager.Text("HomeTabPort");
             if (HomeTabDisplayButton != null) HomeTabDisplayButton.Content = LocalizationManager.Text("HomeTabDisplay");
-            if (HomeTabAboutButton != null) HomeTabAboutButton.Content = LocalizationManager.Text("HomeTabAbout");
 
             string gameTabPrefix = currentMode == GameStyleMode.Csol
                 ? "Csol"
@@ -168,7 +167,7 @@ namespace KillConfirmGameBar
                     body = isChinese
                         ? "在图标包库中自定义逐帧图标，或导入 CS2 Customizer 素材包。效果测试和位置调整沿用现有功能；模块设置只调整连杀计算。"
                         : "Create frame icons in the icon library or import CS2 Customizer packs. Use the existing tests and position controls; module settings only adjust kill-streak counting.";
-                    voice = isChinese ? "此模块只播放击杀图标，默认静音。" : "This module plays kill icons and is silent by default.";
+                    voice = isChinese ? "自定义模块默认使用内置击杀音效；缺少当前等级素材时会回退到内置击杀动画。" : "The custom module uses the built-in kill audio and falls back to a built-in animation when a level has no material.";
                     iconSummary = isChinese
                         ? "自定义时直接选择帧图片或帧目录，程序自动生成图集。整包支持 1～5 杀及爆头变体，也识别 kill1、ace、三杀等命名。"
                         : "Choose images or frame folders when customizing; sheets are generated automatically. Packs support kills 1–5, headshot variants and names such as kill1, ace or 三杀.";

@@ -117,10 +117,11 @@ mod tests {
     fn soundpack_alias_resolves_game_specific_presets() {
         assert_eq!(super::resolve_soundpack_alias("custommodule"), Some("custommodule"));
         assert_eq!(super::resolve_soundpack_alias("CUSTOMMODULE"), Some("custommodule"));
-        let silent = crate::soundpack::Preset::load("custommodule").unwrap();
-        assert_eq!(silent.preset_name, "custommodule");
-        assert!(silent.base_dir.is_empty());
-        assert!(silent.manifest.unwrap().audio.is_none());
+        let custom = crate::soundpack::Preset::load("custommodule").unwrap();
+        assert_eq!(custom.preset_name, "custommodule");
+        assert_eq!(custom.master_name, "crossfire");
+        assert!(custom.manifest.is_some());
+        assert!(custom.base_dir.ends_with("crossfire_swat_gr"));
         assert_eq!(super::resolve_soundpack_alias("csol4"), Some("csol4"));
         assert_eq!(super::resolve_soundpack_alias("csol"), Some("csol4"));
         assert_eq!(super::resolve_soundpack_alias("CSOL4"), Some("csol4"));

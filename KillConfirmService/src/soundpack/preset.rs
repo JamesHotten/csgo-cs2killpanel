@@ -18,15 +18,19 @@ pub struct Preset {
 impl Preset {
     /// Load a preset from the sounds directory
     pub fn load(preset_name: &str) -> Result<Self> {
-        // A visual-only module must not retain the previously selected game's audio.
+        // Custom sequences are visual assets only, but selecting the module must
+        // still leave the user with audible feedback. Reuse the stable built-in
+        // Crossfire pack while retaining the custommodule identity exposed to UI.
         if preset_name == "custommodule" {
+            let fallback_dir = sounds_root().join("crossfire_swat_gr");
+            let manifest = PackManifest::load_from_dir(&fallback_dir)?;
             return Ok(Self {
-                manifest: Some(PackManifest::default()),
+                manifest: Some(manifest),
                 preset_name: preset_name.to_string(),
-                display_name: "Custom Module (silent)".to_string(),
-                master_name: preset_name.to_string(),
+                display_name: "Custom Module (default audio)".to_string(),
+                master_name: "crossfire".to_string(),
                 variant: None,
-                base_dir: String::new(),
+                base_dir: fallback_dir.to_string_lossy().replace('\\', "/"),
             });
         }
         let parts: Vec<&str> = preset_name.split("_v_").collect();

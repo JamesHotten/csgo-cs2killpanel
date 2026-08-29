@@ -417,7 +417,8 @@
                 x:Name="HubAboutView"
                 VerticalScrollBarVisibility="Auto"
                 HorizontalScrollBarVisibility="Disabled"
-                Visibility="Collapsed">
+                Visibility="Collapsed"
+                IsHitTestVisible="False">
                 <StackPanel Spacing="12" MaxWidth="1480" HorizontalAlignment="Stretch">
                     <Border Style="{StaticResource FluentHeroCardStyle}">
                         <Grid ColumnSpacing="16">

@@ -136,7 +136,7 @@ namespace KillConfirmGameBar.Services
                     CreateBuiltInVoice(DagoujiaoAnimalsPackKey, "Animals", true),
                     CreateBuiltInVoice("overwatch", "OverWatch", true),
                     CreateBuiltInVoice("modernwarfare2019", "Modern Warfare 2019", true),
-                    CreateBuiltInVoice("custommodule", "自定义模块 · 无音效", true),
+                    CreateBuiltInVoice("custommodule", "自定义模块 · 默认音效", true),
                     CreateBuiltInVoice("apex", "Apex Legends", true)
                 },
                 IconPacks = new List<IconPackItem>

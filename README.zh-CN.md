@@ -1,185 +1,205 @@
-<div align="center">
-  <img src="Widget/Assets/Square150x150Logo.scale-200.png" width="112" alt="Kill Confirm Overlay 图标" />
+# KillConfirmGameBar
 
-# 击杀确认覆盖层 / Kill Confirm Overlay
+简体中文 | [English](README.md)
 
-**为 Xbox Game Bar 打造的可自定义 CS2 击杀确认体验。**
+KillConfirmGameBar 是适用于 Counter-Strike 2 和 CS:GO Legacy 的 Windows Xbox Game Bar 击杀确认悬浮窗。
 
-<p>
-  <a href="README.md">English</a> · <strong>简体中文</strong>
-</p>
+它接收游戏状态，在击杀时播放对应音效并渲染动画。CS2 与 Legacy 共用一个小组件和本地服务，但两套游戏的兼容路径相互隔离。
 
-<a href="https://pan.quark.cn/s/1f3cfbcf8d5f?pwd=7Twv"><img src="https://img.shields.io/badge/下载-夸克网盘-6C5CE7?style=for-the-badge" alt="从夸克网盘下载" /></a>
+本仓库是 [JamesHotten/csgo-cs2killpanel](https://github.com/JamesHotten/csgo-cs2killpanel) 的后续开发版本，基于 [eachkinji/CS2KillConfirmOverlay](https://github.com/eachkinji/CS2KillConfirmOverlay)。
 
-**提取码：`7Twv`**
+## 主要功能
 
-<p>
-  <a href="https://github.com/eachkinji/CS2KillConfirmOverlay/releases"><img src="https://img.shields.io/github/v/release/eachkinji/CS2KillConfirmOverlay?display_name=tag&style=flat-square&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC" alt="最新版本" /></a>
-  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?style=flat-square&logo=windows" alt="Windows 10 和 11" />
-  <img src="https://img.shields.io/badge/Xbox-Game%20Bar-107C10?style=flat-square&logo=xbox" alt="Xbox Game Bar" />
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/eachkinji/CS2KillConfirmOverlay?style=flat-square" alt="许可证" /></a>
-</p>
-</div>
+- Xbox Game Bar 悬浮窗，可调整位置、缩放、音量和音频输出设备。
+- 支持普通击杀、爆头、刀杀、首杀、最终击杀、回合胜利和回合失败事件。
+- 提供穿越火线、Valorant、CSOL、战地 1/4/5/2042、PUBG、三角洲行动、守望先锋、现代战争 2019、Apex、豆包、大狗叫和自定义模块表现风格。
+- 提供多套穿越火线角色语音和 Valorant 武器终结音效。
+- 提供 CSOL 1～10 杀图标、语音变体、特殊击杀优先级与首尾杀图标设置。
+- BF1/BFV/BF4/BF2042/三角洲支持普通、爆头、刀杀和助攻的独立音效路由；不会改动动画事件。
+- 设置主页支持自动或固定 100%～200% 的 Game Bar 控制面板高分辨率缩放。
+- CF 与 Valorant 可单独启用助攻音效，CF 可分别设置爆头/刀杀音效及图标优先级。
+- 兼容 CS2、CS:GO Legacy、原版机器人、接管机器人、观战、回放及受支持的机器人 Mod。
+- 为每个观察目标保存独立击杀和助攻基线，避免观战或回放切换目标时串用计数。
+- 设置主页可分别控制观战队友、回放视角和接管机器人击杀效果；三个开关默认开启，本地玩家事件始终保留。
+- 设置可导出为带版本号的 JSON 并在另一台电脑导入；旧版设置会在启动或导入时自动迁移。
+- 自定义模块支持 CS2 Customizer 图集、散帧、ZIP，以及 MP4/MOV/WebM/MKV/AVI 视频导入；当前等级缺少素材时会回退内置动画和默认音效。
+- CFG 页面列出发现的全部 CS2/Legacy 安装路径及各自安装状态，可逐项选择和代写 CFG。
+- 每种游戏风格的语音包和图标包选择会额外保存到 LocalState 备份文件，设置读取失败时可自动恢复。
+- 在击杀发生时确定武器，击杀后快速切枪不会把效果错误标记成新武器。
+- 对重复事件和回合结束顺序进行处理，避免胜利效果后再次播放同一击杀。
+- 在受支持模式中显示武器、目标、胜负和连败经济奖励。
 
-## 项目简介
+特殊资源取决于当前音效与特效包。如果某个包没有专属事件资源，悬浮窗会使用兼容的普通回退效果，不会故意播放空音效或空动画。
 
-Kill Confirm Overlay 通过 Counter-Strike 2 Game State Integration 接收对局事件，根据事件播放对应语音，并在 Xbox Game Bar 中显示击杀动画。它不读取或注入 CS2 游戏进程，同时可以作为悬浮窗保持在游戏画面上方。
+## 兼容范围
 
-项目已经从简单的击杀确认音效工具，发展为支持独立游戏风格、自定义媒体、连杀逻辑、事件优先级和高分辨率渲染的可配置展示系统。
+| 使用场景 | 普通击杀 | 接管机器人击杀 | 额外服务端组件 |
+| --- | --- | --- | --- |
+| CS2 官服或社区服 | 支持，来自客户端 GSI | 取决于服务器，不能读取远程日志 | 不需要 |
+| CS2 本地监听服务器 | 支持 | 支持，需要已安装的本地日志配置 | 不需要 |
+| CS:GO Legacy 本地或离线 | 支持，来自客户端 GSI | 支持，来自 Legacy Bridge | SourceMod |
+| 本机 Legacy 专用服务器 | 支持 | 支持，读取服务器桥接日志 | 服务器安装 SourceMod |
+| 远程 Legacy 服务器 | 客户端 GSI 支持 | 仅当桥接日志被安全同步或挂载到本机 | 服务器安装 SourceMod |
 
-> [!NOTE]
-> 文中其他游戏的名称表示受对应游戏启发的展示风格。当前实际通过 GSI 提供实时对局事件的游戏仍然是 CS2。
+CS2 不使用 Legacy 的身份缓存或 SourceMod 去重路径。`Legacy Bridge` 只能安装到 CS:GO Legacy 客户端或 Legacy 服务器，不能安装到 CS2。
 
-> [!CAUTION]
-> **免责声明：** 本项目中包含的所有游戏相关资源（音效、图标、角色形象等）归各自版权方所有（Riot Games、Electronic Arts、Valve 等）。本工具为非官方社区项目，仅供学习、交流、测试使用，与上述公司无任何关联、亦未获其认可或赞助。切勿将本工具用于盗版、商业转售或任何违法活动。
+悬浮窗只渲染游戏主视角所代表的事件，包括正常游玩、观战、回放和受支持的机器人接管，不会为无关玩家播放效果。
 
-## 开源基础与社区联动
-
-<table>
-  <tr>
-    <td align="center" width="120">
-      <a href="https://github.com/st0nie">
-        <img src="https://avatars.githubusercontent.com/u/42872734?v=4&s=160" width="80" alt="st0nie 头像" /><br />
-        <strong>ston · st0nie</strong>
-      </a>
-    </td>
-    <td>
-      <strong>感谢 cskillconfirm 原项目开发者</strong><br /><br />
-      特别感谢 <a href="https://github.com/st0nie">ston（st0nie）</a> 提供的开发思路，以及开源项目 <a href="https://github.com/st0nie/cskillconfirm"><code>cskillconfirm</code></a> 的基础代码。其 CS2 击杀确认方案为本项目提供了重要基础。本项目也使用了 <a href="https://github.com/st0nie/gsi-cs2-rs"><code>gsi-cs2-rs</code></a> 的相关思路与集成成果。
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="120">
-      <a href="https://github.com/gufan0000">
-        <img src="https://avatars.githubusercontent.com/u/113977586?v=4&s=160" width="80" alt="gufan0000 头像" /><br />
-        <strong>gufan0000</strong>
-      </a>
-    </td>
-    <td>
-      <strong>更多 CS2 自定义需求：CS2 Customizer</strong><br /><br />
-      如果你需要更丰富的个性化修改，包括准心、击杀音效与图标、HUD 配色、局内视角和道具瞄点，请访问 <a href="https://github.com/gufan0000/cs2-customizer"><code>gufan0000/cs2-customizer</code></a>。本项目与其深度联动，可以配合形成更完整的 CS2 自定义体验。
-    </td>
-  </tr>
-</table>
-
-## 功能亮点
-
-- **Xbox Game Bar 悬浮窗**：使用 `Win + G` 打开、定位、缩放并固定组件。
-- **击杀事件识别**：支持普通击杀、爆头、刀杀、首杀、最后一杀、助攻、连杀和观察队友等事件。
-- **11 种内置展示风格**：穿越火线、CSOL、VALORANT、战地 1、战地 5、战地 4、战地 2042、PUBG、三角洲行动、豆包和大狗叫。
-- **灵活的连杀逻辑**：支持按生命、按回合和循环连杀窗口；循环点可在 2–50 杀之间设置。
-- **自定义图片与语音**：可使用内置素材，也可为支持的事件和风格导入图片、语音资源。
-- **自定义模块**：兼容 CS2 Customizer 击杀图标序列帧，支持 ZIP/旧版目录导入、预览、播放调节和兼容导出。详见[格式与使用说明](docs/CustomModule.md)。
-- **高级音频控制**：支持独立风格优先级、音量、事件音效以及可配置的播放速度与音调变化。
-- **炸弹音效时间线**：可选安放、拆除、爆炸和新回合重置音效，并可设置初始与最终倍速，由程序在 40 秒内平滑加速。
-- **高分辨率视觉优化**：针对高 DPI 显示器和 4:3 全屏分辨率优化渲染、定位与缩放。
-- **独立配置保存**：游戏风格、素材包、动画和高级设置分别持久化，减少不同风格之间的互相影响。
-- **双语界面与更新检测**：支持英文、简体中文界面，并在组件打开时检测最新正式 GitHub Release。
-
-## 工作原理
-
-```text
-CS2 Game State Integration
-            ↓
-127.0.0.1:10087 上的本地 Rust 服务
-            ↓
-事件分类与音频播放
-            ↓
-Xbox Game Bar 动画悬浮窗
-```
-
-本地服务接收 GSI 数据，小组件再根据当前风格和事件优先级，选择对应的动画、图片与音频。
+完整的客户端、服务器和迁移步骤参见 [CS2 与 CS:GO Legacy 迁移和使用说明](docs/CS2_AND_LEGACY_MIGRATION.zh-CN.md)。
+每种动画、音效、优先级、连杀窗口和资源回退选项参见 [特效与音效设置说明](docs/EFFECT_AUDIO_SETTINGS.zh-CN.md)。
 
 ## 使用要求
 
 - Windows 10 或 Windows 11
 - 已启用 Xbox Game Bar
-- Counter-Strike 2
+- Counter-Strike 2 和/或 CS:GO Legacy
+
+从源码构建还需要：
+
+- Rust 工具链
+- 安装 UWP、MSIX、Windows SDK 和 C++ 组件的 Visual Studio 或 Build Tools
+- 构建可选 `.exe` 安装器时需要 Inno Setup 6
+- 重新编译 Legacy Bridge 时需要兼容的 SourceMod 编译器
 
 ## 安装
 
-1. 从[夸克网盘](https://pan.quark.cn/s/1f3cfbcf8d5f?pwd=7Twv)下载，提取码为 `7Twv`；也可以访问 [GitHub Releases](https://github.com/eachkinji/CS2KillConfirmOverlay/releases)。
-2. 根据当前环境选择安装包：
-   - **有依赖版——推荐新用户使用**：包含首次安装所需依赖。
-   - **无依赖版——推荐更新使用**：适合已经能够正常运行旧版本的系统。
-3. 运行安装程序。
-4. 按 `Win + G` 打开 Xbox Game Bar，找到 Kill Confirm Overlay，并根据需要固定组件。
-5. 启动 CS2。安装程序会尝试自动配置 Game State Integration。
+普通用户应使用本仓库发布的安装包，运行安装器或转移包中的安装脚本。
 
-## CS2 Game State Integration
+安装完成后：
 
-悬浮窗监听地址：
+1. 按 `Win + G` 打开 Xbox Game Bar。
+2. 打开 Kill Confirm Overlay 小组件，并按需固定。
+3. 选择表现风格、音效包和音频输出设备。
+4. 确认 GSI 已安装后启动游戏。
+
+不要把解压后的 `InstalledPackage` 目录直接复制到另一台电脑。Game Bar 包必须完成注册，安装器或转移脚本还需要创建本机 Loopback 豁免。
+
+## Game State Integration
+
+本地服务只监听：
 
 ```text
 http://127.0.0.1:10087/
 ```
 
-安装程序会尝试自动创建所需的 GSI 配置。如果事件没有触发，请将 `KillConfirmService/gsi/gamestate_integration_killconfirm.cfg` 复制到：
+安装器会尝试自动放置 `gamestate_integration_killconfirm.cfg`。手动安装位置为：
 
 ```text
-C:\Program Files (x86)\Steam\steamapps\common\Counter-Strike Global Offensive\game\csgo\cfg\
+<CS2 根目录>\game\csgo\cfg\gamestate_integration_killconfirm.cfg
+<Legacy 根目录>\csgo\cfg\gamestate_integration_killconfirm.cfg
 ```
 
-上游参考配置可在 [`gsi-cs2-rs`](https://github.com/st0nie/gsi-cs2-rs/blob/main/gsi_cfg/gamestate_integration_fast.cfg) 中查看。
+添加或修改 GSI 后必须完全退出并重新启动游戏。系统代理可能拦截本机 HTTP；如果小组件已连接但收不到游戏数据，可临时关闭 Clash 类工具的系统代理模式进行排查。
 
-## 常见问题
+在 CS2 本地监听服务器中接管机器人时，服务器启动后执行：
 
-- **击杀后没有语音或动画**：检查本地服务是否运行，以及 GSI 文件是否位于正确的 CS2 `cfg` 目录。
-- **正在使用 Clash 或其他系统代理**：请关闭系统代理，或排除 `127.0.0.1`。部分代理配置会拦截本地流量，导致服务无法收到 GSI 事件。
-- **更新已有安装**：只有在旧版本及其依赖已经正常运行时，才建议使用无依赖安装包。
-- **导入自定义内容**：请只使用来源可信的素材包和语音包。
+```text
+exec killconfirm_local_server
+```
+
+安装器会把该配置放入 CS2 的 `cfg` 目录。它启用本机服务器日志，以补充 GSI 缺失的接管事件；远程联机服务器不适用。
+
+服务控制接口使用每次安装独立生成的令牌。不要复制或公开 `service-auth-token.txt`，也不要将所选本地端口暴露到局域网或公网。
+
+## 经济奖励
+
+默认的 `rules` 模式根据 Counter-Strike 规则计算奖励，不会把每一次金钱变化都当作奖励。
+
+它会区分 CS2 与 CS:GO Legacy 的武器击杀、炸弹和人质目标、回合胜利、回合失败、下包补偿、连败补偿及人数短缺奖励。CS2 竞技/搭档还包含 CT 每消灭一名 T、全队每人 `$50` 的新增团队奖；Legacy 不会套用该规则。
+
+军备竞赛、死亡竞赛、爆破、头号特训、训练及无法识别的自定义模式不会显示虚构的经济奖励，因为它们不属于当前支持的标准现金经济。
+
+设置中仍提供实验性的 GSI 金钱差值模式用于验证，但推荐并默认使用 `rules`。
+
+完整数值、两代差异和特殊边界见 [CS2 与 CS:GO Legacy 经济奖励规则](docs/CS2_CSGO_ECONOMY_RULES.zh-CN.md)。
+
+## Legacy Bridge
+
+Legacy 接管机器人后的击杀需要：
+
+```text
+KillConfirmService\legacy_bridge\killconfirm_bridge.smx
+```
+
+将它安装到 Legacy 客户端或服务器的 SourceMod `plugins` 目录。桥接器只转发接管后的击杀；普通真人击杀和观战目标击杀仍由 GSI 提供，避免一次击杀播放两遍。
+
+如果 Legacy 专用服务器运行在本机，将服务器根目录逐行写入：
+
+```text
+%LOCALAPPDATA%\Packages\KillConfirmGameBar.Overlay_5jgcw66eyez0m\LocalState\legacy-bridge-servers.txt
+```
+
+当前桥接方式读取本机文件，不是没有鉴权的网络转发服务。远程服务器必须自行安全同步或挂载桥接日志。
 
 ## 从源码构建
 
-源码构建需要 Rust 工具链、安装了 Windows/UWP/MSIX 工具的 Visual Studio 或 Visual Studio Build Tools；如需生成 `.exe` 安装器，还需要 Inno Setup 6。
-
-在仓库根目录运行：
+先运行服务测试：
 
 ```powershell
-.\Build-IntegratedPackage.ps1
+cd KillConfirmService
+cargo fmt -- --check
+cargo check
+cargo test
+cd ..
 ```
 
-创建可转移安装包：
+构建带测试证书的 MSIX Bundle（不会安装）：
 
 ```powershell
-.\Build-TransferPackage.ps1
+.\Build-DevPackage.ps1 -Configuration Release
 ```
 
-创建安装器：
+生成一键 `.exe` 安装器（带依赖新人版和无依赖更新版）：
 
 ```powershell
-.\Build-Installer.ps1
+.\Build-ReleaseInstaller.ps1 -Configuration Release
 ```
+
+首次 Release 构建会下载并校验固定版本的 LGPL FFmpeg，用于自定义模块视频导入；最终安装包已经携带 FFmpeg，用户安装时不需要联网下载。除非明确给 `Build-DevPackage.ps1` 传入 `-Install`，以上命令都不会安装或替换当前 Game Bar 包。
+
+`-DisableSigning` 只适用于开发注册流程。公开分发应使用受信任的签名证书或签名服务。
 
 ## 项目结构
 
-- `KillConfirmService`：负责 GSI 事件处理和音频播放的 Rust 本地服务。
-- `Widget`：Xbox Game Bar 界面、设置与视觉效果。
-- `Package`：Windows 打包项目。
-- `Installer`：安装器定义和相关文件。
-- `SourceAssets`：源动画、图片、音频、图标和内置风格素材。
+| 路径 | 用途 |
+| --- | --- |
+| `KillConfirmService` | Rust GSI 服务、音频引擎、事件状态、经济规则及兼容桥接 |
+| `Widget` | UWP Xbox Game Bar 界面和动画渲染 |
+| `Package` | MSIX 打包项目和清单 |
+| `Installer` | 转移包及 Inno Setup 支持文件 |
+| `SourceAssets/GameStyles` | 各风格的源音频、动画、图标和音效包 |
+| `docs` | 迁移、双游戏部署和故障排查文档 |
 
-构建时会从 `SourceAssets` 刷新最终打包所需的资源。
+构建脚本会从 `SourceAssets` 刷新打包资源。应修改源资源，不要直接修改小组件或服务输出目录中的生成副本。
 
-## 其他致谢
+## 故障排查
 
-- MinecraftGD656 的 [`gd656killicon`](https://github.com/MinecraftGD656/gd656killicon)。
-- [Steam 创意工坊项目 2721562982](https://steamcommunity.com/sharedfiles/filedetails/?id=2721562982)。
+小组件能够打开但没有音效或动画时：
 
-本项目包含由 AI 生成的代码。
+- 确认 GSI 位于当前实际运行版本的游戏目录。
+- 修改 GSI 后完全重启游戏。
+- 保持小组件打开或固定，并检查服务和 GSI 状态。
+- 确认没有其他程序占用所选本地端口（默认 `127.0.0.1:10087`）。
+- 临时关闭系统代理进行测试。
+- Legacy 接管问题需检查 `sm plugins list` 和桥接日志。
 
-## 许可证与免责声明
+日志位置：
 
-本项目使用 [GNU Affero General Public License v3.0](LICENSE) 开源。
+```text
+%LOCALAPPDATA%\Packages\KillConfirmGameBar.Overlay_5jgcw66eyez0m\LocalState\service.log
+<Legacy 根目录>\csgo\addons\sourcemod\logs\killconfirm_bridge.log
+```
 
-本项目与 Valve、Microsoft、Xbox、CrossFire、Riot Games、Electronic Arts、Krafton、Tencent、ByteDance 或其他游戏发行商不存在官方关联。文中涉及的产品名称和商标均归各自所有者所有。
+报告问题时，请提供游戏版本、模式、是否接管机器人、击杀的大致时间、当前音效包，以及对应时间附近的日志。
 
-## Star 趋势
+## 致谢
 
-<a href="https://www.star-history.com/?repos=eachkinji%2FCS2KillConfirmOverlay&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=eachkinji/CS2KillConfirmOverlay&type=date&theme=dark&legend=top-left&sealed_token=JO7S8AitdgsgeJkQQ1VllxXemOmgTJQ-vAfDJhdhXyaUKJP8neUInbQMV4bHYN9Aaarxe8b3i-QFSwDPZ433U1Z9UTz-jUm5N7_QyCB14Vr4I_hZFmNsRLww_4Qv1JAy73-VLpPKkTCopmcWViZh301QwvH6kMdPHYykp-TiTPiWZIFEcl_UIunjQQiK" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=eachkinji/CS2KillConfirmOverlay&type=date&legend=top-left&sealed_token=JO7S8AitdgsgeJkQQ1VllxXemOmgTJQ-vAfDJhdhXyaUKJP8neUInbQMV4bHYN9Aaarxe8b3i-QFSwDPZ433U1Z9UTz-jUm5N7_QyCB14Vr4I_hZFmNsRLww_4Qv1JAy73-VLpPKkTCopmcWViZh301QwvH6kMdPHYykp-TiTPiWZIFEcl_UIunjQQiK" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=eachkinji/CS2KillConfirmOverlay&type=date&legend=top-left&sealed_token=JO7S8AitdgsgeJkQQ1VllxXemOmgTJQ-vAfDJhdhXyaUKJP8neUInbQMV4bHYN9Aaarxe8b3i-QFSwDPZ433U1Z9UTz-jUm5N7_QyCB14Vr4I_hZFmNsRLww_4Qv1JAy73-VLpPKkTCopmcWViZh301QwvH6kMdPHYykp-TiTPiWZIFEcl_UIunjQQiK" />
- </picture>
-</a>
+Rust 服务基于 [st0nie/cskillconfirm](https://github.com/st0nie/cskillconfirm) 和 [st0nie/gsi-cs2-rs](https://github.com/st0nie/gsi-cs2-rs)。
+
+项目还使用了 [MinecraftGD656/gd656killicon](https://github.com/MinecraftGD656/gd656killicon) 以及 [Steam 创意工坊项目 2721562982](https://steamcommunity.com/sharedfiles/filedetails/?id=2721562982) 的资源或设计参考。
+
+## 许可证
+
+本项目使用 [GNU Affero General Public License v3.0](LICENSE)。
+
+本项目为社区项目，与 Valve、Microsoft、Xbox、Smilegate、Riot Games、Electronic Arts、Krafton、腾讯或其他游戏发行商均无官方关联。
