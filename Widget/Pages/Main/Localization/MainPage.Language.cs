@@ -91,6 +91,9 @@ namespace KillConfirmGameBar
                     : LocalizationManager.Text("CreateIconPack");
             }
 
+            BatchImportVoiceZipButton.Content = isChinese ? "批量导入音频包" : "Import audio packs";
+            BatchImportIconZipButton.Content = isChinese ? "批量导入图标包" : "Import icon packs";
+
             if (HomeTabGeneralButton != null) HomeTabGeneralButton.Content = LocalizationManager.Text("HomeTabGeneral");
             if (HomeTabPortButton != null) HomeTabPortButton.Content = LocalizationManager.Text("HomeTabPort");
             if (HomeTabDisplayButton != null) HomeTabDisplayButton.Content = LocalizationManager.Text("HomeTabDisplay");
@@ -175,8 +178,8 @@ namespace KillConfirmGameBar
                         : "Choose images or frame folders when customizing; sheets are generated automatically. Packs support kills 1–5, headshot variants and names such as kill1, ace or 三杀.";
                     iconFull = "style.json (optional)\n1.png + 1.json … 5.png + 5.json\n1hs.png + 1hs.json … 5hs.png + 5hs.json (optional)\nLegacy: 1/ … 5/ or kill1-1/ … kill1-5/";
                     fileHint = isChinese
-                        ? "语音共有 10 种事件；空槽按同级普通语音、1 杀爆头、1 杀普通语音的顺序回退。图标整包请选择目录或 ZIP，单组帧图片请点“自定义”。"
-                        : "Voice packs expose 10 events. Empty slots fall back through same-level normal, kill-1 headshot, then kill-1 normal. Import icon packs as folders or ZIPs, or use Customize for one sequence.";
+                        ? "语音共有 10 种事件；空槽按同级普通语音、1 杀爆头、1 杀普通语音的顺序回退。请选择图标包导入，或通过“新建图标包”配置单组帧图片。"
+                        : "Voice packs expose 10 events. Empty slots fall back through same-level normal, kill-1 headshot, then kill-1 normal. Import icon packs, or choose New icon pack for one sequence.";
                     break;
 
                 case GameStyleMode.Apex:

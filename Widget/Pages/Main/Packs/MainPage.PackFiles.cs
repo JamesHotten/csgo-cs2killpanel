@@ -142,15 +142,11 @@ namespace KillConfirmGameBar
 
         private async Task ShowMessageAsync(string title, string message)
         {
-            var dialog = new ContentDialog
-            {
-                Title = title,
-                Content = message,
-                CloseButtonText = LocalizationManager.Text("Cancel"),
-                RequestedTheme = ElementTheme.Light,
-                Background = new SolidColorBrush(Color.FromArgb(255, 250, 250, 247)),
-                Foreground = new SolidColorBrush(Color.FromArgb(255, 29, 34, 51))
-            };
+            var theme = GameThemePalette.Current;
+            var body = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, FontSize = 14, Foreground = new SolidColorBrush(theme.Text) };
+            var scroll = new ScrollViewer { Content = body, MaxHeight = 320, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+            var dialog = CreatePackStatusDialog(title, scroll,
+                LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "知道了" : "OK");
             await dialog.ShowAsync();
         }
 
@@ -458,7 +454,7 @@ namespace KillConfirmGameBar
                 SuggestedStartLocation = PickerLocationId.Downloads,
                 SuggestedFileName = SanitizeExportFileName(displayName)
             };
-            picker.FileTypeChoices.Add("ZIP", new List<string> { ".zip" });
+            picker.FileTypeChoices.Add("Audio / icon pack", new List<string> { ".zip" });
             StorageFile destination = await picker.PickSaveFileAsync();
             if (destination == null)
             {
