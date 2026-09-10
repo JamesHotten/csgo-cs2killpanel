@@ -5,6 +5,12 @@ $styleSource = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot 'Widget/Se
 $styleEnum = [regex]::Match($styleSource, '(?s)internal enum GameStyleMode\s*\{[^}]+\}').Value
 if (-not $styleEnum) { throw 'GameStyleMode declaration not found.' }
 $definition = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot 'Widget/Services/Styling/KillFeedbackFrameDefinition.cs')
+$appearanceEditor = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot 'Widget/Controls/GameStyles/Shared/KillFeedbackAppearanceEditor.xaml.cs')
+if ($appearanceEditor -notmatch 'Dispatcher\.HasThreadAccess' -or
+    $appearanceEditor -notmatch 'Dispatcher\.RunAsync\(CoreDispatcherPriority\.Normal' -or
+    $appearanceEditor -notmatch 'KillFeedbackVisibilitySettingsStore\.Changed\s*-=' ) {
+    throw 'Feedback appearance store callbacks must return to their owning UI dispatcher and release stale subscriptions.'
+}
 $checks = @'
 namespace KillConfirmGameBar.Services
 {
