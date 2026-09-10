@@ -57,7 +57,7 @@ namespace KillConfirmGameBar.Services
         public static bool IsImportedIconPackKey(string key)
         {
             if (string.IsNullOrWhiteSpace(key)) return false;
-            return key.StartsWith("custom_module_icon_", StringComparison.OrdinalIgnoreCase) || key.StartsWith("custom_icon_", StringComparison.OrdinalIgnoreCase)
+            return CrossfireExternalAssetService.IsIconKey(key) || key.StartsWith("custom_module_icon_", StringComparison.OrdinalIgnoreCase) || key.StartsWith("custom_icon_", StringComparison.OrdinalIgnoreCase)
                 || key.StartsWith("custom_csol_icon_", StringComparison.OrdinalIgnoreCase)
                 || key.StartsWith("custom_dagoujiao_icon_", StringComparison.OrdinalIgnoreCase)
                 || key.StartsWith("custom_doubao_icon_", StringComparison.OrdinalIgnoreCase)
@@ -213,6 +213,9 @@ namespace KillConfirmGameBar.Services
             return new IconPackCapabilities
             {
                 HasKillFxOverlay = await ContainsAnyFileAsync(folder,
+                    "killmark_headshot.png", "killmark_multikill.png", "killmark_knife.png", "killmark_grenade.png",
+                    "SPRITE_01.png", "SPRITENORMAL_01.png", "SPRITESPECIAL_01.png",
+                    "Sprite\\SPRITE_01.png", "Sprite\\SPRITENORMAL_01.png", "Sprite\\SPRITESPECIAL_01.png",
                     "multi2_fx.png", "multi2_fx.tga",
                     "multi3_fx.png", "multi3_fx.tga",
                     "multi4_fx.png", "multi4_fx.tga",

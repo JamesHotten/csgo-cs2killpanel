@@ -158,6 +158,33 @@ namespace KillConfirmGameBar
                 return files;
             }
 
+            if (fileNames.Any(name => name.Equals("SPRITE_01.png", StringComparison.OrdinalIgnoreCase)))
+            {
+                var sources = new List<StorageFolder> { folder };
+                foreach (string child in new[] { "Sprite", "badgeex" })
+                {
+                    try { sources.Add(await folder.GetFolderAsync(child)); } catch { }
+                }
+                foreach (StorageFolder source in sources)
+                {
+                    var available = (await source.GetFilesAsync()).ToDictionary(file => file.Name, StringComparer.OrdinalIgnoreCase);
+                    foreach (string canonical in CrossfirePackFormat.Files)
+                    {
+                        if (files.ContainsKey(canonical)) continue;
+                        foreach (string candidate in CrossfirePackFormat.Candidates(canonical))
+                        {
+                            foreach (string extension in IconImageExtensions)
+                            {
+                                if (available.TryGetValue(Path.ChangeExtension(candidate, extension), out StorageFile file))
+                                { files[canonical] = file; break; }
+                            }
+                            if (files.ContainsKey(canonical)) break;
+                        }
+                    }
+                }
+                return files;
+            }
+
             IReadOnlyList<StorageFile> allFolderFiles = null;
             try
             {
@@ -333,37 +360,37 @@ namespace KillConfirmGameBar
                     if (string.Equals(key, "original", StringComparison.OrdinalIgnoreCase)
                         || string.Equals(key, "default", StringComparison.OrdinalIgnoreCase))
                     {
-                        return await installed.GetFolderAsync(@"Assets\KillConfirmCode\Original");
+                        return await PackCatalogService.GetImportedIconFolderAsync("default");
                     }
                     if (string.Equals(key, "vip", StringComparison.OrdinalIgnoreCase))
                     {
-                        return await installed.GetFolderAsync(@"Assets\KillConfirmCode\Vip");
+                        return await PackCatalogService.GetImportedIconFolderAsync("vip");
                     }
                     if (string.Equals(key, "angelic_beast", StringComparison.OrdinalIgnoreCase))
                     {
-                        return await installed.GetFolderAsync(@"Assets\KillConfirmCode\AngelicBeast");
+                        return await PackCatalogService.GetImportedIconFolderAsync("angelic_beast");
                     }
                     if (string.Equals(key, "anniversary_10", StringComparison.OrdinalIgnoreCase)
                         || string.Equals(key, "glory", StringComparison.OrdinalIgnoreCase))
                     {
-                        return await installed.GetFolderAsync(@"Assets\KillConfirmCode\Anniversary10");
+                        return await PackCatalogService.GetImportedIconFolderAsync("anniversary_10");
                     }
                     if (string.Equals(key, "anniversary_15", StringComparison.OrdinalIgnoreCase)
                         || string.Equals(key, "champion", StringComparison.OrdinalIgnoreCase))
                     {
-                        return await installed.GetFolderAsync(@"Assets\KillConfirmCode\Anniversary15");
+                        return await PackCatalogService.GetImportedIconFolderAsync("anniversary_15");
                     }
                     if (string.Equals(key, "cfpl", StringComparison.OrdinalIgnoreCase))
                     {
-                        return await installed.GetFolderAsync(@"Assets\KillConfirmCode\CFPL");
+                        return await PackCatalogService.GetImportedIconFolderAsync("cfpl");
                     }
                     if (string.Equals(key, "rankmach_2019_1", StringComparison.OrdinalIgnoreCase))
                     {
-                        return await installed.GetFolderAsync(@"Assets\KillConfirmCode\Rankmach2019_1");
+                        return await PackCatalogService.GetImportedIconFolderAsync("rankmach_2019_1");
                     }
                     if (string.Equals(key, "rankmach_2019_2", StringComparison.OrdinalIgnoreCase))
                     {
-                        return await installed.GetFolderAsync(@"Assets\KillConfirmCode\Rankmach2019_2");
+                        return await PackCatalogService.GetImportedIconFolderAsync("rankmach_2019_2");
                     }
 
                     // Other Game Styles

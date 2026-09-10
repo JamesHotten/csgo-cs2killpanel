@@ -75,6 +75,11 @@ namespace KillConfirmGameBar.Controls
             public CanvasBitmap Fx { get; }
             public CanvasBitmap Overlay { get; }
             public CanvasBitmap WeaponBadge { get; }
+            public CanvasBitmap EventOverlay { get; set; }
+            public CanvasBitmap[] Sequence { get; set; }
+            public string Action { get; set; }
+            public double FrameWidth => _mainAnimationStyle == 2 || Sequence != null ? 1100 : CodeKillFrameWidth;
+            public double FrameHeight => _mainAnimationStyle == 2 ? 900 : CodeKillFrameHeight;
         }
 
         private sealed class ValorantKillAsset
