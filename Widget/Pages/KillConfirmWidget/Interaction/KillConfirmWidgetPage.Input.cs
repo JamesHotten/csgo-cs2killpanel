@@ -165,19 +165,7 @@ namespace KillConfirmGameBar
 
             SetFeedbackFramePlacement(KillFeedbackLayer.Crosshair, AnimationPlacementMode.Center);
 
-            if (_widget == null)
-            {
-                return;
-            }
-
-            try
-            {
-                await _widget.CenterWindowAsync();
-            }
-            catch (Exception ex)
-            {
-                App.Log("Center crosshair effect window failed: " + ex.Message);
-            }
+            await CenterWidgetWindowAsync("crosshair-center");
         }
 
         private void OnWindowTopClick(object sender, RoutedEventArgs e)

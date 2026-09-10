@@ -304,8 +304,9 @@
     <Compile Include="Controls\Animations\Valorant\ValorantAnimation.Render.cs" />
     <Compile Include="Controls\Animations\Valorant\ValorantAnimation.Drawing.cs" />
     <Compile Include="Controls\Animations\Valorant\ValorantAnimation.Effects.cs" />
-    <Compile Include="Controls\Animations\Valorant\ValorantAnimation.Motion.cs" />
     <Compile Include="Controls\Animations\Valorant\ValorantAnimation.Profiles.cs" />
+    <Compile Include="Controls\Animations\Valorant\ValorantAnimation.NativeDrawing.cs" />
+    <Compile Include="Controls\Animations\Valorant\ValorantAnimation.CookedAfterglow.cs" />
     <Compile Include="Controls\GameStyles\Shared\AdvancedEffectsPanelSupport.cs" />
     <Compile Include="Controls\GameStyles\Shared\KillFeedbackAppearanceEditor.xaml.cs">
       <DependentUpon>KillFeedbackAppearanceEditor.xaml</DependentUpon>
@@ -445,6 +446,7 @@
     <Compile Include="Services\Runtime\ServiceLauncher.cs" />
     <Compile Include="Services\Settings\Audio\AssistAudioSettingsStore.cs" />
     <Compile Include="Services\Settings\Crosshair\CrosshairOffsetSettingsStore.cs" />
+    <Compile Include="Services\Settings\Games\ModernWarfare2019FeedOffsetSettingsStore.cs" />
     <Compile Include="Services\Settings\Games\ValorantPackSyncSettingsStore.cs" />
     <Compile Include="Services\Settings\Games\CrossfireGameplaySettingsStore.cs" />
     <Compile Include="Services\Settings\Games\CsolVoiceSettingsStore.cs" />
@@ -468,6 +470,7 @@
     <Compile Include="Services\Styling\GameStyleService.PackMappings.cs" />
     <Compile Include="Services\Styling\GameThemePalette.cs" />
     <Compile Include="Services\Catalog\Games\ValorantPackService.cs" />
+    <Compile Include="Services\Catalog\Games\ValorantExternalAssetService.cs" />
     <Compile Include="Services\Localization\LocalizationManager.cs" />
     <Compile Include="Services\Localization\LocalizationManager.English.Core.cs" />
     <Compile Include="Services\Localization\LocalizationManager.English.Widget.cs" />

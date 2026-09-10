@@ -196,7 +196,7 @@ namespace KillConfirmGameBar.Controls
             PlayInternal(progress => LoadCodeKillAssetAsync(assetName, weaponBadgeKey, progress));
         }
 
-        public void PlayValorantKill(string packKey, int killCount, bool isHeadshot)
+        public void PlayNativeValorantKill(string packKey, int killCount, bool isHeadshot)
         {
             string normalizedPackKey = ValorantPackService.IsValorantPackKey(packKey)
                 ? packKey

@@ -369,7 +369,10 @@ namespace KillConfirmGameBar
                 valorantPack = GetSelectedVoicePackPreset();
             }
 
-            LowerFeedbackAnimation.PlayValorantKill(valorantPack, killEvent.KillCount, killEvent.IsHeadshot);
+            LowerFeedbackAnimation.PlayNativeValorantKill(
+                valorantPack,
+                killEvent.KillCount,
+                killEvent.IsHeadshot);
         }
 
         private static string GetKillTargetDisplayName(KillEvent killEvent)
