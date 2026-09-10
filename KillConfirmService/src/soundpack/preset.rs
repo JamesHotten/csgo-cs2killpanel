@@ -18,10 +18,11 @@ pub struct Preset {
 impl Preset {
     /// Load a preset from the sounds directory
     pub fn load(preset_name: &str) -> Result<Self> {
-        // Custom sequences are visual assets only, but selecting the module must
-        // still leave the user with audible feedback. Reuse the stable built-in
-        // Crossfire pack while retaining the custommodule identity exposed to UI.
-        if preset_name == "custommodule" {
+        let root = sounds_root();
+        // New packages include a dedicated custom-module voice pack. Keep the
+        // former CrossFire fallback for portable/older installs whose resources
+        // have not been upgraded yet, so visuals never become silently unusable.
+        if preset_name == "custommodule" && !root.join("custommodule").is_dir() {
             let fallback_dir = sounds_root().join("crossfire_swat_gr");
             let manifest = PackManifest::load_from_dir(&fallback_dir)?;
             return Ok(Self {
@@ -33,6 +34,10 @@ impl Preset {
                 base_dir: fallback_dir.to_string_lossy().replace('\\', "/"),
             });
         }
+        Self::load_from_sounds_root(preset_name, &root)
+    }
+
+    pub(crate) fn load_from_sounds_root(preset_name: &str, sounds_root: &Path) -> Result<Self> {
         let parts: Vec<&str> = preset_name.split("_v_").collect();
         let is_crossfire_variant = preset_name.starts_with("crossfire_") && parts.len() > 1;
         let (master_name, variant) = if is_crossfire_variant {
@@ -41,7 +46,6 @@ impl Preset {
             (preset_name, None)
         };
 
-        let sounds_root = sounds_root();
         let pack_dir = sounds_root.join(preset_name);
         let base_dir = pack_dir.to_string_lossy().replace('\\', "/");
 
