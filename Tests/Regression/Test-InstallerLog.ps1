@@ -10,6 +10,10 @@ if (-not $InnoCompilerPath) {
 }
 if (-not $InnoCompilerPath) { throw 'Inno Setup 6.4+ is required.' }
 $RepositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
+$installerSource = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'Installer\KillConfirmGameBar.iss')
+if ($installerSource -notmatch 'InstallConfirmed\s*:=\s*WizardSilent') {
+    throw 'Silent installation must bypass only the interactive acknowledgement page.'
+}
 $testRoot = Join-Path $RepositoryRoot ('Output\InstallerLogTests-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $testRoot | Out-Null
 $utf8Bom = [Text.UTF8Encoding]::new($true)

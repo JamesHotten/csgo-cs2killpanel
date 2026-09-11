@@ -2,7 +2,7 @@
 #define MyAppExeName "Install-KillConfirm.ps1"
 
 #ifndef MyAppVersion
-  #define MyAppVersion "4.5.1.0"
+  #define MyAppVersion "5.1.0.1"
 #endif
 
 #ifndef TransferRoot
@@ -189,7 +189,7 @@ var
   TutorialLink: TNewStaticText;
 begin
   InitializeInstallLog();
-  InstallConfirmed := False;
+  InstallConfirmed := WizardSilent;
   InstallConfirmPage := CreateCustomPage(
     wpReady,
     ExpandConstant('{cm:ConfirmPageTitle}'),
