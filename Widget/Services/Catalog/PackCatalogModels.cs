@@ -12,6 +12,12 @@ namespace KillConfirmGameBar.Services
 
         [DataMember]
         public List<IconPackItem> IconPacks { get; set; } = new List<IconPackItem>();
+
+        [DataMember]
+        public List<string> VoicePackOrder { get; set; } = new List<string>();
+
+        [DataMember]
+        public List<string> IconPackOrder { get; set; } = new List<string>();
     }
 
     [DataContract]

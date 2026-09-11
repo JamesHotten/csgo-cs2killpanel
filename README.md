@@ -14,6 +14,7 @@ This repository is the continued development fork at [JamesHotten/csgo-cs2killpa
 - Normal kill, headshot, knife kill, first kill, final kill, round win, and round loss events.
 - CrossFire, Valorant, CSOL, Battlefield 1/4/5/2042, PUBG, Delta Force, Overwatch, Modern Warfare 2019, Apex, Doubao, Dagoujiao, and Custom Module presentation styles.
 - Importable CrossFire full-event suites and Valorant finisher packs; their large media files stay outside the application package.
+- Native resource-pack grids support drag-and-drop ordering, pack download links, Valorant icon-pack editing, and in-place Valorant audio-pack editing/repair.
 - Native Valorant animation playback with headshot crosshair continuation and per-style crosshair-center offsets.
 - Optional GPU-rendered event danmaku for kills, deaths, assists, objectives, and round results, with independent trigger, density, speed, area, and appearance controls.
 - Optional assist audio for CrossFire and Valorant, plus separate CF headshot/knife audio and icon priority controls.
@@ -48,6 +49,7 @@ Only the event represented by the main game view is rendered. This covers normal
 
 For exact client and server deployment steps, see [CS2 and CS:GO Legacy migration guide](docs/CS2_AND_LEGACY_MIGRATION.zh-CN.md) (Chinese).
 For every animation, audio, priority, streak-window, and fallback option, see the [effect and audio settings guide](docs/EFFECT_AUDIO_SETTINGS.zh-CN.md) (Chinese).
+For the boundaries and curation notes of all 16 danmaku event pools, see the [event-pool workflow and index](docs/danmaku-event-pool-workflow.md) (Chinese).
 
 ## Requirements
 

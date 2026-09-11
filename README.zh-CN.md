@@ -14,6 +14,7 @@ KillConfirmGameBar 是适用于 Counter-Strike 2 和 CS:GO Legacy 的 Windows Xb
 - 支持普通击杀、爆头、刀杀、首杀、最终击杀、回合胜利和回合失败事件。
 - 提供穿越火线、Valorant、CSOL、战地 1/4/5/2042、PUBG、三角洲行动、守望先锋、现代战争 2019、Apex、豆包、大狗叫和自定义模块表现风格。
 - 支持导入穿越火线完整事件套装和 Valorant 武器终结包，大型素材与应用安装包分离。
+- 原生资源包网格支持拖拽排序、资源包下载入口、Valorant 图标包编辑，以及 Valorant 音频包原位编辑与缺槽修复。
 - Valorant 使用原生动画播放，修复爆头准星延续，并可为每种风格单独设置准星中心偏移。
 - 可选 Win2D GPU 游戏事件弹幕，分别控制击杀、阵亡、助攻、目标和回合事件，并设置密度、速度、区域和外观。
 - 提供 CSOL 1～10 杀图标、语音变体、特殊击杀优先级与首尾杀图标设置。
@@ -50,6 +51,7 @@ CS2 不使用 Legacy 的身份缓存或 SourceMod 去重路径。`Legacy Bridge`
 
 完整的客户端、服务器和迁移步骤参见 [CS2 与 CS:GO Legacy 迁移和使用说明](docs/CS2_AND_LEGACY_MIGRATION.zh-CN.md)。
 每种动画、音效、优先级、连杀窗口和资源回退选项参见 [特效与音效设置说明](docs/EFFECT_AUDIO_SETTINGS.zh-CN.md)。
+16 类弹幕事件池的边界和独立说明参见 [事件池编辑流程与索引](docs/danmaku-event-pool-workflow.md)。
 
 ## 使用要求
 

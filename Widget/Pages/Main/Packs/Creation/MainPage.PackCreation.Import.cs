@@ -231,6 +231,7 @@ namespace KillConfirmGameBar
         private async void OnCreateIconPackClick(object sender, RoutedEventArgs e)
         {
             if (GameStyleService.Current == GameStyleMode.CustomModule) { await ShowCustomModuleEditorAsync(null); return; }
+            if (GameStyleService.Current == GameStyleMode.Valorant) { await ShowValorantIconEditorAsync(); return; }
             if (await GuardIconPackCreationAsync())
             {
                 return;
