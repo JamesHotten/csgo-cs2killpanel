@@ -1,20 +1,48 @@
 #Requires -Version 7.0
 param([Parameter(Mandatory)][string]$Destination)
 $ErrorActionPreference = 'Stop'
-$assetUrl = 'https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/assets/534132580'
-$archiveSha256 = 'D905AAD3D2D5E999184D1EC6870EDBA731A5D2E0DA9E0D8D8F874F106B64BFEE'
-$cacheRoot = Join-Path $env:LOCALAPPDATA 'KillConfirmBuildCache/ffmpeg-9.0.1-lgpl'
+$assetName = 'ffmpeg-n9.0-latest-win64-lgpl-9.0.zip'
+$releaseRoot = 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest'
+$assetUrl = "$releaseRoot/$assetName"
+$checksumsUrl = "$releaseRoot/checksums.sha256"
+$cacheRoot = Join-Path $env:LOCALAPPDATA 'KillConfirmBuildCache/ffmpeg-n9.0-lgpl'
 $archive = Join-Path $cacheRoot 'ffmpeg-lgpl.zip'
+$checksumCache = Join-Path $cacheRoot 'ffmpeg-lgpl.sha256'
 New-Item -ItemType Directory -Force -Path $cacheRoot | Out-Null
-if (-not (Test-Path -LiteralPath $archive) -or (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $archiveSha256) {
+
+$archiveSha256 = if (Test-Path -LiteralPath $checksumCache) {
+    (Get-Content -LiteralPath $checksumCache -Raw).Trim().ToUpperInvariant()
+} else {
+    ''
+}
+$cachedArchiveIsValid =
+    $archiveSha256 -match '^[0-9A-F]{64}$' -and
+    (Test-Path -LiteralPath $archive) -and
+    (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -eq $archiveSha256
+
+if (-not $cachedArchiveIsValid) {
+    $checksumDownload = "$checksumCache.download"
+    Remove-Item -LiteralPath $checksumDownload -Force -ErrorAction SilentlyContinue
+    Invoke-WebRequest -Uri $checksumsUrl -Headers @{ 'User-Agent' = 'KillConfirmGameBar-Build' } -OutFile $checksumDownload
+    $checksumLine = Get-Content -LiteralPath $checksumDownload |
+        Where-Object { $_ -match "^([0-9a-fA-F]{64})\s+\*?$([regex]::Escape($assetName))$" } |
+        Select-Object -First 1
+    if (-not $checksumLine) {
+        Remove-Item -LiteralPath $checksumDownload -Force
+        throw "FFmpeg checksum manifest does not contain $assetName."
+    }
+    $archiveSha256 = ([regex]::Match($checksumLine, '^[0-9a-fA-F]{64}').Value).ToUpperInvariant()
+
     $download = "$archive.download"
     Remove-Item -LiteralPath $download -Force -ErrorAction SilentlyContinue
-    Invoke-WebRequest -Uri $assetUrl -Headers @{ Accept = 'application/octet-stream' } -OutFile $download
+    Invoke-WebRequest -Uri $assetUrl -Headers @{ 'User-Agent' = 'KillConfirmGameBar-Build' } -OutFile $download
     if ((Get-FileHash -LiteralPath $download -Algorithm SHA256).Hash -ne $archiveSha256) {
         Remove-Item -LiteralPath $download -Force
         throw 'FFmpeg archive checksum mismatch.'
     }
     Move-Item -LiteralPath $download -Destination $archive -Force
+    [IO.File]::WriteAllText($checksumCache, $archiveSha256)
+    Remove-Item -LiteralPath $checksumDownload -Force
 }
 if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $archiveSha256) { throw 'FFmpeg archive checksum mismatch.' }
 $extract = Join-Path $cacheRoot 'extract'
@@ -31,9 +59,9 @@ if (-not (Test-Path -LiteralPath (Join-Path $extract 'ffmpeg.exe'))) {
 New-Item -ItemType Directory -Force -Path $Destination | Out-Null
 Copy-Item -LiteralPath (Join-Path $extract 'ffmpeg.exe'),(Join-Path $extract 'LICENSE.txt') -Destination $Destination -Force
 $lines = @(
-    'FFmpeg 9.0.1 LGPLv3 build by BtbN (invoked as a separate process for video import)'
+    'FFmpeg n9.0 LGPLv3 build by BtbN (invoked as a separate process for video import)'
     'Build and corresponding source information: https://github.com/BtbN/FFmpeg-Builds'
-    'FFmpeg upstream source revision: https://github.com/FFmpeg/FFmpeg/commit/e47273f4d9'
+    "Binary archive: $assetName"
     "Binary archive SHA-256: $archiveSha256"
 )
 [IO.File]::WriteAllLines((Join-Path $Destination 'SOURCE.txt'), $lines)

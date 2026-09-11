@@ -13,10 +13,13 @@ This repository is the continued development fork at [JamesHotten/csgo-cs2killpa
 - Xbox Game Bar overlay with configurable position, scale, audio volume, and output device.
 - Normal kill, headshot, knife kill, first kill, final kill, round win, and round loss events.
 - CrossFire, Valorant, CSOL, Battlefield 1/4/5/2042, PUBG, Delta Force, Overwatch, Modern Warfare 2019, Apex, Doubao, Dagoujiao, and Custom Module presentation styles.
-- Multiple CrossFire voices and Valorant weapon-finisher sound packs.
+- Importable CrossFire full-event suites and Valorant finisher packs; their large media files stay outside the application package.
+- Native Valorant animation playback with headshot crosshair continuation and per-style crosshair-center offsets.
+- Optional GPU-rendered event danmaku for kills, deaths, assists, objectives, and round results, with independent trigger, density, speed, area, and appearance controls.
 - Optional assist audio for CrossFire and Valorant, plus separate CF headshot/knife audio and icon priority controls.
 - CSOL 1–10 kill visuals, voice variants, special-event priority, and first/final-kill icon settings.
 - Per-event sound routing for supported Battlefield and Delta Force styles without changing visual event flags.
+- COD final-kill preservation and an adjustable reward-row position.
 - Automatic or fixed 100%–200% Game Bar control-panel scaling for high-resolution displays.
 - CS2, CS:GO Legacy, original bots, controlled bots, spectating, replay, and supported bot mods.
 - Per-observed-player kill and assist baselines prevent counters from leaking across spectator or replay target changes. Teammate spectating, replay views, and controlled-bot effects have separate switches.
@@ -153,7 +156,7 @@ Create the one-click `.exe` installers (new-user package with prerequisites and 
 .\Build-ReleaseInstaller.ps1 -Configuration Release
 ```
 
-The first release build downloads and verifies the pinned LGPL FFmpeg dependency used by Custom Module video import. The resulting installer contains FFmpeg and does not need to download it on the user's computer. Neither command installs or replaces the currently registered Game Bar package unless `Build-DevPackage.ps1` is explicitly given `-Install`.
+The first release build downloads the versioned FFmpeg n9 LGPL archive and verifies it against the publisher's SHA-256 manifest. The resulting installer contains FFmpeg and does not need to download it on the user's computer. Neither command installs or replaces the currently registered Game Bar package unless `Build-DevPackage.ps1` is explicitly given `-Install`.
 
 Use `-DisableSigning` only for a developer registration workflow. Public distributions should use a trusted signing certificate or signing service.
 
@@ -165,10 +168,11 @@ Use `-DisableSigning` only for a developer registration workflow. Public distrib
 | `Widget` | UWP Xbox Game Bar interface and animation renderer |
 | `Package` | MSIX packaging project and manifest |
 | `Installer` | Transfer-package and Inno Setup support files |
-| `SourceAssets/GameStyles` | Source audio, animation, icons, and per-style sound packs |
+| `SourceAssets/GameStyles` | Built-in source audio, animation, icons, and per-style sound packs |
 | `docs` | Migration, dual-game deployment, and troubleshooting documentation |
 
 Build scripts refresh package-ready assets from `SourceAssets`; edit source assets rather than generated copies under the widget or service output directories.
+CrossFire and additional Valorant media are distributed as separately importable packages; see [CrossFire icon packs](docs/crossfire-icon-packs.md) and [Valorant external packs](docs/valorant-external-packs-v2.md).
 
 ## Troubleshooting
 

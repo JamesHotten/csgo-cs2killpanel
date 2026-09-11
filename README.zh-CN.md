@@ -13,9 +13,12 @@ KillConfirmGameBar 是适用于 Counter-Strike 2 和 CS:GO Legacy 的 Windows Xb
 - Xbox Game Bar 悬浮窗，可调整位置、缩放、音量和音频输出设备。
 - 支持普通击杀、爆头、刀杀、首杀、最终击杀、回合胜利和回合失败事件。
 - 提供穿越火线、Valorant、CSOL、战地 1/4/5/2042、PUBG、三角洲行动、守望先锋、现代战争 2019、Apex、豆包、大狗叫和自定义模块表现风格。
-- 提供多套穿越火线角色语音和 Valorant 武器终结音效。
+- 支持导入穿越火线完整事件套装和 Valorant 武器终结包，大型素材与应用安装包分离。
+- Valorant 使用原生动画播放，修复爆头准星延续，并可为每种风格单独设置准星中心偏移。
+- 可选 Win2D GPU 游戏事件弹幕，分别控制击杀、阵亡、助攻、目标和回合事件，并设置密度、速度、区域和外观。
 - 提供 CSOL 1～10 杀图标、语音变体、特殊击杀优先级与首尾杀图标设置。
 - BF1/BFV/BF4/BF2042/三角洲支持普通、爆头、刀杀和助攻的独立音效路由；不会改动动画事件。
+- COD 保留最终击杀表现，并可调整奖励行位置。
 - 设置主页支持自动或固定 100%～200% 的 Game Bar 控制面板高分辨率缩放。
 - CF 与 Valorant 可单独启用助攻音效，CF 可分别设置爆头/刀杀音效及图标优先级。
 - 兼容 CS2、CS:GO Legacy、原版机器人、接管机器人、观战、回放及受支持的机器人 Mod。
@@ -155,7 +158,7 @@ cd ..
 .\Build-ReleaseInstaller.ps1 -Configuration Release
 ```
 
-首次 Release 构建会下载并校验固定版本的 LGPL FFmpeg，用于自定义模块视频导入；最终安装包已经携带 FFmpeg，用户安装时不需要联网下载。除非明确给 `Build-DevPackage.ps1` 传入 `-Install`，以上命令都不会安装或替换当前 Game Bar 包。
+首次 Release 构建会下载 FFmpeg n9 系列 LGPL 压缩包，并按照发布方的 SHA-256 清单校验，用于自定义模块视频导入；最终安装包已经携带 FFmpeg，用户安装时不需要联网下载。除非明确给 `Build-DevPackage.ps1` 传入 `-Install`，以上命令都不会安装或替换当前 Game Bar 包。
 
 `-DisableSigning` 只适用于开发注册流程。公开分发应使用受信任的签名证书或签名服务。
 
@@ -167,10 +170,11 @@ cd ..
 | `Widget` | UWP Xbox Game Bar 界面和动画渲染 |
 | `Package` | MSIX 打包项目和清单 |
 | `Installer` | 转移包及 Inno Setup 支持文件 |
-| `SourceAssets/GameStyles` | 各风格的源音频、动画、图标和音效包 |
+| `SourceAssets/GameStyles` | 内置风格的源音频、动画、图标和音效包 |
 | `docs` | 迁移、双游戏部署和故障排查文档 |
 
 构建脚本会从 `SourceAssets` 刷新打包资源。应修改源资源，不要直接修改小组件或服务输出目录中的生成副本。
+穿越火线及额外 Valorant 大型素材通过独立资源包导入，参见 [穿越火线图标包](docs/crossfire-icon-packs.md) 和 [Valorant 外部资源包](docs/valorant-external-packs-v2.md)。
 
 ## 故障排查
 

@@ -89,9 +89,23 @@ namespace KillConfirmGameBar
 
             if (GameStyleService.Current == GameStyleMode.Valorant)
             {
-                await ImportValorantPackageFromFolderAsync(
+                if (await ValorantExternalAssetService.IsPackageKindAsync(
                     folder,
-                    ValorantExternalAssetService.VoicePackageKind);
+                    ValorantExternalAssetService.VoicePackageKind))
+                {
+                    await ImportValorantPackageFromFolderAsync(
+                        folder,
+                        ValorantExternalAssetService.VoicePackageKind);
+                }
+                else
+                {
+                    await ShowCreateValorantVoicePackDialogAsync(
+                        folder.DisplayName,
+                        await CollectVoiceFileGroupsFromManifestAsync(
+                            folder,
+                            PackCatalogService.ValorantVoiceSlotMapping),
+                        await TryGetCustomPackHeadImageAsync(folder.Path));
+                }
                 return;
             }
 
@@ -301,6 +315,66 @@ namespace KillConfirmGameBar
                             await TryGetAudioFileAsync(folder, "common_overlay"),
                             await TryGetCustomPackHeadImageAsync(folder.Path));
                     });
+            }
+        }
+
+        private async void OnImportIconPackClick(object sender, RoutedEventArgs e)
+        {
+            if (GameStyleService.Current == GameStyleMode.CustomModule) { await ImportCustomModuleAsync(false); return; }
+            if (await GuardIconPackCreationAsync())
+            {
+                return;
+            }
+
+            var picker = new FolderPicker();
+            picker.FileTypeFilter.Add("*");
+            StorageFolder folder = await picker.PickSingleFolderAsync();
+            if (folder == null)
+            {
+                return;
+            }
+
+            StorageFile headImage = await TryGetCustomPackHeadImageAsync(folder.Path);
+
+            if (GameStyleService.Current == GameStyleMode.Dagoujiao)
+            {
+                await ShowCreateDagoujiaoIconPackDialogAsync(folder.DisplayName,
+                    await CollectRecognizedFilesAsync(folder, DagoujiaoIconPackImportFiles), headImage);
+            }
+            else if (GameStyleService.Current == GameStyleMode.Doubao)
+            {
+                await ShowCreateDoubaoIconPackDialogAsync(folder.DisplayName,
+                    await CollectRecognizedFilesAsync(folder, DoubaoIconPackImportFiles), headImage);
+            }
+            else if (GameStyleService.Current == GameStyleMode.Csol)
+            {
+                await ShowCreateCsolIconPackDialogAsync(folder.DisplayName,
+                    await CollectRecognizedFilesAsync(folder, CsolIconPackImportFiles), headImage);
+            }
+            else if (GameStyleService.Current == GameStyleMode.Battlefield1)
+            {
+                await ShowCreateBattlefield1IconPackDialogAsync(folder.DisplayName,
+                    await CollectRecognizedFilesAsync(folder, Battlefield1IconPackImportFiles), headImage);
+            }
+            else if (GameStyleService.Current == GameStyleMode.Battlefield5)
+            {
+                await ShowCreateBattlefield5IconPackDialogAsync(folder.DisplayName,
+                    await CollectRecognizedFilesAsync(folder, Battlefield5IconPackImportFiles), headImage);
+            }
+            else if (GameStyleService.Current == GameStyleMode.Battlefield2042)
+            {
+                await ShowCreateBattlefield2042IconPackDialogAsync(folder.DisplayName,
+                    await CollectRecognizedFilesAsync(folder, Battlefield2042IconPackImportFiles), headImage);
+            }
+            else if (GameStyleService.Current == GameStyleMode.DeltaForce)
+            {
+                await ShowCreateDeltaForceIconPackDialogAsync(folder.DisplayName,
+                    await CollectRecognizedFilesAsync(folder, DeltaForceIconPackImportFiles), headImage);
+            }
+            else
+            {
+                await ShowCreateIconPackDialogAsync(folder.DisplayName,
+                    await CollectRecognizedFilesAsync(folder, IconPackImportFiles), headImage);
             }
         }
 

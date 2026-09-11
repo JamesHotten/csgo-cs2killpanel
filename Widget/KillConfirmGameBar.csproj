@@ -25,10 +25,6 @@
     <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(GenerateAppxPackageOnBuild)' == 'false'">
-    <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
-  </PropertyGroup>
-
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\x86\Debug\</OutputPath>
@@ -106,6 +102,29 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Danmaku\Engine\DanmakuEvent.cs" />
+    <Compile Include="Danmaku\Engine\DanmakuReactionPolicy.cs" />
+    <Compile Include="Danmaku\Engine\DanmakuEventPoolRepository.cs" />
+    <Compile Include="Danmaku\Engine\SemanticAnnotationRepository.cs" />
+    <Compile Include="Danmaku\Engine\SemanticProfileRepository.cs" />
+    <Compile Include="Danmaku\Engine\DanmakuSelectionHistory.cs" />
+    <Compile Include="Danmaku\Engine\DanmakuWeightEngine.cs" />
+    <Compile Include="Danmaku\Engine\DanmakuImpulseManager.cs" />
+    <Compile Include="Danmaku\Engine\DanmakuLiveScheduler.cs" />
+    <Compile Include="Danmaku\Engine\DanmakuSessionController.cs" />
+    <Compile Include="Danmaku\Engine\DanmakuBatchComposer.cs" />
+    <Compile Include="Danmaku\Engine\DanmakuPendingQueue.cs" />
+    <Compile Include="Danmaku\Engine\DanmakuMotion.cs" />
+    <Compile Include="Danmaku\Engine\DanmakuLaneLayout.cs" />
+    <Compile Include="Danmaku\DanmakuRepository.cs" />
+    <Compile Include="Danmaku\DanmakuSettingsStore.cs" />
+    <Compile Include="Danmaku\DanmakuOverlay.xaml.cs">
+      <DependentUpon>DanmakuOverlay.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Danmaku\DanmakuOptionsPanel.xaml.cs">
+      <DependentUpon>DanmakuOptionsPanel.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Services\Runtime\GsiStatusMonitor.cs" />
     <Compile Include="Services\CustomModule\CustomSequenceFormat.cs" />
     <Compile Include="Services\CustomModule\CustomSequencePackService.cs" />
     <Compile Include="Services\CustomModule\CustomSequencePackService.Editing.cs" />
@@ -494,6 +513,7 @@
     <Compile Include="Services\Settings\Games\DoubaoSettingsStore.cs" />
     <Compile Include="Helpers\ProcessPriorityBoost.cs" />
     <Compile Include="Helpers\TgaDecoder.cs" />
+    <Compile Include="Helpers\AudioSlotAliases.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
 
@@ -540,6 +560,21 @@
     </Content>
     <Content Include="GameBar\Square44x44Logo.png" />
     <Content Include="KillConfirmService\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Danmaku\6657_memes.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Danmaku\EventPools\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Danmaku\Pools\semantic_event_profiles.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Danmaku\LifecyclePools\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Danmaku\Annotation\6657_annotations_v1.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
@@ -754,6 +789,14 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Controls\Overlays\Update\UpdateOverlayView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Danmaku\DanmakuOverlay.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Danmaku\DanmakuOptionsPanel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

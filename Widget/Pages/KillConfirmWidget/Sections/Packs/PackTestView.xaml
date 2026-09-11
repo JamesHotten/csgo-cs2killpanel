@@ -308,6 +308,7 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
             <PathIcon
@@ -416,8 +417,23 @@
             </Button>
 
             <Button
-                x:Name="ReloadAudioButton" x:FieldModifier="public"
+                x:Name="DanmakuTestButton" x:FieldModifier="public"
                 Grid.Column="6"
+                Style="{StaticResource ToolbarIconButtonStyle}"
+                Click="OnDanmakuTestClick"
+                ToolTipService.ToolTip="测试游戏事件弹幕 (Test game event danmaku)">
+                <FontIcon
+                    FontFamily="Segoe MDL2 Assets"
+                    FontSize="12"
+                    Glyph="&#xE8BD;"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Foreground="#1B1F31" />
+            </Button>
+
+            <Button
+                x:Name="ReloadAudioButton" x:FieldModifier="public"
+                Grid.Column="7"
                 Style="{StaticResource ToolbarIconButtonStyle}"
                 Click="OnReloadAudioClick"
                 ToolTipService.ToolTip="Reload audio output">

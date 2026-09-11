@@ -133,6 +133,17 @@ namespace KillConfirmGameBar
                     + ", kills=" + killEvent.KillCount
                     + ", channel=" + killEvent.EventChannel);
             }
+
+            // Danmaku has its own event classifier and reaction policy. Route every
+            // service event before style-specific animation filtering so economy,
+            // objective, assist, death and kill reactions stay independent.
+            DanmakuOverlayControl?.TriggerGameEvent(killEvent);
+
+            if (string.Equals(killEvent.EventKind, "player_death", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
             GameStyleMode style = GameStyleService.Current;
             if (!CanStyleConsumeEvent(style, killEvent))
             {
@@ -157,6 +168,7 @@ namespace KillConfirmGameBar
             }
 
             PlayBadgeAnimation(killEvent);
+
         }
 
         private void PlayPrimaryAnimation(KillEvent killEvent)

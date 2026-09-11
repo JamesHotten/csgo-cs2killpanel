@@ -16,6 +16,7 @@ namespace KillConfirmGameBar.Controls.Settings
     public sealed partial class GeneralSettingsOptionsPanel : UserControl
     {
         private bool _suppressSpectatedKillEffectsEvents;
+        private bool _suppressDanmaku6657Events;
         private bool _suppressAutoCloseOnGameExitEvents;
         private bool _suppressInterruptPreviousKillAudioEvents;
         private bool _suppressStreakGainEvents = true;
@@ -64,6 +65,13 @@ namespace KillConfirmGameBar.Controls.Settings
                 : "Back up placement, size, colors, styles, and audio; tokens and install paths are excluded.";
             ExportSettingsButton.Content = isChinese ? "导出" : "Export";
             ImportSettingsButton.Content = isChinese ? "导入" : "Import";
+            Danmaku6657LabelText.Text = isChinese ? "游戏事件弹幕" : "Game Event Danmaku";
+            Danmaku6657HintText.Text = isChinese
+                ? "根据战斗、目标与回合事件显示 5–7 条分类弹幕，单条最长 5 秒"
+                : "Shows 5–7 categorized comments for combat, objective, and round events; each completes within 5 seconds.";
+            Danmaku6657TestButton.Content = isChinese ? "测试所选事件" : "Test selected event";
+            Danmaku6657Toggle.OffContent = LocalizationManager.Text("Off");
+            Danmaku6657Toggle.OnContent = LocalizationManager.Text("On");
             BombAudioPanel?.ApplyLanguage();
             AutoCloseOnGameExitLabelText.Text =
                 LocalizationManager.Text("AutoCloseOnGameExitLabel");
@@ -98,6 +106,8 @@ namespace KillConfirmGameBar.Controls.Settings
             ReplayEffectsHintText.Foreground = new SolidColorBrush(theme.MutedText);
             ControlledBotEffectsHintText.Foreground = new SolidColorBrush(theme.MutedText);
             SettingsBackupHintText.Foreground = new SolidColorBrush(theme.MutedText);
+            Danmaku6657HintText.Foreground = new SolidColorBrush(theme.MutedText);
+            DanmakuSettingsOptions?.ApplyTheme(theme);
             BombAudioPanel?.ApplyTheme(theme);
             AutoCloseOnGameExitHintText.Foreground = new SolidColorBrush(theme.MutedText);
             InterruptPreviousKillAudioHintText.Foreground = new SolidColorBrush(theme.MutedText);
@@ -108,10 +118,42 @@ namespace KillConfirmGameBar.Controls.Settings
         internal void RefreshSettings()
         {
             SelectSpectatedKillEffects();
+            SelectDanmaku6657();
             BombAudioPanel?.RefreshSettings();
             SelectAutoCloseOnGameExit();
             SelectInterruptPreviousKillAudio();
             SelectStreakGainSettings();
+        }
+
+        private void SelectDanmaku6657()
+        {
+            _suppressDanmaku6657Events = true;
+            try
+            {
+                Danmaku6657Toggle.IsOn = KillConfirmGameBar.Danmaku.DanmakuSettingsStore.IsEnabled;
+                DanmakuSettingsOptions.Visibility = Danmaku6657Toggle.IsOn ? Visibility.Visible : Visibility.Collapsed;
+                DanmakuSettingsOptions.RefreshSettings();
+            }
+            finally
+            {
+                _suppressDanmaku6657Events = false;
+            }
+        }
+
+        private void OnDanmaku6657Toggled(object sender, RoutedEventArgs e)
+        {
+            if (_suppressDanmaku6657Events)
+            {
+                return;
+            }
+
+            KillConfirmGameBar.Danmaku.DanmakuSettingsStore.IsEnabled = Danmaku6657Toggle.IsOn;
+            DanmakuSettingsOptions.Visibility = Danmaku6657Toggle.IsOn ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void OnDanmaku6657TestClick(object sender, RoutedEventArgs e)
+        {
+            DanmakuSettingsOptions?.TestSelectedEvent();
         }
 
         private void SelectSpectatedKillEffects()

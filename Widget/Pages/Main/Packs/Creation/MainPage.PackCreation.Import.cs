@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using KillConfirmGameBar.Helpers;
 using KillConfirmGameBar.Services;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.UI;
@@ -285,7 +286,8 @@ namespace KillConfirmGameBar
             IReadOnlyList<string> recognizedFileNames,
             Func<StorageFolder, IReadOnlyDictionary<string, StorageFile>, Task> showDialogAsync)
         {
-            StorageFile zipFile = await PickSingleFileAsync(new[] { ".zip" });
+            StorageFile zipFile = _providedPackZipFile
+                ?? await PickSingleFileAsync(new[] { ".zip" });
             if (zipFile == null)
             {
                 return;
@@ -319,7 +321,7 @@ namespace KillConfirmGameBar
                 if (_batchPackImport) throw;
                 await ShowMessageAsync(
                     LocalizationManager.Text("ZipImportFailedTitle"),
-                    LocalizationManager.Text("ZipImportFailedMessage"));
+                    LocalizationManager.Text("ZipImportFailedMessage") + "\n\n" + ex.Message);
             }
             finally
             {
@@ -338,7 +340,8 @@ namespace KillConfirmGameBar
 
         private async Task ImportValorantPackageFromZipAsync(string packageKind)
         {
-            StorageFile zipFile = await PickSingleFileAsync(new[] { ".zip" });
+            StorageFile zipFile = _providedPackZipFile
+                ?? await PickSingleFileAsync(new[] { ".zip" });
             if (zipFile == null)
             {
                 return;
@@ -390,8 +393,8 @@ namespace KillConfirmGameBar
                 await ShowMessageAsync(
                     LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "导入失败" : "Import failed",
                     LocalizationManager.Current == UiLanguage.SimplifiedChinese
-                        ? "这不是有效的瓦外部资源包，或包内素材不完整。"
-                        : "This is not a valid VALORANT external package, or required material is missing.");
+                        ? "这不是有效的瓦资源包，或包内素材不完整。\n\n" + ex.Message
+                        : "This is not a valid VALORANT package, or required material is missing.\n\n" + ex.Message);
             }
             finally
             {
@@ -422,8 +425,8 @@ namespace KillConfirmGameBar
                 await ShowMessageAsync(
                     LocalizationManager.Current == UiLanguage.SimplifiedChinese ? "导入失败" : "Import failed",
                     LocalizationManager.Current == UiLanguage.SimplifiedChinese
-                        ? "所选文件夹不是有效的瓦外部资源包。"
-                        : "The selected folder is not a valid VALORANT external package.");
+                        ? "所选文件夹不是有效的瓦外部资源包。\n\n" + ex.Message
+                        : "The selected folder is not a valid VALORANT external package.\n\n" + ex.Message);
             }
         }
     }

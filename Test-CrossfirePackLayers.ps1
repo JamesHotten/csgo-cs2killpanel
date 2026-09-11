@@ -93,6 +93,11 @@ try {
         foreach ($zip in Get-ChildItem -LiteralPath $PackagesPath -Filter '*.zip') {
             $extracted = Join-Path $temp ([guid]::NewGuid().ToString('N'))
             [IO.Compression.ZipFile]::ExtractToDirectory($zip.FullName,$extracted)
+            $manifestPath = Get-ChildItem -LiteralPath $extracted -Recurse -Filter 'manifest.json' | Select-Object -First 1
+            if ($manifestPath) {
+                $manifest = Get-Content -LiteralPath $manifestPath.FullName -Raw | ConvertFrom-Json
+                if ($manifest.package_kind -eq 'crossfire_voice') { continue }
+            }
             $files = [ImportProbe]::Read($extracted).GetAwaiter().GetResult()
             if ($files.Count -eq 0) { throw "No recognized files: $($zip.Name)" }
             $head = @(Get-ChildItem -LiteralPath $extracted -Recurse -Filter 'pack_head.png')
