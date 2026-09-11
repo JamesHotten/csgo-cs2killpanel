@@ -14,6 +14,9 @@ $installerSource = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'Ins
 if ($installerSource -notmatch 'InstallConfirmed\s*:=\s*WizardSilent') {
     throw 'Silent installation must bypass only the interactive acknowledgement page.'
 }
+if (([regex]::Matches($installerSource, 'if not WizardSilent then')).Count -lt 3) {
+    throw 'Silent installation must never wait on a hidden diagnostic-log prompt.'
+}
 $testRoot = Join-Path $RepositoryRoot ('Output\InstallerLogTests-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $testRoot | Out-Null
 $utf8Bom = [Text.UTF8Encoding]::new($true)

@@ -374,12 +374,15 @@ begin
     begin
       AppendInstallLog(ExpandConstant('{cm:InstallScriptLaunchFailed}'));
       PromptText := ExpandConstant('{cm:InstallScriptLaunchFailed}') + #13#10 + #13#10 + ExpandConstant('{cm:OpenInstallLogQuestion}');
-      if MsgBox(PromptText, mbError, MB_YESNO) = IDYES then
+      if not WizardSilent then
       begin
-        if FileExists(ResultPath) then
-          ShellExec('', ResultPath, '', '', SW_SHOWNORMAL, ewNoWait, OpenResult)
-        else if FileExists(LogPath) then
-          ShellExec('', LogPath, '', '', SW_SHOWNORMAL, ewNoWait, OpenResult);
+        if MsgBox(PromptText, mbError, MB_YESNO) = IDYES then
+        begin
+          if FileExists(ResultPath) then
+            ShellExec('', ResultPath, '', '', SW_SHOWNORMAL, ewNoWait, OpenResult)
+          else if FileExists(LogPath) then
+            ShellExec('', LogPath, '', '', SW_SHOWNORMAL, ewNoWait, OpenResult);
+        end;
       end;
       Exit;
     end;
@@ -388,12 +391,15 @@ begin
     begin
       AppendInstallLog(ExpandConstant('{cm:InstallScriptFailed}') + ' ' + IntToStr(ResultCode));
       PromptText := ExpandConstant('{cm:InstallScriptFailed}') + ' ' + IntToStr(ResultCode) + #13#10 + #13#10 + ExpandConstant('{cm:OpenInstallLogQuestion}');
-      if MsgBox(PromptText, mbError, MB_YESNO) = IDYES then
+      if not WizardSilent then
       begin
-        if FileExists(ResultPath) then
-          ShellExec('', ResultPath, '', '', SW_SHOWNORMAL, ewNoWait, OpenResult)
-        else if FileExists(LogPath) then
-          ShellExec('', LogPath, '', '', SW_SHOWNORMAL, ewNoWait, OpenResult);
+        if MsgBox(PromptText, mbError, MB_YESNO) = IDYES then
+        begin
+          if FileExists(ResultPath) then
+            ShellExec('', ResultPath, '', '', SW_SHOWNORMAL, ewNoWait, OpenResult)
+          else if FileExists(LogPath) then
+            ShellExec('', LogPath, '', '', SW_SHOWNORMAL, ewNoWait, OpenResult);
+        end;
       end;
       Exit;
     end;
@@ -422,12 +428,15 @@ begin
 
     AppendInstallLog(PromptText);
     PromptText := PromptText + #13#10 + #13#10 + ExpandConstant('{cm:OpenInstallLogQuestion}');
-    if MsgBox(PromptText, PromptType, MB_YESNO) = IDYES then
+    if not WizardSilent then
     begin
-      if FileExists(ResultPath) then
-        ShellExec('', ResultPath, '', '', SW_SHOWNORMAL, ewNoWait, OpenResult)
-      else if FileExists(LogPath) then
-        ShellExec('', LogPath, '', '', SW_SHOWNORMAL, ewNoWait, OpenResult);
+      if MsgBox(PromptText, PromptType, MB_YESNO) = IDYES then
+      begin
+        if FileExists(ResultPath) then
+          ShellExec('', ResultPath, '', '', SW_SHOWNORMAL, ewNoWait, OpenResult)
+        else if FileExists(LogPath) then
+          ShellExec('', LogPath, '', '', SW_SHOWNORMAL, ewNoWait, OpenResult);
+      end;
     end;
   end;
 end;
