@@ -32,8 +32,14 @@ Widget/Assets/KillConfirm/
 Widget/KillConfirmService/
 KillConfirmService/sounds/
 
-# CF resources are distributed separately, including the original packs.
-SourceAssets/GameStyles/crossfire/
+# Only the default CF icon and voice packs are bundled; all other CF media stays external.
+SourceAssets/GameStyles/crossfire/*
+!SourceAssets/GameStyles/crossfire/iconpacks/
+!SourceAssets/GameStyles/crossfire/soundpacks/
+SourceAssets/GameStyles/crossfire/iconpacks/*
+!SourceAssets/GameStyles/crossfire/iconpacks/default/
+SourceAssets/GameStyles/crossfire/soundpacks/*
+!SourceAssets/GameStyles/crossfire/soundpacks/crossfire_swat_gr/
 Widget/Assets/KillConfirmCode/*
 !Widget/Assets/KillConfirmCode/Csol4/
 Widget/Assets/PackIcons/swat.png

@@ -173,10 +173,12 @@ cd ..
 | `Package` | MSIX 打包项目和清单 |
 | `Installer` | 转移包及 Inno Setup 支持文件 |
 | `SourceAssets/GameStyles` | 内置风格的源音频、动画、图标和音效包 |
+| `Tests` | 回归测试、自定义序列测试工具和固定测试输入 |
+| `Tools` | CF 资源包构建与弹幕维护工具 |
 | `docs` | 迁移、双游戏部署和故障排查文档 |
 
 构建脚本会从 `SourceAssets` 刷新打包资源。应修改源资源，不要直接修改小组件或服务输出目录中的生成副本。
-穿越火线及额外 Valorant 大型素材通过独立资源包导入，参见 [穿越火线图标包](docs/crossfire-icon-packs.md) 和 [Valorant 外部资源包](docs/valorant-external-packs-v2.md)。
+穿越火线默认图标包和 SWAT（保卫者）语音作为内置回退，其余穿越火线及额外 Valorant 大型素材仍通过独立资源包导入。参见 [穿越火线图标包](docs/crossfire-icon-packs.md) 和 [Valorant 外部资源包](docs/valorant-external-packs-v2.md)。
 
 ## 故障排查
 

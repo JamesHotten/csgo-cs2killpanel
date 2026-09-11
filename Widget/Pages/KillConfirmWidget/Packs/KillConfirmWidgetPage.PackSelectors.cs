@@ -449,21 +449,21 @@ namespace KillConfirmGameBar
             {
                 case "crossfire_swat_gr":
                 case "crossfire_swat_bl":
-                    return new Uri(System.IO.Path.Combine(CrossfireExternalAssetService.PackPath(key, true), "pack_head.png")).AbsoluteUri;
+                    return new Uri(System.IO.Path.Combine(CrossfireExternalAssetService.ResolvePackPath(key, true), "pack_head.png")).AbsoluteUri;
                 case "crossfire_flying_tiger_gr":
                 case "crossfire_flying_tiger_bl":
-                    return new Uri(System.IO.Path.Combine(CrossfireExternalAssetService.PackPath(key, true), "pack_head.png")).AbsoluteUri;
+                    return new Uri(System.IO.Path.Combine(CrossfireExternalAssetService.ResolvePackPath(key, true), "pack_head.png")).AbsoluteUri;
                 case "crossfire_women_gr":
                 case "crossfire_women_bl":
-                    return new Uri(System.IO.Path.Combine(CrossfireExternalAssetService.PackPath(key, true), "pack_head.png")).AbsoluteUri;
+                    return new Uri(System.IO.Path.Combine(CrossfireExternalAssetService.ResolvePackPath(key, true), "pack_head.png")).AbsoluteUri;
                 case "crossfire_v_sex":
-                    return new Uri(System.IO.Path.Combine(CrossfireExternalAssetService.PackPath(key, true), "pack_head.png")).AbsoluteUri;
+                    return new Uri(System.IO.Path.Combine(CrossfireExternalAssetService.ResolvePackPath(key, true), "pack_head.png")).AbsoluteUri;
                 case "crossfire_bunny_gr":
                 case "crossfire_bunny_bl":
-                    return new Uri(System.IO.Path.Combine(CrossfireExternalAssetService.PackPath(key, true), "pack_head.png")).AbsoluteUri;
+                    return new Uri(System.IO.Path.Combine(CrossfireExternalAssetService.ResolvePackPath(key, true), "pack_head.png")).AbsoluteUri;
                 case "crossfire_heart_judge_gr":
                 case "crossfire_heart_judge_bl":
-                    return new Uri(System.IO.Path.Combine(CrossfireExternalAssetService.PackPath(key, true), "pack_head.png")).AbsoluteUri;
+                    return new Uri(System.IO.Path.Combine(CrossfireExternalAssetService.ResolvePackPath(key, true), "pack_head.png")).AbsoluteUri;
                 case "bf1":
                     return "ms-appx:///Assets/GameStyles/battlefield1/killconfirm/textures/killicon_battlefield1_headshot.png";
                 case "bf5":

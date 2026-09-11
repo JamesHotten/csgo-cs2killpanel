@@ -306,6 +306,11 @@ namespace KillConfirmGameBar.Services
                     }
                     catch { }
                 }
+                if (CrossfireExternalAssetService.IsIconKey(key))
+                {
+                    CrossfireExternalAssetService.RefreshAfterRemoval(catalog);
+                    ApplyVisibilityOverrides(catalog);
+                }
                 await SaveAsync(catalog);
             }
         }

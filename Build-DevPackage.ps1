@@ -160,13 +160,13 @@ $SourceGameStylesRoot = Join-Path $Root "SourceAssets\GameStyles"
 $copiedSoundPackNames = @{}
 $copiedSoundPackCount = 0
 foreach ($styleFolder in (Get-ChildItem -LiteralPath $SourceGameStylesRoot -Directory)) {
-    if ($styleFolder.Name -eq "crossfire") { continue }
     $soundPacksRoot = Join-Path $styleFolder.FullName "soundpacks"
     if (-not (Test-Path $soundPacksRoot -PathType Container)) {
         continue
     }
 
     foreach ($soundPack in (Get-ChildItem -LiteralPath $soundPacksRoot -Directory)) {
+        if ($styleFolder.Name -eq "crossfire" -and $soundPack.Name -ne "crossfire_swat_gr") { continue }
         $normalizedPackName = $soundPack.Name.ToLowerInvariant()
         if ($copiedSoundPackNames.ContainsKey($normalizedPackName)) {
             throw "内置语音包目录名重复: $($soundPack.Name)"
@@ -315,7 +315,7 @@ try {
         throw "MSIX Bundle 的主应用包缺少完整的 FFmpeg 运行文件、许可证或源码信息"
     }
 
-    & (Join-Path $Root "Test-CrossfireEventIcons.ps1") -PackageArchive $archive
+    & (Join-Path $Root "Tests\Regression\Test-CrossfireEventIcons.ps1") -PackageArchive $archive
 }
 finally {
     if ($archive) {

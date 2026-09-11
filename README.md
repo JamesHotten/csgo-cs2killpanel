@@ -171,10 +171,12 @@ Use `-DisableSigning` only for a developer registration workflow. Public distrib
 | `Package` | MSIX packaging project and manifest |
 | `Installer` | Transfer-package and Inno Setup support files |
 | `SourceAssets/GameStyles` | Built-in source audio, animation, icons, and per-style sound packs |
+| `Tests` | Regression suites, custom-sequence harnesses, and fixtures |
+| `Tools` | CrossFire pack builders and danmaku maintenance utilities |
 | `docs` | Migration, dual-game deployment, and troubleshooting documentation |
 
 Build scripts refresh package-ready assets from `SourceAssets`; edit source assets rather than generated copies under the widget or service output directories.
-CrossFire and additional Valorant media are distributed as separately importable packages; see [CrossFire icon packs](docs/crossfire-icon-packs.md) and [Valorant external packs](docs/valorant-external-packs-v2.md).
+CrossFire's default icon pack and SWAT (GR) voice pack are bundled as safe fallbacks; other CrossFire and additional Valorant media remain separately importable packages. See [CrossFire icon packs](docs/crossfire-icon-packs.md) and [Valorant external packs](docs/valorant-external-packs-v2.md).
 
 ## Troubleshooting
 

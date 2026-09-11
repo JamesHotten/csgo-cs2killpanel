@@ -9,7 +9,7 @@ using Windows.Storage;
 
 namespace KillConfirmGameBar.Services
 {
-    // Stable keys preserve saved CF selections; resources are installed separately.
+    // Stable keys preserve saved CF selections. The two base packs are always available.
     internal static class CrossfireExternalAssetService
     {
         internal static readonly string[] IconKeys = { "default", "vip", "angelic_beast", "anniversary_10", "anniversary_15", "cfpl", "rankmach_2019_1", "rankmach_2019_2" };
@@ -20,15 +20,29 @@ namespace KillConfirmGameBar.Services
         public static int Revision { get; private set; }
         public static string PackPath(string key, bool voice = false) => Path.Combine(Root, voice ? "voice_packs" : "icon_packs", key);
 
+        public static string BuiltInPath(bool voice = false) => Path.Combine(
+            Windows.ApplicationModel.Package.Current.InstalledLocation.Path,
+            voice ? @"KillConfirmService\sounds\crossfire_swat_gr" : @"Assets\GameStyles\crossfire\iconpacks\default");
+
+        public static string ResolvePackPath(string key, bool voice = false)
+        {
+            string external = PackPath(key, voice);
+            if (string.Equals(key, voice ? "crossfire_swat_gr" : "default", StringComparison.OrdinalIgnoreCase)
+                && !File.Exists(Path.Combine(external, "manifest.json"))) return BuiltInPath(voice);
+            return external;
+        }
+
         public static string VisualUri(string folder, string file)
         {
             int index = Array.FindIndex(LegacyFolders, value => string.Equals(value, folder, StringComparison.OrdinalIgnoreCase));
-            return new Uri(Path.Combine(PackPath(index < 0 ? "default" : IconKeys[index]), file)).AbsoluteUri;
+            return new Uri(Path.Combine(ResolvePackPath(index < 0 ? "default" : IconKeys[index]), file)).AbsoluteUri;
         }
 
         public static async Task<StorageFile> DefaultVoiceFileAsync(string name)
         {
-            return await StorageFile.GetFileFromPathAsync(Path.Combine(PackPath("crossfire_swat_gr", true), name));
+            string path = Path.Combine(ResolvePackPath("crossfire_swat_gr", true), name);
+            if (!File.Exists(path)) path = Path.Combine(BuiltInPath(true), name);
+            return await StorageFile.GetFileFromPathAsync(path);
         }
 
         [DataContract]
@@ -68,7 +82,7 @@ namespace KillConfirmGameBar.Services
 
         public static void RefreshCatalog(PackCatalog catalog)
         {
-            // Retire the old built-ins even when their external package is absent.
+            // Imported copies can override the base keys; removing them restores the built-ins.
             var icons = catalog.IconPacks.Where(p => !IsIconKey(p.Key)).ToList();
             var voices = catalog.VoicePacks.Where(p => !IsVoiceKey(p.Key)).ToList();
             icons.AddRange(Discover(false).Select(p => new IconPackItem {
@@ -82,8 +96,25 @@ namespace KillConfirmGameBar.Services
                 Key = p.Item2.Id, DisplayName = p.Item2.Name, FolderPath = p.Item1,
                 IsBuiltIn = false, IsVisibleInWidget = true, OwnsFolder = true
             }));
+            if (!icons.Any(p => string.Equals(p.Key, "default", StringComparison.OrdinalIgnoreCase)))
+                icons.Insert(0, new IconPackItem {
+                    Key = "default", DisplayName = "原版", FolderPath = BuiltInPath(),
+                    IsBuiltIn = true, IsVisibleInWidget = true, OwnsFolder = false,
+                    HasFxOverlay = true, HasKillFxOverlay = true, HasEliteOverlay = true, HasWeaponBadgeOverlay = true
+                });
+            if (!voices.Any(p => string.Equals(p.Key, "crossfire_swat_gr", StringComparison.OrdinalIgnoreCase)))
+                voices.Insert(0, new VoicePackItem {
+                    Key = "crossfire_swat_gr", DisplayName = "斯沃特（保卫者）", FolderPath = BuiltInPath(true),
+                    IsBuiltIn = true, IsVisibleInWidget = true, OwnsFolder = false
+                });
             catalog.IconPacks = icons;
             catalog.VoicePacks = voices;
+        }
+
+        public static void RefreshAfterRemoval(PackCatalog catalog)
+        {
+            Revision++;
+            RefreshCatalog(catalog);
         }
 
         public static async Task<bool> TryInstallAsync(StorageFolder source, bool voice)
