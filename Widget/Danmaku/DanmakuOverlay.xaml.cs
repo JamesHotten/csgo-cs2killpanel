@@ -297,7 +297,9 @@ namespace KillConfirmGameBar.Danmaku
             int? customVisibleLimit,
             double? customMaximumFlightSeconds)
         {
-            int visibleLimit = DanmakuReactionPolicies.EventTotalCount;
+            int visibleLimit = customVisibleLimit.HasValue
+                ? Math.Max(1, Math.Min(DanmakuReactionPolicies.EventMaximumVisibleCount, customVisibleLimit.Value))
+                : DanmakuReactionPolicies.EventTotalCount;
             double maximumFlightSeconds = DanmakuReactionPolicies.ClampFlightSeconds(
                 customMaximumFlightSeconds ?? DanmakuSettingsStore.DurationSeconds);
 
@@ -478,6 +480,7 @@ namespace KillConfirmGameBar.Danmaku
             int activeLimit = eventDensityActive
                 ? DanmakuReactionPolicies.EventMaximumActiveCount
                 : laneCount;
+            EnsureDueEventCapacity();
             if (_activeList.Count >= activeLimit)
             {
                 return;
@@ -543,6 +546,39 @@ namespace KillConfirmGameBar.Danmaku
                 _lastSpawnTimeMs = nowMs;
                 _lastSpawnWasEvent = isEvent;
                 break;
+            }
+        }
+
+        private void EnsureDueEventCapacity()
+        {
+            DanmakuQueueItem pending;
+            if (!_pendingQueue.TryPeek(out pending)
+                || pending.Message == null
+                || !pending.Message.IsEventReaction)
+            {
+                return;
+            }
+
+            int activeEventCount = 0;
+            for (int i = 0; i < _activeList.Count; i++)
+            {
+                if (_activeList[i].IsEventReaction)
+                {
+                    activeEventCount++;
+                }
+            }
+            int evictionCount = DanmakuReactionPolicies.CalculateAtmosphereEvictions(
+                _activeList.Count,
+                activeEventCount,
+                1);
+            for (int i = 0; i < evictionCount; i++)
+            {
+                int atmosphereIndex = _activeList.FindIndex(item => !item.IsEventReaction);
+                if (atmosphereIndex < 0)
+                {
+                    break;
+                }
+                _activeList.RemoveAt(atmosphereIndex);
             }
         }
 

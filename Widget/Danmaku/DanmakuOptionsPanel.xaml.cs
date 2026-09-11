@@ -223,9 +223,7 @@ namespace KillConfirmGameBar.Danmaku
             if (SpeedSelector.SelectedItem is ComboBoxItem item
                 && int.TryParse(item.Tag?.ToString(), out int value))
             {
-                DanmakuSettingsStore.Speed = (DanmakuSpeedMode)value;
-                // Keep the cap high enough for the selected slower flight mode.
-                DanmakuSettingsStore.DurationSeconds = DanmakuSettingsStore.DurationSeconds;
+                DanmakuSettingsStore.SetSpeedAndAdjustDuration((DanmakuSpeedMode)value);
                 SelectComboItemByTag(DurationSelector, ((int)DanmakuSettingsStore.DurationSeconds).ToString());
             }
         }

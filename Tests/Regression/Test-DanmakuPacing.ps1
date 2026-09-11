@@ -42,11 +42,15 @@ public static class DanmakuPacingChecks {
     if(step.Message!=null && step.Message.IsEventReaction) {count++;times.Add((now-start).TotalSeconds);if(step.DiagnosticRole.StartsWith("EventBurst:"))bursts++;else followups++;}
    }
    Check(count==5 && bursts==2 && followups==3,"Expected 2+3 for "+kind);
-   Check(times[1]<=0.25 && times[2]-times[1]>=0.4 && times[4]<2,"Invalid timing for "+kind);
+   var expectedDynamics=DanmakuEventSemantics.ResolveDynamics(kind,DanmakuEventIntensity.Standard);
+   Check(times[1]>=expectedDynamics.BurstIntervalSeconds-0.001 && times[1]<=expectedDynamics.BurstIntervalSeconds+0.011
+    && times[2]-times[1]>=expectedDynamics.AftermathIntervalSeconds-0.001
+    && times[2]-times[1]<=expectedDynamics.AftermathIntervalSeconds+0.011 && times[4]<2,"Invalid timing for "+kind+": "+string.Join(",",times));
    Check(!manager.HasActiveImpulse(now),"Quota must stop dispatching");
-   var test=new DanmakuBatchComposer(new Random(1)).Compose(new DanmakuEventContext{Kind=kind},999);
-   Check(test.Count==5,"Preview must ignore oversized requested batch");
-   Check((test[1].NotBefore-test[0].NotBefore).TotalSeconds==0.2 && (test[4].NotBefore-test[0].NotBefore).TotalSeconds==1.55,"Preview/live timing mismatch");
+   var custom=new DanmakuBatchComposer(new Random(1)).Compose(new DanmakuEventContext{Kind=kind},3);
+   var capped=new DanmakuBatchComposer(new Random(1)).Compose(new DanmakuEventContext{Kind=kind},999);
+   Check(custom.Count==3 && capped.Count==9,"Custom event count must be honored and capped at nine");
+   Check((capped[capped.Count-1].NotBefore-capped[0].NotBefore).TotalSeconds<2,"A custom event batch must remain inside the two-second window");
   }
   var clock=DateTimeOffset.UtcNow;var queue=new DanmakuPendingQueue(()=>clock);
   queue.Enqueue(new[]{new DanmakuMessage{Text="later",IsEventReaction=true,NotBefore=clock.AddSeconds(.5),ExpiresAt=clock.AddSeconds(2)},new DanmakuMessage{Text="ambient"}},12);
@@ -54,16 +58,36 @@ public static class DanmakuPacingChecks {
   Check(!queue.TryPeek(out item),"Future event must wait");clock=clock.AddSeconds(.5);Check(queue.TryPeek(out item),"Due event must become eligible");
   clock=clock.AddSeconds(1.5);Check(!queue.TryDequeue(out item)&&queue.Count==0,"Backlogged event must expire at two seconds");
   Check(DanmakuReactionPolicies.EventMaximumActiveCount==9 && DanmakuReactionPolicies.ClampVisibleCount(999)==9,"Hard cap must be nine");
+  Check(DanmakuReactionPolicies.CalculateAtmosphereEvictions(9,0,5)==5,"Five event reactions must displace five ambient items at saturation");
+  Check(DanmakuReactionPolicies.CalculateAtmosphereEvictions(7,0,5)==3,"Only the ambient items blocking the nine-item cap should be displaced");
+  Check(DanmakuReactionPolicies.CalculateAtmosphereEvictions(9,9,1)==0,"An event reaction must never evict an existing event reaction");
+  var gentle=DanmakuEventSemantics.ResolveDynamics(DanmakuEventKind.Assist,DanmakuEventIntensity.Gentle);
+  var standard=DanmakuEventSemantics.ResolveDynamics(DanmakuEventKind.Assist,DanmakuEventIntensity.Standard);
+  var lively=DanmakuEventSemantics.ResolveDynamics(DanmakuEventKind.Assist,DanmakuEventIntensity.Lively);
+  var epic=DanmakuEventSemantics.ResolveDynamics(DanmakuEventKind.EpicStreak,DanmakuEventIntensity.Standard);
+  Check(gentle.AftermathIntervalSeconds>standard.AftermathIntervalSeconds && standard.AftermathIntervalSeconds>lively.AftermathIntervalSeconds,"Event intensity must alter reaction pacing");
+  Check(epic.AftermathIntervalSeconds<standard.AftermathIntervalSeconds,"High-impact and support events must retain distinct pacing");
+  foreach(DanmakuEventIntensity intensity in Enum.GetValues(typeof(DanmakuEventIntensity))) {
+   foreach(DanmakuEventKind kind in Enum.GetValues(typeof(DanmakuEventKind))) {
+    var dynamics=DanmakuEventSemantics.ResolveDynamics(kind,intensity);
+    Check(dynamics.ResolveDispatchOffsetSeconds(4,5)<2,"Every event intensity must keep the default five reactions inside two seconds");
+   }
+  }
   var store=ApplicationData.Current.LocalSettings.Values;store[DanmakuSettingsStore.SpeedSettingKey]=2;store[DanmakuSettingsStore.DurationSettingKey]=3.0;
-  Check(DanmakuSettingsStore.Speed==DanmakuSpeedMode.UltraSlow && DanmakuSettingsStore.DurationSeconds==15,"Legacy fast settings must migrate");
-  Check(DanmakuMotion.ResolveFlightDuration(DanmakuSpeedMode.Fast,3,new Random(1))==12,"Legacy/custom short cap must not restore fast flight");
-  var modes=new[]{DanmakuSpeedMode.UltraSlow,DanmakuSpeedMode.Leisurely,DanmakuSpeedMode.Drifting,DanmakuSpeedMode.Slowest};
-  var durations=new[]{12.0,18.0,24.0,30.0};
-  for(int i=0;i<modes.Length;i++){DanmakuSettingsStore.Speed=modes[i];DanmakuSettingsStore.DurationSeconds=3;
-   Check(DanmakuMotion.ResolveFlightDuration(modes[i],DanmakuSettingsStore.DurationSeconds,new Random(1))==durations[i],"Cap must not accelerate slow flight");}
+  Check(DanmakuSettingsStore.Speed==DanmakuSpeedMode.Fast && DanmakuSettingsStore.DurationSeconds==3,"Legacy speed and duration settings must keep their original meaning");
+  var legacyFastDuration=DanmakuMotion.ResolveFlightDuration(DanmakuSpeedMode.Fast,3,new Random(1));
+  Check(legacyFastDuration>=2.8 && legacyFastDuration<=3.0,"Legacy fast mode must retain its original flight speed");
+  var modes=new[]{DanmakuSpeedMode.VerySlow,DanmakuSpeedMode.UltraSlow,DanmakuSpeedMode.Leisurely,DanmakuSpeedMode.Drifting,DanmakuSpeedMode.Slowest};
+  var minimums=new[]{7.4,11.0,18.0,24.0,30.0};var maximums=new[]{8.0,12.0,18.0,24.0,30.0};
+  int notifications=0;Action changed=()=>notifications++;DanmakuSettingsStore.SettingsChanged+=changed;
+  for(int i=0;i<modes.Length;i++){store[DanmakuSettingsStore.DurationSettingKey]=3.0;notifications=0;DanmakuSettingsStore.SetSpeedAndAdjustDuration(modes[i]);
+   Check(notifications==1,"A speed change must emit exactly one settings notification");
+   var resolved=DanmakuMotion.ResolveFlightDuration(modes[i],DanmakuSettingsStore.DurationSeconds,new Random(1));
+   Check(resolved>=minimums[i] && resolved<=maximums[i],"Cap must not accelerate slow flight");}
+  DanmakuSettingsStore.SettingsChanged-=changed;
  }
 }
 '@
 Add-Type -TypeDefinition $code -WarningAction SilentlyContinue
 [DanmakuPacingChecks]::Run()
-'PASS: production scheduler and preview emit 2+3 within 2 seconds; expired queue items drop; cap 9; legacy speed migration and 12/18/24/30-second flight verified.'
+'PASS: event pacing/intensity, custom counts, two-second expiry, saturated capacity, legacy speeds, and atomic slow-mode adjustment verified.'

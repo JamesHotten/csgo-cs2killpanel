@@ -147,7 +147,9 @@ namespace KillConfirmGameBar.Danmaku.Engine
 
         private DanmakuScheduleStepResult DispatchEventImpulse(DateTimeOffset now, DanmakuImpulse impulse)
         {
-            DanmakuEventDynamics dynamics = DanmakuEventSemantics.ResolveDynamics(impulse.Kind);
+            DanmakuEventDynamics dynamics = DanmakuEventSemantics.ResolveDynamics(
+                impulse.Kind,
+                DanmakuSettingsStore.EventIntensity);
             bool isInitialBurst = impulse.IsInInitialBurst(dynamics);
             double curStrength = impulse.CalculateCurrentStrength(now);
             double strengthRatio = impulse.InitialStrength > 0.0001

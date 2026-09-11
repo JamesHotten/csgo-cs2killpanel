@@ -194,10 +194,24 @@ foreach ($eventKey in $expectedPoolKeys) {
 }
 foreach ($control in @(
     'EventTestSelector', 'EventQuotaText', 'CoreExampleText', 'WaterExampleText',
-    'TriggerOnKillToggle', 'TriggerOnDeathToggle', 'TriggerOnRoundToggle', 'TriggerOnObjectiveToggle')) {
+    'TriggerOnKillToggle', 'TriggerOnDeathToggle', 'TriggerOnRoundToggle', 'TriggerOnObjectiveToggle',
+    'EventIntensitySelector')) {
     if ($optionsXaml -notmatch ('x:Name="' + $control + '"')) {
         throw "Advanced settings control missing: $control"
     }
+}
+if ($optionsXaml -match 'x:Name="EventIntensitySelector"[^>]*Visibility="Collapsed"') {
+    throw 'Event intensity selector must remain visible.'
+}
+foreach ($speedTag in 0..7) {
+    if ($optionsXaml -notmatch ('x:Name="SpeedSelector"(?s:.*?)<ComboBoxItem\s+Tag="' + $speedTag + '">')) {
+        throw "Speed selector missing compatible mode: $speedTag"
+    }
+}
+$optionsCode = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'Widget\Danmaku\DanmakuOptionsPanel.xaml.cs')
+if ($optionsCode -match 'DurationSeconds\s*=\s*DanmakuSettingsStore\.DurationSeconds' -or
+    $optionsCode -notmatch 'SetSpeedAndAdjustDuration') {
+    throw 'Speed selection must adjust duration atomically without self-assignment notifications.'
 }
 if ($optionsXaml -match 'KillTestButton|DeathTestButton') {
     throw 'Advanced settings still contains the obsolete two-button event tester.'
@@ -226,7 +240,9 @@ if ($laneLayout -notmatch 'EventMaximumVisibleCount' -or
     $policy -notmatch 'EventMaximumActiveCount\s*=\s*9' -or
     $overlay -notmatch 'FindAvailableLane' -or
     $overlay -notmatch 'HasActiveEventReaction' -or
-    $policy -notmatch 'new DanmakuEventDynamics\(DanmakuReactionPolicies\.EventBurstCount,\s*0\.20,\s*0\.45\)') {
+    $policy -notmatch 'ResolveDynamics\(\s*DanmakuEventKind kind,\s*DanmakuEventIntensity intensity\)' -or
+    $schedulerSource -notmatch 'DanmakuSettingsStore\.EventIntensity' -or
+    $overlay -notmatch 'EnsureDueEventCapacity') {
     throw 'Event barrages must reuse safe lanes, retain event density while active, and expose rapid reactions.'
 }
 if ($schedulerSource -notmatch 'SelectEventDanmaku' -or

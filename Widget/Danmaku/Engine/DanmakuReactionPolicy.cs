@@ -84,6 +84,17 @@ namespace KillConfirmGameBar.Danmaku.Engine
         {
             return Math.Max(3.0, Math.Min(MaximumFlightSeconds, value));
         }
+
+        public static int CalculateAtmosphereEvictions(int activeTotal, int activeEventCount, int dueEventCount)
+        {
+            int safeTotal = Math.Max(0, activeTotal);
+            int safeEvents = Math.Max(0, Math.Min(safeTotal, activeEventCount));
+            int safeDueEvents = Math.Max(0, dueEventCount);
+            int availableSlots = Math.Max(0, EventMaximumActiveCount - safeTotal);
+            int blockedEvents = Math.Max(0, safeDueEvents - availableSlots);
+            int atmosphereCount = safeTotal - safeEvents;
+            return Math.Min(atmosphereCount, blockedEvents);
+        }
     }
 
     internal sealed class DanmakuEventDynamics
@@ -98,6 +109,22 @@ namespace KillConfirmGameBar.Danmaku.Engine
         public int BurstCount { get; }
         public double BurstIntervalSeconds { get; }
         public double AftermathIntervalSeconds { get; }
+
+        public double ResolveDispatchOffsetSeconds(int index, int totalCount)
+        {
+            if (index <= 0 || totalCount <= 1)
+            {
+                return 0.0;
+            }
+
+            double rawOffset = BurstIntervalSeconds + ((index - 1) * AftermathIntervalSeconds);
+            double lastRawOffset = BurstIntervalSeconds
+                + ((Math.Max(1, totalCount) - 2) * AftermathIntervalSeconds);
+            double scale = lastRawOffset < DanmakuReactionPolicies.EventDurationSeconds
+                ? 1.0
+                : 1.9 / lastRawOffset;
+            return rawOffset * scale;
+        }
     }
 
     internal static class DanmakuEventSemantics
@@ -171,7 +198,49 @@ namespace KillConfirmGameBar.Danmaku.Engine
 
         public static DanmakuEventDynamics ResolveDynamics(DanmakuEventKind kind)
         {
-            return new DanmakuEventDynamics(DanmakuReactionPolicies.EventBurstCount, 0.20, 0.45);
+            return ResolveDynamics(kind, DanmakuEventIntensity.Standard);
+        }
+
+        public static DanmakuEventDynamics ResolveDynamics(
+            DanmakuEventKind kind,
+            DanmakuEventIntensity intensity)
+        {
+            double burst;
+            double aftermath;
+            switch (kind)
+            {
+                case DanmakuEventKind.Assist:
+                case DanmakuEventKind.BombPlant:
+                case DanmakuEventKind.HostageInteract:
+                    burst = 0.24; aftermath = 0.47; break;
+                case DanmakuEventKind.Death:
+                case DanmakuEventKind.RoundLoss:
+                    burst = 0.22; aftermath = 0.46; break;
+                case DanmakuEventKind.Kill:
+                case DanmakuEventKind.FirstKill:
+                case DanmakuEventKind.RoundWin:
+                    burst = 0.20; aftermath = 0.43; break;
+                case DanmakuEventKind.Headshot:
+                case DanmakuEventKind.GrenadeKill:
+                case DanmakuEventKind.BombDefuse:
+                case DanmakuEventKind.HostageRescue:
+                    burst = 0.18; aftermath = 0.38; break;
+                case DanmakuEventKind.KnifeKill:
+                case DanmakuEventKind.MultiKill:
+                    burst = 0.16; aftermath = 0.35; break;
+                case DanmakuEventKind.EpicStreak:
+                case DanmakuEventKind.LastKill:
+                    burst = 0.15; aftermath = 0.32; break;
+                case DanmakuEventKind.General:
+                default:
+                    burst = 0.21; aftermath = 0.44; break;
+            }
+
+            double multiplier = DanmakuSettingsStore.ResolveEventIntervalMultiplier(intensity);
+            return new DanmakuEventDynamics(
+                DanmakuReactionPolicies.EventBurstCount,
+                burst * multiplier,
+                aftermath * multiplier);
         }
     }
 }
