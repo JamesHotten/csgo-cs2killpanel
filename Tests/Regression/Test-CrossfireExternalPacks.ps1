@@ -40,7 +40,7 @@ namespace KillConfirmGameBar.Services {
    catalog.VoicePacks.Add(new VoicePackItem{Key="crossfire_swat_gr",IsBuiltIn=true});
    CrossfireExternalAssetService.RefreshCatalog(catalog);
    CrossfireExternalAssetService.RefreshCatalog(catalog);
-   if(catalog.IconPacks.Count!=9||catalog.VoicePacks.Count!=11||catalog.IconPacks.Any(p=>p.IsBuiltIn)||catalog.VoicePacks.Any(p=>p.IsBuiltIn))throw new Exception("Discovery, duplicate prevention or retirement failed");
+   if(catalog.IconPacks.Count!=15||catalog.VoicePacks.Count!=11||catalog.IconPacks.Count(p=>p.IsBuiltIn)!=6||catalog.VoicePacks.Any(p=>p.IsBuiltIn))throw new Exception("Discovery, duplicate prevention or built-in fallback failed");
    foreach(var icon in catalog.IconPacks.Where(p=>p.FolderPath!=null)) {
     foreach(string name in new[]{"pack_head.png","badge_multi1.png","badge_c4.png","badge_c4defuse.png","badge_grenade.png","KillMark_Upgrade1.png","multi2_fx.png","badge_assault1.png"})
      if(!File.Exists(Path.Combine(icon.FolderPath,name)))throw new Exception("Missing layer: "+icon.Key+"/"+name);
@@ -88,4 +88,4 @@ try {
     $null = [KillConfirmGameBar.Services.ExternalProbe]::Install($folder.FullName,$sandbox,(-not $voice)).GetAwaiter().GetResult()
     throw 'Wrong package kind was accepted'
 } catch { if ($_.Exception.ToString() -match 'Wrong package kind was accepted') { throw } }
-'PASS: 19 external packages installed through production installer; 8 icons/11 voices discovered; stable-key retirement, replacement, collision preservation, no duplicates, event/FX/badge layers, covers and wrong-library rejection.'
+'PASS: 19 external packages installed through production installer; 8 external plus 6 fallback icons and 11 voices discovered; stable-key replacement, collision preservation, no duplicates, event/FX/badge layers, covers and wrong-library rejection.'

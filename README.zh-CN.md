@@ -178,7 +178,7 @@ cd ..
 | `docs` | 迁移、双游戏部署和故障排查文档 |
 
 构建脚本会从 `SourceAssets` 刷新打包资源。应修改源资源，不要直接修改小组件或服务输出目录中的生成副本。
-穿越火线默认图标包和 SWAT（保卫者）语音作为内置回退，其余穿越火线及额外 Valorant 大型素材仍通过独立资源包导入。参见 [穿越火线图标包](docs/crossfire-icon-packs.md) 和 [Valorant 外部资源包](docs/valorant-external-packs-v2.md)。
+穿越火线默认图标包、SWAT（保卫者）语音和六张语音包封面作为内置回退。Valorant 内置原生 Base 主题及旧版 26 套视觉图标包；旧版配套音频和新增的高分辨率/原生资源仍通过独立资源包导入。参见 [穿越火线图标包](docs/crossfire-icon-packs.md) 和 [Valorant 外部资源包](docs/valorant-external-packs-v2.md)。
 
 ## 故障排查
 

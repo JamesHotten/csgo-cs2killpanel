@@ -176,7 +176,7 @@ Use `-DisableSigning` only for a developer registration workflow. Public distrib
 | `docs` | Migration, dual-game deployment, and troubleshooting documentation |
 
 Build scripts refresh package-ready assets from `SourceAssets`; edit source assets rather than generated copies under the widget or service output directories.
-CrossFire's default icon pack and SWAT (GR) voice pack are bundled as safe fallbacks; other CrossFire and additional Valorant media remain separately importable packages. See [CrossFire icon packs](docs/crossfire-icon-packs.md) and [Valorant external packs](docs/valorant-external-packs-v2.md).
+CrossFire's default icon pack, SWAT (GR) voice pack, and six small voice-pack cover images are bundled as safe fallbacks. VALORANT includes the native Base theme plus the 26 legacy visual icon packs; their old audio and newer high-resolution/native packs remain separately importable. See [CrossFire icon packs](docs/crossfire-icon-packs.md) and [Valorant external packs](docs/valorant-external-packs-v2.md).
 
 ## Troubleshooting
 

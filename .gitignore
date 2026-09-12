@@ -33,6 +33,7 @@ Widget/KillConfirmService/
 KillConfirmService/sounds/
 
 # Only the default CF icon and voice packs are bundled; all other CF media stays external.
+# The six small PackIcons files remain bundled as UI-only fallback covers.
 SourceAssets/GameStyles/crossfire/*
 !SourceAssets/GameStyles/crossfire/iconpacks/
 !SourceAssets/GameStyles/crossfire/soundpacks/
@@ -42,12 +43,19 @@ SourceAssets/GameStyles/crossfire/soundpacks/*
 !SourceAssets/GameStyles/crossfire/soundpacks/crossfire_swat_gr/
 Widget/Assets/KillConfirmCode/*
 !Widget/Assets/KillConfirmCode/Csol4/
-Widget/Assets/PackIcons/swat.png
-Widget/Assets/PackIcons/flying_tiger.png
-Widget/Assets/PackIcons/women.png
-Widget/Assets/PackIcons/cfsex.png
-Widget/Assets/PackIcons/bunny.png
-Widget/Assets/PackIcons/heart_judge.png
+!Widget/Assets/KillConfirmCode/Vip/
+!Widget/Assets/KillConfirmCode/AngelicBeast/
+!Widget/Assets/KillConfirmCode/Anniversary10/
+!Widget/Assets/KillConfirmCode/Anniversary15/
+!Widget/Assets/KillConfirmCode/CFPL/
+!Widget/Assets/KillConfirmCode/Rankmach2019_1/
+!Widget/Assets/KillConfirmCode/Rankmach2019_2/
+!Widget/Assets/KillConfirmCode/Rankmach2022_1/
+!Widget/Assets/KillConfirmCode/Rankmach2022_2/
+!Widget/Assets/KillConfirmCode/Rankmach2023_1/
+!Widget/Assets/KillConfirmCode/Rankmach2023_2/
+!Widget/Assets/KillConfirmCode/Rankmach2024_1/
+!Widget/Assets/KillConfirmCode/Rankmach2024_2/
 
 # Local raw resource drop folder, not published to GitHub
 资源/

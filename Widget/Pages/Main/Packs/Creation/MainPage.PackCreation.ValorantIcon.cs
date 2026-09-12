@@ -23,9 +23,13 @@ namespace KillConfirmGameBar
                 bool copy = item == null || item.IsBuiltIn;
                 string installed = Windows.ApplicationModel.Package.Current.InstalledLocation.Path;
                 string nativeRoot = Path.Combine(installed, "Assets", "GameStyles", "valorant", "killconfirm", "_native");
-                string source = copy ? Path.Combine(nativeRoot, "themes", "Base") : item.FolderPath;
+                ValorantPackInfo builtIn = copy && item != null ? ValorantPackService.Find(item.Key) : null;
+                bool copyLegacy = builtIn?.Profile != null;
+                string source = copyLegacy
+                    ? Path.Combine(installed, "Assets", "GameStyles", "valorant", "killconfirm", builtIn.Folder)
+                    : copy ? Path.Combine(nativeRoot, "themes", "Base") : item.FolderPath;
                 string id = "valorant_icon_custom_" + Guid.NewGuid().ToString("N");
-                var manifest = copy ? JsonObject.Parse("{\"format_version\":2,\"package_kind\":\"valorant_icon\",\"profile\":{\"accent\":\"#FF4655\",\"emblem\":\"Base_Emblem.png\",\"bar\":\"Base_KillPip_Up.png\",\"bar_hover\":\"Base_KillPip_Hover.png\",\"frame\":\"Base_FrameBG.png\",\"ring\":\"Base_RingBG.png\",\"frame_dissolve\":\"Base_FrameDissolve.png\",\"badge_dissolve\":\"Base_Badge_Dissolve.png\",\"headshot_x\":0,\"headshot_y\":-20,\"slice_size\":147}}")
+                var manifest = copy ? CreateValorantBuiltInCopyManifest(builtIn)
                     : JsonObject.Parse(File.ReadAllText(Path.Combine(source, "manifest.json")).TrimStart('\uFEFF'));
                 if (copy)
                 {
@@ -36,7 +40,7 @@ namespace KillConfirmGameBar
                 var files = new Dictionary<string, StorageFile>(StringComparer.OrdinalIgnoreCase);
                 var sourceFiles = new Dictionary<string, StorageFile>(StringComparer.OrdinalIgnoreCase);
                 var folders = new List<string> { Path.Combine(source, "textures") };
-                if (copy) folders.Add(Path.Combine(nativeRoot, "shared", "textures"));
+                if (copy && !copyLegacy) folders.Add(Path.Combine(nativeRoot, "shared", "textures"));
                 foreach (string folder in folders)
                     foreach (string path in Directory.GetFiles(folder, "*.png"))
                         if (!files.ContainsKey(Path.GetFileName(path)))
@@ -46,7 +50,10 @@ namespace KillConfirmGameBar
                     chinese ? "替换图标和附加纹理，调整配色与位置。纹理重置会恢复原图。内置包另存副本，自定义包保存到原包。"
                         : "Replace textures and adjust color and placement. Reset restores the original texture. Built-in packs save as copies.",
                     chinese ? "图标包名称" : "Pack name", item == null ? "无畏契约自定义图标" : PackCatalogService.GetIconPackDisplayName(item), out var nameBox);
-                StorageFile head = copy ? files["Base_Emblem.png"] : await TryGetCustomPackHeadImageAsync(source);
+                string emblemName = profile.GetNamedString("emblem", "Base_Emblem.png");
+                StorageFile head = copy && files.TryGetValue(emblemName, out StorageFile builtInHead)
+                    ? builtInHead
+                    : await TryGetCustomPackHeadImageAsync(source);
                 layout.Children.Add(await CreateHeadImageCardAsync(null, head, value => head = value, () => head = null));
                 var fields = new StackPanel { Spacing = 8 };
                 var accent = new TextBox { Header = chinese ? "主题颜色（#RRGGBB）" : "Accent (#RRGGBB)", Text = profile.GetNamedString("accent", "#FF4655") };
@@ -108,6 +115,46 @@ namespace KillConfirmGameBar
                 await PackCatalogService.RefreshValorantExternalPacksAsync();
             }
             catch (Exception ex) { await ShowMessageAsync(chinese ? "图标包保存失败，原包已保留" : "Icon pack save failed; original retained", ex.Message); }
+        }
+
+        private static JsonObject CreateValorantBuiltInCopyManifest(ValorantPackInfo pack)
+        {
+            if (pack?.Profile == null)
+            {
+                return JsonObject.Parse("{\"format_version\":2,\"package_kind\":\"valorant_icon\",\"profile\":{\"accent\":\"#FF4655\",\"emblem\":\"Base_Emblem.png\",\"bar\":\"Base_KillPip_Up.png\",\"bar_hover\":\"Base_KillPip_Hover.png\",\"frame\":\"Base_FrameBG.png\",\"ring\":\"Base_RingBG.png\",\"frame_dissolve\":\"Base_FrameDissolve.png\",\"badge_dissolve\":\"Base_Badge_Dissolve.png\",\"headshot_x\":0,\"headshot_y\":-20,\"slice_size\":147}}");
+            }
+
+            ValorantVisualProfileInfo source = pack.Profile;
+            var profile = new JsonObject();
+            AddValorantProfileString(profile, "accent", source.Accent);
+            AddValorantProfileString(profile, "emblem", source.Emblem);
+            AddValorantProfileString(profile, "frame", source.Frame);
+            AddValorantProfileString(profile, "bar", source.Bar);
+            AddValorantProfileString(profile, "bar_hover", source.BarHover);
+            AddValorantProfileString(profile, "ring", source.Ring);
+            AddValorantProfileString(profile, "frame_dissolve", source.FrameDissolve);
+            AddValorantProfileString(profile, "badge_dissolve", source.BadgeDissolve);
+            AddValorantProfileString(profile, "blade", source.Blade);
+            AddValorantProfileString(profile, "special_frame", source.SpecialFrame);
+            profile["headshot_x"] = JsonValue.CreateNumberValue(source.HeadshotX);
+            profile["headshot_y"] = JsonValue.CreateNumberValue(source.HeadshotY);
+            profile["slice_size"] = JsonValue.CreateNumberValue(source.SliceSize > 0 ? source.SliceSize : 147);
+
+            var manifest = new JsonObject
+            {
+                ["format_version"] = JsonValue.CreateNumberValue(2),
+                ["package_kind"] = JsonValue.CreateStringValue("valorant_icon"),
+                ["profile"] = profile
+            };
+            return manifest;
+        }
+
+        private static void AddValorantProfileString(JsonObject profile, string key, string value)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                profile[key] = JsonValue.CreateStringValue(value);
+            }
         }
 
         private static async Task WriteValorantPngAsync(StorageFile source, StorageFolder folder, string name)

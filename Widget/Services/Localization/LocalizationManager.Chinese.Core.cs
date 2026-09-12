@@ -258,6 +258,12 @@ namespace KillConfirmGameBar.Services
             ["cfpl"] = "CFPL",
             ["rankmach_2019_1"] = "\u6392\u4f4d\u8d5b-1",
             ["rankmach_2019_2"] = "\u6392\u4f4d\u8d5b-2",
+            ["rankmach_2022_1"] = "\u6392\u4f4d\u8d5b2022-1",
+            ["rankmach_2022_2"] = "\u6392\u4f4d\u8d5b2022-2",
+            ["rankmach_2023_1"] = "\u6392\u4f4d\u8d5b2023-1",
+            ["rankmach_2023_2"] = "\u6392\u4f4d\u8d5b2023-2",
+            ["rankmach_2024_1"] = "\u6392\u4f4d\u8d5b2024-1",
+            ["rankmach_2024_2"] = "\u6392\u4f4d\u8d5b2024-2",
 
             ["CfgLabel"] = "\u914d\u7f6e",
             ["TestLabel"] = "\u6d4b\u8bd5",

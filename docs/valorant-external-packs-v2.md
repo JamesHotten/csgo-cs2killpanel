@@ -1,7 +1,9 @@
 # VALORANT external resource packages
 
-The application ships only the Base icon and Base native audio. Every other
-VALORANT theme is installed as two independent ZIP packages:
+The application ships the native Base icon/audio and the 26 legacy visual icon
+packs. The restored legacy packs are visual-only and continue to use the current
+renderer; they do not claim or restore their removed audio. New high-resolution
+native themes and non-Base audio are installed as two independent ZIP packages:
 
 - `valorant_icon`: visual profile and textures.
 - `valorant_voice`: numbered kill audio, headshot variants, appear, and transition audio.

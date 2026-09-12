@@ -1,0 +1,50 @@
+[
+  {
+    "scenario": "cs2_gsi",
+    "expected_kind": "knife",
+    "event": {
+      "event_channel": "combat", "kill_count": 1, "is_headshot": false,
+      "is_knife_kill": true, "is_grenade_kill": false, "is_first_kill": true,
+      "is_last_kill": false, "is_assist": false, "play_main_animation": true,
+      "event_kind": "kill", "weapon_badge_key": "knife", "weapon_name": "Karambit",
+      "money_reward": 1500, "round_number": 1, "money_epoch": 0,
+      "player_name": "CS2 Player", "target_name": "Bot", "steamid": "76561198000000001"
+    }
+  },
+  {
+    "scenario": "cs2_controlled_bot_local_log",
+    "expected_kind": "grenade",
+    "event": {
+      "event_channel": "combat", "kill_count": 2, "is_headshot": false,
+      "is_knife_kill": false, "is_grenade_kill": true, "is_first_kill": false,
+      "is_last_kill": false, "is_assist": false, "play_main_animation": true,
+      "event_kind": "kill", "weapon_badge_key": "grenade", "weapon_name": "HE Grenade",
+      "money_reward": 300, "round_number": 1, "money_epoch": 0,
+      "player_name": "CS2 Bot Controller", "target_name": "Bot", "steamid": "76561198000000002"
+    }
+  },
+  {
+    "scenario": "legacy_gsi_local",
+    "expected_kind": "knife",
+    "event": {
+      "event_channel": "combat", "kill_count": 3, "is_headshot": false,
+      "is_knife_kill": true, "is_grenade_kill": false, "is_first_kill": false,
+      "is_last_kill": false, "is_assist": false, "play_main_animation": true,
+      "event_kind": "kill", "weapon_badge_key": "knife", "weapon_name": "Butterfly Knife",
+      "money_reward": 1500, "round_number": 2, "money_epoch": 0,
+      "player_name": "Legacy Player", "target_name": "Bot", "steamid": "76561198000000003"
+    }
+  },
+  {
+    "scenario": "legacy_server_sourcemod_bridge",
+    "expected_kind": "grenade",
+    "event": {
+      "event_channel": "combat", "kill_count": 4, "is_headshot": false,
+      "is_knife_kill": false, "is_grenade_kill": true, "is_first_kill": false,
+      "is_last_kill": true, "is_assist": false, "play_main_animation": true,
+      "event_kind": "kill", "weapon_badge_key": "grenade", "weapon_name": "HE Grenade",
+      "money_reward": 300, "round_number": 2, "money_epoch": 0,
+      "player_name": "Legacy Bot Controller", "target_name": "Bot", "steamid": "legacy-userid:2"
+    }
+  }
+]

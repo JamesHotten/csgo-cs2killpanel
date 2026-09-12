@@ -55,8 +55,15 @@ namespace KillConfirmGameBar.Services {
    catalog.VoicePacks.Add(new VoicePackItem{Key="crossfire_swat_bl",IsBuiltIn=true});
    CrossfireExternalAssetService.RefreshCatalog(catalog);
    CrossfireExternalAssetService.RefreshCatalog(catalog);
-   Check(catalog.IconPacks.Count==2 && catalog.VoicePacks.Count==1,"Unexpected packs or duplicates");
+   Check(catalog.IconPacks.Count==15 && catalog.VoicePacks.Count==1,"Unexpected packs or duplicates");
    Check(catalog.IconPacks.Single(p=>p.Key=="default").IsBuiltIn,"Default icon absent");
+   string[] restored={"vip","angelic_beast","anniversary_10","anniversary_15","cfpl",
+    "rankmach_2019_1","rankmach_2019_2","rankmach_2022_1","rankmach_2022_2",
+    "rankmach_2023_1","rankmach_2023_2","rankmach_2024_1","rankmach_2024_2"};
+   foreach(string key in restored) {
+    Check(catalog.IconPacks.Single(p=>p.Key==key).IsBuiltIn,"Restored icon absent: "+key);
+    Check(File.Exists(new Uri(CrossfireExternalAssetService.IconPreviewUri(key)).LocalPath),"Restored preview does not resolve: "+key);
+   }
    Check(catalog.VoicePacks.Single().Key=="crossfire_swat_gr" && catalog.VoicePacks.Single().IsBuiltIn,"Default voice absent");
    Check(File.Exists(new Uri(CrossfireExternalAssetService.VisualUri("Original","badge_multi1.png")).LocalPath),"Default icon does not resolve");
    Check(File.Exists(CrossfireExternalAssetService.DefaultVoiceFileAsync("common.wav").Result.Path),"Default voice does not resolve");
@@ -103,6 +110,15 @@ foreach ($mapping in @(
     $target = Join-Path $installed $mapping[1]
     New-Item -ItemType Directory -Path $target -Force | Out-Null
     Get-ChildItem -LiteralPath (Join-Path $root ('SourceAssets/GameStyles/crossfire/' + $mapping[0])) -File |
+        Copy-Item -Destination $target
+}
+$restoredFolders = @('Vip', 'AngelicBeast', 'Anniversary10', 'Anniversary15', 'CFPL',
+    'Rankmach2019_1', 'Rankmach2019_2', 'Rankmach2022_1', 'Rankmach2022_2',
+    'Rankmach2023_1', 'Rankmach2023_2', 'Rankmach2024_1', 'Rankmach2024_2')
+foreach ($folder in $restoredFolders) {
+    $target = Join-Path $installed "Assets/KillConfirmCode/$folder"
+    New-Item -ItemType Directory -Path $target -Force | Out-Null
+    Get-ChildItem -LiteralPath (Join-Path $root "Widget/Assets/KillConfirmCode/$folder") -File |
         Copy-Item -Destination $target
 }
 [KillConfirmGameBar.Services.PackLibraryProbe]::Run($installed, (Join-Path $temp 'LocalState'))

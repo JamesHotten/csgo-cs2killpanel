@@ -136,6 +136,18 @@ namespace KillConfirmGameBar.Controls
                     return "Rankmach2019_1";
                 case "rankmach_2019_2":
                     return "Rankmach2019_2";
+                case "rankmach_2022_1":
+                    return "Rankmach2022_1";
+                case "rankmach_2022_2":
+                    return "Rankmach2022_2";
+                case "rankmach_2023_1":
+                    return "Rankmach2023_1";
+                case "rankmach_2023_2":
+                    return "Rankmach2023_2";
+                case "rankmach_2024_1":
+                    return "Rankmach2024_1";
+                case "rankmach_2024_2":
+                    return "Rankmach2024_2";
                 case "csol4":
                     return "Csol4";
                 default:

@@ -27,23 +27,13 @@ namespace KillConfirmGameBar
             {
                 return GetValorantPackIconUri(key);
             }
+            if (CrossfireExternalAssetService.IsIconKey(key))
+            {
+                return CrossfireExternalAssetService.IconPreviewUri(key);
+            }
 
             switch ((key ?? string.Empty).Trim().ToLowerInvariant())
             {
-                case "vip":
-                    return CrossfireExternalAssetService.VisualUri("Vip", "badge_headshot.png");
-                case "angelic_beast":
-                    return CrossfireExternalAssetService.VisualUri("AngelicBeast", "badge_headshot.png");
-                case "anniversary_10":
-                    return CrossfireExternalAssetService.VisualUri("Anniversary10", "badge_headshot.png");
-                case "anniversary_15":
-                    return CrossfireExternalAssetService.VisualUri("Anniversary15", "badge_headshot.png");
-                case "cfpl":
-                    return CrossfireExternalAssetService.VisualUri("CFPL", "badge_headshot.png");
-                case "rankmach_2019_1":
-                    return CrossfireExternalAssetService.VisualUri("Rankmach2019_1", "badge_headshot.png");
-                case "rankmach_2019_2":
-                    return CrossfireExternalAssetService.VisualUri("Rankmach2019_2", "badge_headshot.png");
                 case "bf1":
                     return "ms-appx:///Assets/GameStyles/battlefield1/killconfirm/textures/killicon_battlefield1_headshot.png";
                 case "bf5":

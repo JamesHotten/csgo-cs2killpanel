@@ -552,6 +552,9 @@
     <Content Include="Assets\KillConfirmCode\Csol4\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Assets\KillConfirmCode\Vip\**\*;Assets\KillConfirmCode\AngelicBeast\**\*;Assets\KillConfirmCode\Anniversary10\**\*;Assets\KillConfirmCode\Anniversary15\**\*;Assets\KillConfirmCode\CFPL\**\*;Assets\KillConfirmCode\Rankmach2019_1\**\*;Assets\KillConfirmCode\Rankmach2019_2\**\*;Assets\KillConfirmCode\Rankmach2022_1\**\*;Assets\KillConfirmCode\Rankmach2022_2\**\*;Assets\KillConfirmCode\Rankmach2023_1\**\*;Assets\KillConfirmCode\Rankmach2023_2\**\*;Assets\KillConfirmCode\Rankmach2024_1\**\*;Assets\KillConfirmCode\Rankmach2024_2\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Assets\FluentIcons\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

@@ -9,11 +9,25 @@ using Windows.Storage;
 
 namespace KillConfirmGameBar.Services
 {
-    // Stable keys preserve saved CF selections. The two base packs are always available.
+    // Stable keys preserve saved CF selections. Restored built-ins remain available
+    // when an external package with the same key is absent.
     internal static class CrossfireExternalAssetService
     {
-        internal static readonly string[] IconKeys = { "default", "vip", "angelic_beast", "anniversary_10", "anniversary_15", "cfpl", "rankmach_2019_1", "rankmach_2019_2" };
-        private static readonly string[] LegacyFolders = { "Original", "Vip", "AngelicBeast", "Anniversary10", "Anniversary15", "CFPL", "Rankmach2019_1", "Rankmach2019_2" };
+        internal static readonly string[] IconKeys = {
+            "default", "vip", "angelic_beast", "anniversary_10", "anniversary_15", "cfpl",
+            "rankmach_2019_1", "rankmach_2019_2", "rankmach_2022_1", "rankmach_2022_2",
+            "rankmach_2023_1", "rankmach_2023_2", "rankmach_2024_1", "rankmach_2024_2"
+        };
+        private static readonly string[] LegacyFolders = {
+            "Original", "Vip", "AngelicBeast", "Anniversary10", "Anniversary15", "CFPL",
+            "Rankmach2019_1", "Rankmach2019_2", "Rankmach2022_1", "Rankmach2022_2",
+            "Rankmach2023_1", "Rankmach2023_2", "Rankmach2024_1", "Rankmach2024_2"
+        };
+        private static readonly string[] IconDisplayNames = {
+            "原版", "VIP", "神圣兽", "10周年庆", "15周年庆", "CFPL",
+            "排位赛2019-1", "排位赛2019-2", "排位赛2022-1", "排位赛2022-2",
+            "排位赛2023-1", "排位赛2023-2", "排位赛2024-1", "排位赛2024-2"
+        };
         public static bool IsIconKey(string key) => IconKeys.Contains(key ?? "", StringComparer.OrdinalIgnoreCase);
         public static bool IsVoiceKey(string key) => !string.IsNullOrWhiteSpace(key) && key.StartsWith("crossfire_", StringComparison.OrdinalIgnoreCase);
         public static string Root => Path.Combine(ApplicationData.Current.LocalFolder.Path, "Packs", "crossfire");
@@ -24,11 +38,29 @@ namespace KillConfirmGameBar.Services
             Windows.ApplicationModel.Package.Current.InstalledLocation.Path,
             voice ? @"KillConfirmService\sounds\crossfire_swat_gr" : @"Assets\GameStyles\crossfire\iconpacks\default");
 
+        private static string BuiltInIconPath(string key)
+        {
+            int index = Array.FindIndex(IconKeys, value => string.Equals(value, key, StringComparison.OrdinalIgnoreCase));
+            if (index <= 0)
+            {
+                return BuiltInPath();
+            }
+
+            return Path.Combine(
+                Windows.ApplicationModel.Package.Current.InstalledLocation.Path,
+                "Assets", "KillConfirmCode", LegacyFolders[index]);
+        }
+
         public static string ResolvePackPath(string key, bool voice = false)
         {
             string external = PackPath(key, voice);
-            if (string.Equals(key, voice ? "crossfire_swat_gr" : "default", StringComparison.OrdinalIgnoreCase)
-                && !File.Exists(Path.Combine(external, "manifest.json"))) return BuiltInPath(voice);
+            if (!File.Exists(Path.Combine(external, "manifest.json")))
+            {
+                if (voice && string.Equals(key, "crossfire_swat_gr", StringComparison.OrdinalIgnoreCase))
+                    return BuiltInPath(true);
+                if (!voice && IsIconKey(key))
+                    return BuiltInIconPath(key);
+            }
             return external;
         }
 
@@ -36,6 +68,12 @@ namespace KillConfirmGameBar.Services
         {
             int index = Array.FindIndex(LegacyFolders, value => string.Equals(value, folder, StringComparison.OrdinalIgnoreCase));
             return new Uri(Path.Combine(ResolvePackPath(index < 0 ? "default" : IconKeys[index]), file)).AbsoluteUri;
+        }
+
+        public static string IconPreviewUri(string key)
+        {
+            int index = Array.FindIndex(IconKeys, value => string.Equals(value, key, StringComparison.OrdinalIgnoreCase));
+            return VisualUri(index < 0 ? LegacyFolders[0] : LegacyFolders[index], "badge_headshot.png");
         }
 
         public static async Task<StorageFile> DefaultVoiceFileAsync(string name)
@@ -96,12 +134,21 @@ namespace KillConfirmGameBar.Services
                 Key = p.Item2.Id, DisplayName = p.Item2.Name, FolderPath = p.Item1,
                 IsBuiltIn = false, IsVisibleInWidget = true, OwnsFolder = true
             }));
-            if (!icons.Any(p => string.Equals(p.Key, "default", StringComparison.OrdinalIgnoreCase)))
-                icons.Insert(0, new IconPackItem {
-                    Key = "default", DisplayName = "原版", FolderPath = BuiltInPath(),
+            for (int index = 0; index < IconKeys.Length; index++)
+            {
+                string key = IconKeys[index];
+                if (icons.Any(p => string.Equals(p.Key, key, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+                string folder = BuiltInIconPath(key);
+                icons.Add(new IconPackItem {
+                    Key = key, DisplayName = IconDisplayNames[index], FolderPath = folder,
                     IsBuiltIn = true, IsVisibleInWidget = true, OwnsFolder = false,
-                    HasFxOverlay = true, HasKillFxOverlay = true, HasEliteOverlay = true, HasWeaponBadgeOverlay = true
+                    HasFxOverlay = File.Exists(Path.Combine(folder, "multi2_fx.png")),
+                    HasKillFxOverlay = File.Exists(Path.Combine(folder, "multi2_fx.png")),
+                    HasEliteOverlay = File.Exists(Path.Combine(folder, "KillMark_Upgrade1.png")),
+                    HasWeaponBadgeOverlay = File.Exists(Path.Combine(folder, "badge_assault1.png"))
                 });
+            }
             if (!voices.Any(p => string.Equals(p.Key, "crossfire_swat_gr", StringComparison.OrdinalIgnoreCase)))
                 voices.Insert(0, new VoicePackItem {
                     Key = "crossfire_swat_gr", DisplayName = "斯沃特（保卫者）", FolderPath = BuiltInPath(true),

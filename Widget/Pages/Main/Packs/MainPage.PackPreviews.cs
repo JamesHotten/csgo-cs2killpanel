@@ -122,21 +122,21 @@ namespace KillConfirmGameBar
                     return "ms-appx:///Assets/GameStyles/custommodule/iconpacks/custommodule/pack_head.webp";
                 case "crossfire_swat_gr":
                 case "crossfire_swat_bl":
-                    return new Uri(System.IO.Path.Combine(CrossfireExternalAssetService.ResolvePackPath(item.Key, true), "pack_head.png")).AbsoluteUri;
+                    return "ms-appx:///Assets/PackIcons/swat.png";
                 case "crossfire_flying_tiger_gr":
                 case "crossfire_flying_tiger_bl":
-                    return new Uri(System.IO.Path.Combine(CrossfireExternalAssetService.ResolvePackPath(item.Key, true), "pack_head.png")).AbsoluteUri;
+                    return "ms-appx:///Assets/PackIcons/flying_tiger.png";
                 case "crossfire_women_gr":
                 case "crossfire_women_bl":
-                    return new Uri(System.IO.Path.Combine(CrossfireExternalAssetService.ResolvePackPath(item.Key, true), "pack_head.png")).AbsoluteUri;
+                    return "ms-appx:///Assets/PackIcons/women.png";
                 case "crossfire_v_sex":
-                    return new Uri(System.IO.Path.Combine(CrossfireExternalAssetService.ResolvePackPath(item.Key, true), "pack_head.png")).AbsoluteUri;
+                    return "ms-appx:///Assets/PackIcons/cfsex.png";
                 case "crossfire_bunny_gr":
                 case "crossfire_bunny_bl":
-                    return new Uri(System.IO.Path.Combine(CrossfireExternalAssetService.ResolvePackPath(item.Key, true), "pack_head.png")).AbsoluteUri;
+                    return "ms-appx:///Assets/PackIcons/bunny.png";
                 case "crossfire_heart_judge_gr":
                 case "crossfire_heart_judge_bl":
-                    return new Uri(System.IO.Path.Combine(CrossfireExternalAssetService.ResolvePackPath(item.Key, true), "pack_head.png")).AbsoluteUri;
+                    return "ms-appx:///Assets/PackIcons/heart_judge.png";
                 case "bf1":
                     return "ms-appx:///Assets/GameStyles/battlefield1/killconfirm/textures/killicon_battlefield1_headshot.png";
                 case "bf5":
@@ -224,6 +224,10 @@ namespace KillConfirmGameBar
                 return "ms-appx:///Assets/GameStyles/custommodule/iconpacks/custommodule/pack_head.webp";
             }
             if (GameStyleService.IsCustomModuleKey(item?.Key)) return null;
+            if (CrossfireExternalAssetService.IsIconKey(item?.Key))
+            {
+                return CrossfireExternalAssetService.IconPreviewUri(item.Key);
+            }
             GameStyleMode style = GameStyleService.GetStyleForPackKey(item?.Key);
             if (style == GameStyleMode.Overwatch)
             {
@@ -243,20 +247,6 @@ namespace KillConfirmGameBar
             }
             switch ((item?.Key ?? string.Empty).Trim().ToLowerInvariant())
             {
-                case "vip":
-                    return CrossfireExternalAssetService.VisualUri("Vip", "badge_headshot.png");
-                case "angelic_beast":
-                    return CrossfireExternalAssetService.VisualUri("AngelicBeast", "badge_headshot.png");
-                case "anniversary_10":
-                    return CrossfireExternalAssetService.VisualUri("Anniversary10", "badge_headshot.png");
-                case "anniversary_15":
-                    return CrossfireExternalAssetService.VisualUri("Anniversary15", "badge_headshot.png");
-                case "cfpl":
-                    return CrossfireExternalAssetService.VisualUri("CFPL", "badge_headshot.png");
-                case "rankmach_2019_1":
-                    return CrossfireExternalAssetService.VisualUri("Rankmach2019_1", "badge_headshot.png");
-                case "rankmach_2019_2":
-                    return CrossfireExternalAssetService.VisualUri("Rankmach2019_2", "badge_headshot.png");
                 case "bf1":
                     return "ms-appx:///Assets/GameStyles/battlefield1/killconfirm/textures/killicon_battlefield1_headshot.png";
                 case "bf5":

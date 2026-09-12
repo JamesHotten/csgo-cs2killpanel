@@ -258,6 +258,12 @@ namespace KillConfirmGameBar.Services
             ["cfpl"] = "CFPL",
             ["rankmach_2019_1"] = "Rank Match-1",
             ["rankmach_2019_2"] = "Rank Match-2",
+            ["rankmach_2022_1"] = "Rank Match 2022-1",
+            ["rankmach_2022_2"] = "Rank Match 2022-2",
+            ["rankmach_2023_1"] = "Rank Match 2023-1",
+            ["rankmach_2023_2"] = "Rank Match 2023-2",
+            ["rankmach_2024_1"] = "Rank Match 2024-1",
+            ["rankmach_2024_2"] = "Rank Match 2024-2",
 
             ["CfgLabel"] = "CFG",
             ["TestLabel"] = "TEST",

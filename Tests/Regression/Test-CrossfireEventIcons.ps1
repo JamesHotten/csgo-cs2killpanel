@@ -17,6 +17,7 @@ $animationSource = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'Wid
 $styleSource = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'Widget/Services/Styling/GameStyleService.cs')
 $eventSource = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'Widget/Services/Runtime/KillEventModels.cs')
 $eventClientSource = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'Widget/Services/Runtime/KillEventClient.cs')
+$projectSource = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'Widget/KillConfirmGameBar.csproj')
 $settingsSource = Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'Widget/Services/Settings/Games/CrossfireGameplaySettingsStore.cs')
 $settingsModel = [regex]::Match($settingsSource, '(?ms)^    internal sealed class CrossfireGameplaySettingsValues\r?\n.*?^    \}').Value
 $settingsStore = [regex]::Match($settingsSource, '(?ms)^    internal static class CrossfireGameplaySettingsStore\r?\n.*?^    \}').Value
@@ -45,6 +46,14 @@ $methods = @(
 # The overload without arguments comes first; include the pack-key overload too.
 $folderOverload = [regex]::Match($overlaySource, '(?ms)^        private static string GetIconPackFolder\(string iconPack\).*?^        \}').Value
 if (-not $folderOverload) { throw 'Icon-pack folder mapping not found.' }
+$requiredBundledFolders = @('Vip', 'AngelicBeast', 'Anniversary10', 'Anniversary15', 'CFPL',
+    'Rankmach2019_1', 'Rankmach2019_2', 'Rankmach2022_1', 'Rankmach2022_2',
+    'Rankmach2023_1', 'Rankmach2023_2', 'Rankmach2024_1', 'Rankmach2024_2')
+foreach ($folder in $requiredBundledFolders) {
+    if ($projectSource -notmatch [regex]::Escape("Assets\KillConfirmCode\$folder\**\*")) {
+        throw "Restored CF icon pack is not included in the app package: $folder"
+    }
+}
 $constants = [regex]::Matches($coreSource, 'private const string \w+ = "[^"]+";') | ForEach-Object Value
 $harness = @'
 using System;
@@ -241,7 +250,11 @@ public static class CrossfireIconRegressionChecks
             { "default", "Original" }, { "vip", "Vip" }, { "angelic_beast", "AngelicBeast" },
             { "anniversary_10", "Anniversary10" }, { "anniversary_15", "Anniversary15" },
             { "cfpl", "CFPL" }, { "rankmach_2019_1", "Rankmach2019_1" },
-            { "rankmach_2019_2", "Rankmach2019_2" }, { "custom_icon_test", "import" }
+            { "rankmach_2019_2", "Rankmach2019_2" },
+            { "rankmach_2022_1", "Rankmach2022_1" }, { "rankmach_2022_2", "Rankmach2022_2" },
+            { "rankmach_2023_1", "Rankmach2023_1" }, { "rankmach_2023_2", "Rankmach2023_2" },
+            { "rankmach_2024_1", "Rankmach2024_1" }, { "rankmach_2024_2", "Rankmach2024_2" },
+            { "custom_icon_test", "import" }
         };
         int count = 0;
         foreach (var pack in packs)
@@ -334,14 +347,49 @@ foreach ($relative in @(
 
 $iconRoot = Join-Path $RepositoryRoot 'Widget/Assets/KillConfirmCode'
 $cfFiles = Get-ChildItem -LiteralPath $iconRoot -Recurse -File | Where-Object { $_.FullName -notlike '*\Csol4\*' }
-if ($cfFiles) { throw 'Legacy CF media must remain external.' }
+$builtInCfFolders = @(
+    'Vip', 'AngelicBeast', 'Anniversary10', 'Anniversary15', 'CFPL',
+    'Rankmach2019_1', 'Rankmach2019_2', 'Rankmach2022_1', 'Rankmach2022_2',
+    'Rankmach2023_1', 'Rankmach2023_2', 'Rankmach2024_1', 'Rankmach2024_2'
+)
+foreach ($folder in $builtInCfFolders) {
+    $folderRoot = Join-Path $iconRoot $folder
+    foreach ($required in @('badge_multi1.png', 'badge_headshot.png')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $folderRoot $required))) {
+            throw "Missing restored CF icon: $folder/$required"
+        }
+    }
+}
+$unexpectedCfFiles = $cfFiles | Where-Object {
+    $relative = $_.FullName.Substring($iconRoot.Length + 1).Replace('\', '/')
+    ($relative -split '/')[0] -notin $builtInCfFolders
+}
+if ($unexpectedCfFiles) { throw "Unexpected legacy CF media: $($unexpectedCfFiles[0].FullName)" }
 $baseRoot = Join-Path $RepositoryRoot 'SourceAssets/GameStyles/crossfire'
 $baseIconRoot = Join-Path $baseRoot 'iconpacks/default'
 $baseVoiceRoot = Join-Path $baseRoot 'soundpacks/crossfire_swat_gr'
+$voicePreviewRoot = Join-Path $RepositoryRoot 'Widget/Assets/PackIcons'
+$voicePreviewFiles = @('swat.png', 'flying_tiger.png', 'women.png', 'cfsex.png', 'bunny.png', 'heart_judge.png')
 foreach ($required in @('iconpacks/default/badge_multi1.png', 'iconpacks/default/pack_head.png',
     'iconpacks/default/multi2_fx.png', 'soundpacks/crossfire_swat_gr/manifest.json',
     'soundpacks/crossfire_swat_gr/common.wav', 'soundpacks/crossfire_swat_gr/pack_head.png')) {
     if (-not (Test-Path -LiteralPath (Join-Path $baseRoot $required))) { throw "Missing CF base resource: $required" }
+}
+foreach ($required in $voicePreviewFiles) {
+    if (-not (Test-Path -LiteralPath (Join-Path $voicePreviewRoot $required))) {
+        throw "Missing built-in CF voice-pack preview: $required"
+    }
+}
+$previewSources = @(
+    Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'Widget/Pages/Main/Packs/MainPage.PackPreviews.cs')
+    Get-Content -Raw -LiteralPath (Join-Path $RepositoryRoot 'Widget/Pages/KillConfirmWidget/Packs/KillConfirmWidgetPage.PackSelectors.cs')
+)
+foreach ($required in $voicePreviewFiles) {
+    foreach ($source in $previewSources) {
+        if ($source -notmatch [regex]::Escape("ms-appx:///Assets/PackIcons/$required")) {
+            throw "CF voice-pack preview is not wired to its restored fallback: $required"
+        }
+    }
 }
 foreach ($file in Get-ChildItem -LiteralPath $baseRoot -Recurse -File) {
     $relative = $file.FullName.Substring($baseRoot.Length + 1).Replace('\', '/')
@@ -349,7 +397,7 @@ foreach ($file in Get-ChildItem -LiteralPath $baseRoot -Recurse -File) {
         throw "Only the two basic CF packs may be bundled: $relative"
     }
 }
-'PASS: only the basic CF icon and voice packs are present in application sources.'
+'PASS: the default and 13 restored CF icon packs, base voice pack and six fallback preview icons are present.'
 
 # Inspect the final archive, not bin/obj: stale PRI file lists can omit newly
 # copied images even when the build succeeds and the images exist in staging.
@@ -373,11 +421,12 @@ try {
     }
     if ($PackageArchive) {
         $forbidden = $PackageArchive.Entries | Where-Object {
-            ($_.FullName -like 'Assets/KillConfirmCode/*' -and $_.FullName -notlike 'Assets/KillConfirmCode/Csol4/*') -or
+            ($_.FullName -like 'Assets/KillConfirmCode/*' -and
+                $_.FullName -notlike 'Assets/KillConfirmCode/Csol4/*' -and
+                ($_.FullName -split '/')[2] -notin $builtInCfFolders) -or
             ($_.FullName -like 'KillConfirmService/sounds/crossfire_*/*' -and $_.FullName -notlike 'KillConfirmService/sounds/crossfire_swat_gr/*') -or
             ($_.FullName -like 'Assets/GameStyles/crossfire/*' -and $_.FullName -notlike 'Assets/GameStyles/crossfire/iconpacks/default/*') -or
-            $_.FullName -like 'Assets/GameStyles/crossfire/iconpacks/default/legacy_frames/*' -or
-            $_.FullName -match '^Assets/PackIcons/(swat|flying_tiger|women|cfsex|bunny|heart_judge)\.png$'
+            $_.FullName -like 'Assets/GameStyles/crossfire/iconpacks/default/legacy_frames/*'
         }
         if ($forbidden) { throw 'Application archive contains external CF resources.' }
         $failures = @()
@@ -388,7 +437,8 @@ try {
         $sourceRoots = @(
             @{ Path = $iconRoot; Prefix = 'Assets/KillConfirmCode/' },
             @{ Path = $baseIconRoot; Prefix = 'Assets/GameStyles/crossfire/iconpacks/default/' },
-            @{ Path = $baseVoiceRoot; Prefix = 'KillConfirmService/sounds/crossfire_swat_gr/' }
+            @{ Path = $baseVoiceRoot; Prefix = 'KillConfirmService/sounds/crossfire_swat_gr/' },
+            @{ Path = $voicePreviewRoot; Prefix = 'Assets/PackIcons/' }
         )
         foreach ($sourceRoot in $sourceRoots) {
         foreach ($file in Get-ChildItem -LiteralPath $sourceRoot.Path -Recurse -File) {
@@ -410,7 +460,7 @@ try {
         }
         }
         if ($failures.Count) { throw ("CF icon payload check failed:`n" + ($failures -join "`n")) }
-        "PASS: all $verified packaged assets match source SHA-256; only the two basic CF packs are bundled."
+        "PASS: all $verified packaged CF assets match source SHA-256; only registered built-in fallbacks are bundled."
     }
 }
 finally {
