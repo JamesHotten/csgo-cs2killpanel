@@ -117,20 +117,6 @@ namespace KillConfirmGameBar.Controls.Settings
                     + "• New: C4 bomb timer audio customization, panel color customizer, CSOL pack import\n"
                     + "• Improved: settings tabs reorganized into Game Experience and Advanced";
 
-            HubAboutCreditsTitle.Text = isChinese ? "作者与致谢" : "AUTHOR & CREDITS";
-            HubAuthorNameText.Text = "Zac · eachkinji";
-            HubAuthorDescriptionText.Text = isChinese
-                ? "Kill Confirm Overlay 作者与维护者"
-                : "Author and maintainer of Kill Confirm Overlay";
-            HubAuthorGitHubButton.Content = "GitHub · eachkinji";
-            HubAuthorBilibiliButton.Content = isChinese ? "B站 · Zac不想烤肉" : "Bilibili · Zac";
-            HubProjectButton.Content = isChinese ? "项目主页" : "Project home";
-            HubDownloadButton.Content = isChinese ? "下载与更新 · 7Twv" : "Download & update · 7Twv";
-            HubAboutCreditsBody.Text = isChinese
-                ? "感谢 st0nie 提供 cskillconfirm 的开发思路与基础代码，并感谢 gufan0000 的 CS2 Customizer 与本项目持续联动。本工具为非官方社区项目，仅供学习交流；游戏资源归各自版权方所有。"
-                : "Thanks to st0nie for the ideas and foundation from cskillconfirm, and to gufan0000 for the ongoing CS2 Customizer collaboration. This is an unofficial community project for learning and personal use; game assets belong to their respective owners.";
-            HubCreditsCommunityPanel?.ApplyLanguage();
-
             HubGeneralOptionsPanel?.ApplyLanguage();
             HubAdvancedSystemOptionsPanel?.ApplyLanguage();
             HubRuntimePanel?.ApplyLanguage();
@@ -183,22 +169,6 @@ namespace KillConfirmGameBar.Controls.Settings
             if (HubAppActionsStatusText != null) HubAppActionsStatusText.Foreground = theme.Brush(theme.MutedText);
             if (HubAboutUpdateTitle != null) HubAboutUpdateTitle.Foreground = new SolidColorBrush(theme.Text);
             if (HubAboutUpdateBody != null) HubAboutUpdateBody.Foreground = new SolidColorBrush(theme.MutedText);
-            if (HubAboutCreditsTitle != null) HubAboutCreditsTitle.Foreground = new SolidColorBrush(theme.Text);
-            if (HubAboutCreditsBody != null) HubAboutCreditsBody.Foreground = new SolidColorBrush(theme.MutedText);
-            if (HubAuthorProfileCard != null)
-            {
-                HubAuthorProfileCard.Background = theme.Brush(theme.SubtleField);
-                HubAuthorProfileCard.BorderBrush = theme.Brush(theme.SoftBorder);
-            }
-            if (HubAuthorAvatarFrame != null)
-            {
-                HubAuthorAvatarFrame.Background = theme.Brush(theme.Card);
-                HubAuthorAvatarFrame.BorderBrush = theme.Brush(theme.SoftBorder);
-            }
-            if (HubAuthorNameText != null) HubAuthorNameText.Foreground = theme.Brush(theme.Text);
-            if (HubAuthorDescriptionText != null) HubAuthorDescriptionText.Foreground = theme.Brush(theme.MutedText);
-            if (HubCreditsCommunityPanel != null) HubCreditsCommunityPanel.ApplyTheme(theme);
-
             if (HubRuntimePanel != null)
             {
                 HubRuntimePanel.ApplyTheme(theme);

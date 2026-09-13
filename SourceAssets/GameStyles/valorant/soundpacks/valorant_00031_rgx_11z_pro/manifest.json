@@ -12,7 +12,7 @@
       "kill_4": "4.wav",
       "kill_5": "5.wav",
       "common_overlay": "appear.wav",
-      "headshot": []
+      "headshot": "headshot.wav"
     },
     "slot_gains": {
       "common_overlay": 0.3

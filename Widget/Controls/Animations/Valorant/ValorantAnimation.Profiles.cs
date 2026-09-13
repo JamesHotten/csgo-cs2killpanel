@@ -152,7 +152,7 @@ namespace KillConfirmGameBar.Controls
 
         private static ValorantDemoProfile LegacyGaia(string id, string color, string name)
         {
-            return new ValorantDemoProfile(id, color, $"killicon_valorant_{name}_emblem.png", $"killicon_valorant_{name}_frame.png", $"killicon_valorant_{name}_bar.png", $"killicon_valorant_{name}_bar.png")
+            return new ValorantDemoProfile(id, color, $"killicon_valorant_{name}_emblem.png", "killicon_valorant_rgx_11z_pro_frame.png", $"killicon_valorant_{name}_bar.png", $"killicon_valorant_{name}_bar.png")
             { HeadshotX = -2, HeadshotY = -20, EmblemScale = 0.9, BarRadiusOffset = 4, IsGaia = true };
         }
 

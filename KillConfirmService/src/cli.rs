@@ -88,18 +88,6 @@ pub struct Args {
     /// launch the packaged external settings helper, then exit
     #[arg(long, default_value = "false")]
     pub open_settings_launcher: bool,
-
-    /// open the project download and update page, then exit
-    #[arg(long, default_value = "false")]
-    pub open_quark_update: bool,
-
-    /// open the author's GitHub page, then exit
-    #[arg(long, default_value = "false")]
-    pub open_author_github: bool,
-
-    /// open the author's Bilibili page, then exit
-    #[arg(long, default_value = "false")]
-    pub open_author_bilibili: bool,
 }
 
 impl Args {

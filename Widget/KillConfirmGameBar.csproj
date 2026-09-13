@@ -200,8 +200,6 @@
     <Compile Include="Pages\KillConfirmWidget\Configuration\KillConfirmWidgetPage.CsConfig.Installation.cs" />
     <Compile Include="Pages\KillConfirmWidget\Configuration\KillConfirmWidgetPage.Language.cs" />
     <Compile Include="Pages\KillConfirmWidget\Runtime\KillConfirmWidgetPage.StatusHints.cs" />
-    <Compile Include="Pages\KillConfirmWidget\Runtime\KillConfirmWidgetPage.Update.cs" />
-    <Compile Include="Pages\KillConfirmWidget\Runtime\KillConfirmWidgetPage.UpdateOverlayRefs.cs" />
     <Compile Include="Pages\KillConfirmWidget\Runtime\KillConfirmWidgetPage.Service.cs" />
     <Compile Include="Pages\KillConfirmWidget\Runtime\KillConfirmWidgetPage.Service.Lifecycle.cs" />
     <Compile Include="Pages\KillConfirmWidget\Packs\KillConfirmWidgetPage.PackSelectors.cs" />
@@ -419,9 +417,6 @@
     <Compile Include="Controls\Settings\Hub\PortSettingsView.xaml.cs">
       <DependentUpon>PortSettingsView.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\Settings\About\CreditsCommunityPanel.xaml.cs">
-      <DependentUpon>CreditsCommunityPanel.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Controls\Settings\General\GeneralSettingsOptionsPanel.xaml.cs">
       <DependentUpon>GeneralSettingsOptionsPanel.xaml</DependentUpon>
     </Compile>
@@ -458,10 +453,6 @@
     <Compile Include="Controls\Settings\Valorant\ValorantAdvancedSettingsPanel.xaml.cs">
       <DependentUpon>ValorantAdvancedSettingsPanel.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\Overlays\Update\UpdateOverlayView.xaml.cs">
-      <DependentUpon>UpdateOverlayView.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\Overlays\Update\UpdateOverlayView.Theme.cs" />
     <Compile Include="Services\Runtime\KillEventClient.cs" />
     <Compile Include="Services\Runtime\KillEventModels.cs" />
     <Compile Include="Services\Runtime\LocalServiceAuth.cs" />
@@ -544,7 +535,6 @@
     <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
     <Content Include="Assets\StoreLogo.png" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
-    <Content Include="Assets\DeveloperAvatar.jpg" />
     <Content Include="Assets\Credits\*" />
     <Content Include="Assets\GitHub.svg" />
     <Content Include="Assets\bilibili.svg" />
@@ -778,10 +768,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Controls\Settings\About\CreditsCommunityPanel.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
     <Page Include="Controls\Settings\General\GeneralSettingsOptionsPanel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -799,10 +785,6 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Controls\Settings\Valorant\ValorantAdvancedSettingsPanel.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Controls\Overlays\Update\UpdateOverlayView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

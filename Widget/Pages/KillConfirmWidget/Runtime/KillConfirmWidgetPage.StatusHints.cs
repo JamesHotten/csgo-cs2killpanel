@@ -49,8 +49,6 @@ namespace KillConfirmGameBar
             var hints = new List<StatusHint>();
 
             hints.Add(new StatusHint(LocalizationManager.Text("StatusAllLightsRequiredHint"), Color.FromArgb(255, 5, 122, 85)));
-            hints.Add(new StatusHint(LocalizationManager.Text("UpdateButtonStatusHint"), Color.FromArgb(255, 180, 90, 0)));
-
             hints.Add(new StatusHint(LocalizationManager.Text("DisableFullscreenOptimizationsHint"), Color.FromArgb(255, 180, 90, 0)));
             hints.Add(new StatusHint(LocalizationManager.Text("CustomIconSettingsHint"), Color.FromArgb(255, 180, 90, 0)));
             hints.Add(new StatusHint(LocalizationManager.Text("ProxyPortHint"), Color.FromArgb(255, 180, 90, 0)));

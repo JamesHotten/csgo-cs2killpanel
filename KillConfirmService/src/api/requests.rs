@@ -78,6 +78,12 @@ pub struct GsiStatusResponse {
     pub last_post_unix_ms: Option<u64>,
     pub last_post_age_ms: Option<u64>,
     pub last_parse_error_unix_ms: Option<u64>,
+    pub legacy_bridge_connected: bool,
+    pub legacy_bridge_events: u64,
+    pub last_legacy_bridge_activity_unix_ms: Option<u64>,
+    pub cs2_local_bridge_connected: bool,
+    pub cs2_local_bridge_events: u64,
+    pub last_cs2_local_bridge_activity_unix_ms: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]

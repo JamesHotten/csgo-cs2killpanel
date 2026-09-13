@@ -207,16 +207,7 @@ namespace KillConfirmGameBar
         internal const string OpenUninstallerParameterGroupId = "OpenUninstaller";
         private const string OpenSettingsWindowParameterGroupId = "OpenSettingsWindow";
         private const string OpenSettingsWindowDeveloperParameterGroupId = "OpenSettingsWindowDeveloper";
-        private const string OpenQuarkUpdateParameterGroupId = "OpenQuarkUpdate";
-        private const string OpenAuthorGitHubParameterGroupId = "OpenAuthorGitHub";
-        private const string OpenAuthorBilibiliParameterGroupId = "OpenAuthorBilibili";
-        private const string QuarkUpdateUrl = "https://pan.quark.cn/s/1f3cfbcf8d5f?pwd=7Twv";
-        private const string QuarkUpdateCode = "7Twv";
-        private const string LatestReleasePageFallbackUrl = "https://github.com/eachkinji/CS2KillConfirmOverlay/releases";
-        private const string AuthorGitHubUrl = "https://github.com/eachkinji";
-        private const string AuthorBilibiliUrl = "https://space.bilibili.com/18017622";
         private static readonly SemaphoreSlim ServiceStartupGate = new SemaphoreSlim(1, 1);
-        private static readonly Uri LatestReleaseUri = new Uri("https://api.github.com/repos/eachkinji/CS2KillConfirmOverlay/releases/latest");
         private static readonly IReadOnlyDictionary<string, TestPreset> TestPresets =
             new Dictionary<string, TestPreset>(StringComparer.OrdinalIgnoreCase)
             {
@@ -311,16 +302,9 @@ namespace KillConfirmGameBar
         private bool _animationCacheReady;
         private bool _animationCacheFailed;
         private bool _shutdownRequested;
-        private bool _updateCheckInProgress;
         private int _statusHintIndex;
         private string _currentStatusHintText = string.Empty;
         private DateTimeOffset _lastGsiStatusCheck = DateTimeOffset.MinValue;
-        private UpdateAvailabilityState _updateAvailabilityState = UpdateAvailabilityState.Unknown;
-        private string _latestReleaseVersion = string.Empty;
-        private string _latestReleasePageUrl = string.Empty;
-        private string _latestReleaseNotes = string.Empty;
-        private DateTimeOffset? _latestReleasePublishedAt;
-        private bool _releaseNotesExpanded;
         private readonly DispatcherTimer _controlPanelStateTimer;
         private readonly DispatcherTimer _statusHintTimer;
 
@@ -350,17 +334,13 @@ namespace KillConfirmGameBar
             LoadPanelOffset();
             object collapsed = ApplicationData.Current.LocalSettings.Values[PanelCollapsedSettingKey];
             SetPanelCollapsed(collapsed is bool collapsedValue && collapsedValue);
-            WireUpdateOverlayEvents();
             LowerFeedbackLayer.SizeChanged += OnAnimationLayerSizeChanged;
             CrosshairFeedbackLayer.SizeChanged += OnAnimationLayerSizeChanged;
             UpperFeedbackLayer.SizeChanged += OnAnimationLayerSizeChanged;
-            HeaderStatusSection.VersionText.Text = GetUpdateButtonLabel();
-            ToolTipService.SetToolTip(HeaderStatusSection.UpdateButton, GetDisplayVersion());
             LoadGameStyleSelector();
             LoadLanguageSelector();
             ApplyLanguage();
             ApplyGameStyleUi();
-            UpdateUpdateButtonVisualState();
 
             _controlPanelStateTimer = new DispatcherTimer
             {

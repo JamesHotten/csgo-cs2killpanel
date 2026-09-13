@@ -84,13 +84,6 @@ pub(crate) fn is_process_running(pid: u32) -> bool {
     result != 0 && exit_code == STILL_ACTIVE as u32
 }
 
-pub(crate) fn open_url(url: &str) -> Result<()> {
-    service_log(&format!("opening external URL: {url}"));
-    shell_execute_text("open", url, None)
-        .with_context(|| format!("failed to open URL via ShellExecuteW: {url}"))?;
-    Ok(())
-}
-
 pub(crate) fn open_game_bar() -> Result<()> {
     service_log("opening Xbox Game Bar");
     shell_execute_text("open", "ms-gamebar:", None)

@@ -14,6 +14,8 @@ use crate::api::{
 use crate::cli::Args;
 use crate::gsi::update;
 use crate::infrastructure::auth::{load_or_create_control_token, require_control_token};
+use crate::infrastructure::cs2_local_bridge::watch_cs2_local_server_logs;
+use crate::infrastructure::legacy_bridge::watch_legacy_bridge_logs;
 use crate::infrastructure::logging::{
     bootstrap_log, developer_logging_enabled, open_runtime_log_folder, service_log,
 };
@@ -21,12 +23,10 @@ use crate::infrastructure::playback::{get_output_stream_with_name, list_host_dev
 use crate::infrastructure::ports::{bind_with_fallback, free_local_port};
 use crate::infrastructure::runtime::{
     boost_process_priority, exit_all_processes, launch_settings_launcher,
-    normalize_working_directory, open_game_bar, open_uninstaller, open_url,
+    normalize_working_directory, open_game_bar, open_uninstaller,
 };
 use crate::infrastructure::signal::shutdown_signal;
 use crate::infrastructure::watchers::{monitor_default_output_device, monitor_ui_processes};
-use crate::infrastructure::cs2_local_bridge::watch_cs2_local_server_logs;
-use crate::infrastructure::legacy_bridge::watch_legacy_bridge_logs;
 use crate::soundpack::gain::{
     DEFAULT_STREAK_GAIN_MAXIMUM_PERCENT, DEFAULT_STREAK_GAIN_STEP_PERCENT,
 };
@@ -66,9 +66,6 @@ const DEFAULT_LOG_LEVEL: LevelFilter = if cfg!(debug_assertions) {
 } else {
     LevelFilter::INFO
 };
-const QUARK_UPDATE_URL: &str = "https://pan.quark.cn/s/1f3cfbcf8d5f?pwd=7Twv";
-const AUTHOR_GITHUB_URL: &str = "https://github.com/eachkinji";
-const AUTHOR_BILIBILI_URL: &str = "https://space.bilibili.com/18017622";
 
 pub(crate) async fn run(mut args: Args) -> Result<()> {
     service_log("service starting");
@@ -115,21 +112,6 @@ pub(crate) async fn run(mut args: Args) -> Result<()> {
 
     if args.open_settings_launcher {
         launch_settings_launcher().context("failed to launch settings helper")?;
-        return Ok(());
-    }
-
-    if args.open_quark_update {
-        open_url(QUARK_UPDATE_URL).context("failed to open project download URL")?;
-        return Ok(());
-    }
-
-    if args.open_author_github {
-        open_url(AUTHOR_GITHUB_URL).context("failed to open author GitHub URL")?;
-        return Ok(());
-    }
-
-    if args.open_author_bilibili {
-        open_url(AUTHOR_BILIBILI_URL).context("failed to open author Bilibili URL")?;
         return Ok(());
     }
 
@@ -262,6 +244,12 @@ pub(crate) async fn run(mut args: Args) -> Result<()> {
         gsi_parse_errors: AtomicU64::new(0),
         last_gsi_post_unix_ms: AtomicU64::new(0),
         last_gsi_parse_error_unix_ms: AtomicU64::new(0),
+        legacy_bridge_connected: AtomicBool::new(false),
+        legacy_bridge_events: AtomicU64::new(0),
+        last_legacy_bridge_activity_unix_ms: AtomicU64::new(0),
+        cs2_local_bridge_connected: AtomicBool::new(false),
+        cs2_local_bridge_events: AtomicU64::new(0),
+        last_cs2_local_bridge_activity_unix_ms: AtomicU64::new(0),
     });
 
     service_log(&format!("active audio device: {}", output_device_name));

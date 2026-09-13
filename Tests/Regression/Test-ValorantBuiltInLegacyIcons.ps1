@@ -78,6 +78,9 @@ if ($service -notmatch 'HasBuiltInAudio\s*=\s*true') {
 $renderSource = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot 'Widget/Controls/Animations/Valorant/ValorantAnimation.Render.cs')
 $resourceSource = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot 'Widget/Controls/Animations/Valorant/ValorantAnimation.Resources.cs')
 $legacySource = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot 'Widget/Controls/Animations/Valorant/ValorantAnimation.Legacy.cs')
+$profilesSource = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot 'Widget/Controls/Animations/Valorant/ValorantAnimation.Profiles.cs')
+$packSyncSource = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot 'Widget/Pages/KillConfirmWidget/Packs/KillConfirmWidgetPage.PackSettings.Valorant.cs')
+$catalogStorageSource = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot 'Widget/Services/Catalog/PackCatalogService.Storage.cs')
 if ($renderSource -notmatch 'LegacyRendering' -or $renderSource -notmatch 'DrawLegacyValorantKillFrame') {
     throw 'Legacy Valorant packs are not routed to the restored renderer.'
 }
@@ -90,6 +93,22 @@ foreach ($required in @('killicon_valorant_headshot.png', 'killicon_valorant_par
 }
 if ($legacySource -notmatch 'LegacyValorantBarAngles' -or $legacySource -notmatch 'GetLegacyValorantLifeOpacity') {
     throw 'Restored Valorant renderer is incomplete.'
+}
+if ($profilesSource -notmatch 'LegacyRgx[\s\S]*?"killicon_valorant_rgx_11z_pro_frame\.png"') {
+    throw 'RGX legacy variants must share the frame texture that actually exists in every variant folder.'
+}
+if ($packSyncSource -notmatch 'SelectedValorantIconMatchesAssociation') {
+    throw 'Valorant voice-pack synchronization can still bounce a selected current-renderer variant back to legacy.'
+}
+if ($catalogStorageSource -notmatch 'mustSave\s*\|=\s*MergeMissingBuiltIns') {
+    throw 'New built-in Valorant variants added to an existing catalog are not persisted.'
+}
+
+$rgxAudioRoot = Join-Path $audioRoot 'valorant_00031_rgx_11z_pro'
+$rgxAudioManifest = Get-Content -Raw -LiteralPath (Join-Path $rgxAudioRoot 'manifest.json') | ConvertFrom-Json
+if ($rgxAudioManifest.audio.slots.headshot -ne 'headshot.wav' -or
+    -not (Test-Path -LiteralPath (Join-Path $rgxAudioRoot 'headshot.wav') -PathType Leaf)) {
+    throw 'RGX 00031 headshot audio has not been restored.'
 }
 
 if (-not ('KillConfirmGameBar.Services.LegacyValorantPackRegression' -as [type])) {

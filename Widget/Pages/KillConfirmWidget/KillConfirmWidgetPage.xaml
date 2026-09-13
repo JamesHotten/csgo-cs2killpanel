@@ -309,7 +309,6 @@
                     x:Name="HeaderStatusSection"
                     LanguageToggleRequested="OnLanguageToggleClick"
                     OpenGuideRequested="OnOpenGuideClick"
-                    UpdateRequested="OnUpdateClick"
                     GameStyleSelectionChanged="OnGameStyleSelectionChanged" />
 
                 <sections:StatusDetailsView
@@ -529,6 +528,5 @@
             </Grid>
         </Grid>
 
-        <controls:UpdateOverlayView x:Name="UpdateOverlay" Canvas.ZIndex="30" Visibility="Collapsed" />
     </Grid>
 </Page>

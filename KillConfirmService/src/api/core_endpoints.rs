@@ -24,6 +24,20 @@ pub async fn gsi_status(State(app_state): State<Arc<AppState>>) -> Json<GsiStatu
                 .last_gsi_parse_error_unix_ms
                 .load(Ordering::Relaxed),
         ),
+        legacy_bridge_connected: app_state.legacy_bridge_connected.load(Ordering::Relaxed),
+        legacy_bridge_events: app_state.legacy_bridge_events.load(Ordering::Relaxed),
+        last_legacy_bridge_activity_unix_ms: zero_to_none(
+            app_state
+                .last_legacy_bridge_activity_unix_ms
+                .load(Ordering::Relaxed),
+        ),
+        cs2_local_bridge_connected: app_state.cs2_local_bridge_connected.load(Ordering::Relaxed),
+        cs2_local_bridge_events: app_state.cs2_local_bridge_events.load(Ordering::Relaxed),
+        last_cs2_local_bridge_activity_unix_ms: zero_to_none(
+            app_state
+                .last_cs2_local_bridge_activity_unix_ms
+                .load(Ordering::Relaxed),
+        ),
     })
 }
 

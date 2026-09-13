@@ -76,8 +76,6 @@ namespace KillConfirmGameBar
             SetNamedToolTip(StatusDetailsSection.FreePortButton, LocalizationManager.Text("FreePortTitle"), LocalizationManager.Text("FreePortTooltip"));
             SetNamedToolTip(StatusDetailsSection.RetryServiceButton, LocalizationManager.Text("RetryServiceTitle"), LocalizationManager.Text("RetryServiceTooltip"));
             SetNamedToolTip(StatusDetailsSection.CopyServiceDiagnosticButton, LocalizationManager.Text("CopyDiagnosticTitle"), LocalizationManager.Text("CopyDiagnosticTooltip"));
-            SetNamedToolTip(HeaderStatusSection.UpdateButton, LocalizationManager.Text("UpdateTitle"), LocalizationManager.Text("UpdateUnavailableTooltip"));
-            UpdateCopyQuarkButton.Content = LocalizationManager.Text("UpdateCopyQuark");
             SetNamedToolTip(HeaderStatusSection.ConnectionStatusBadge, LocalizationManager.Text("ServiceStatusTitle"), LocalizationManager.Text("ServiceStatusTooltip"));
             SetNamedToolTip(HeaderStatusSection.CfgStatusBadge, LocalizationManager.Text("CfgStatusTitle"), LocalizationManager.Text("CfgStatusTooltip"));
             SetNamedToolTip(HeaderStatusSection.GsiStatusBadge, LocalizationManager.Text("GsiStatusTitle"), LocalizationManager.Text("GsiStatusTooltip"));
@@ -207,7 +205,6 @@ namespace KillConfirmGameBar
             UpdateCfgStatus(_cfgDetectionState, null, _cfgStatusDetail);
             UpdateGsiStatus(true, _gsiRecentlySeen, _lastGsiPosts, null, _lastGsiParseErrors);
             ApplyGameStyleUi();
-            UpdateUpdateButtonVisualState();
         }
 
         private void ApplyTestPresetLabels()

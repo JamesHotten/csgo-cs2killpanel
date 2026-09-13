@@ -4,19 +4,19 @@ use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use tokio::time::sleep;
 
-use super::steam::detect_counter_strike_roots;
-use crate::gsi::resolve_crossfire_streak_count;
 use super::legacy_bridge::{
     is_knife_classname, weapon_badge_key, weapon_display_name, weapon_money_reward_for,
 };
 use super::logging::service_log;
+use super::steam::detect_counter_strike_roots;
 use crate::economy::rules::EconomyVersion;
-use crate::state::{AppState, CrossfireStreakMode, EventChannel, KillEvent, PendingLastKill};
+use crate::gsi::resolve_crossfire_streak_count;
 use crate::soundpack::sound::play_audio;
+use crate::state::{AppState, CrossfireStreakMode, EventChannel, KillEvent, PendingLastKill};
 
 const POLL_INTERVAL: Duration = Duration::from_millis(50);
 const DISCOVERY_INTERVAL: Duration = Duration::from_millis(500);
@@ -60,11 +60,19 @@ pub async fn watch_cs2_local_server_logs(app_state: Arc<AppState>) {
         }
 
         let paths = tails.keys().cloned().collect::<Vec<_>>();
+        app_state
+            .cs2_local_bridge_connected
+            .store(paths.iter().any(|path| path.is_file()), Ordering::Relaxed);
         for path in paths {
             let lines = tails
                 .get_mut(&path)
                 .map(|tail| read_appended_lines(&path, tail))
                 .unwrap_or_default();
+            if !lines.is_empty() {
+                app_state
+                    .last_cs2_local_bridge_activity_unix_ms
+                    .store(unix_time_ms(), Ordering::Relaxed);
+            }
             for line in lines {
                 let attacker_was_dead = tails
                     .get(&path)
@@ -85,6 +93,9 @@ pub async fn watch_cs2_local_server_logs(app_state: Arc<AppState>) {
                             observed_at: Instant::now(),
                             is_last: false,
                         });
+                        app_state
+                            .cs2_local_bridge_events
+                            .fetch_add(1, Ordering::Relaxed);
                     }
                 } else if is_round_end_line(&line)
                     && let Some(pending) = pending_kills.back_mut()
@@ -109,6 +120,13 @@ pub async fn watch_cs2_local_server_logs(app_state: Arc<AppState>) {
 
         sleep(POLL_INTERVAL).await;
     }
+}
+
+fn unix_time_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64
 }
 
 fn discover_local_server_logs(
@@ -343,7 +361,8 @@ async fn forward_missing_gsi_kill(app_state: Arc<AppState>, pending: PendingServ
         }
 
         let elapsed = mutable
-            .active_player.last_crossfire_kill_at
+            .active_player
+            .last_crossfire_kill_at
             .map(|previous| now.saturating_duration_since(previous));
         let streak_count = resolve_crossfire_streak_count(
             mutable.active_player.crossfire_streak_kills,

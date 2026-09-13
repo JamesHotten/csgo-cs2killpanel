@@ -84,4 +84,10 @@ pub struct AppState {
     pub gsi_parse_errors: AtomicU64,
     pub last_gsi_post_unix_ms: AtomicU64,
     pub last_gsi_parse_error_unix_ms: AtomicU64,
+    pub legacy_bridge_connected: AtomicBool,
+    pub legacy_bridge_events: AtomicU64,
+    pub last_legacy_bridge_activity_unix_ms: AtomicU64,
+    pub cs2_local_bridge_connected: AtomicBool,
+    pub cs2_local_bridge_events: AtomicU64,
+    pub last_cs2_local_bridge_activity_unix_ms: AtomicU64,
 }

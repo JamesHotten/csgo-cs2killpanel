@@ -4,17 +4,17 @@ use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use gsi_cs2::map::Mode;
 use tokio::time::sleep;
 
-use super::steam::detect_counter_strike_roots;
-use crate::gsi::resolve_crossfire_streak_count;
 use super::logging::{local_state_dir, service_log};
+use super::steam::detect_counter_strike_roots;
 use crate::economy::rules::EconomyVersion;
-use crate::state::{AppState, CrossfireStreakMode, EventChannel, KillEvent};
+use crate::gsi::resolve_crossfire_streak_count;
 use crate::soundpack::sound::play_audio;
+use crate::state::{AppState, CrossfireStreakMode, EventChannel, KillEvent};
 
 const POLL_INTERVAL: Duration = Duration::from_millis(50);
 const DISCOVERY_INTERVAL: Duration = Duration::from_secs(2);
@@ -42,12 +42,15 @@ pub async fn watch_legacy_bridge_logs(app_state: Arc<AppState>) {
     let mut last_discovery = Instant::now() - DISCOVERY_INTERVAL;
 
     loop {
-        if tails.is_empty() && last_discovery.elapsed() >= DISCOVERY_INTERVAL {
+        if last_discovery.elapsed() >= DISCOVERY_INTERVAL {
             discover_bridge_logs(&mut tails);
             last_discovery = Instant::now();
         }
 
         let paths = tails.keys().cloned().collect::<Vec<_>>();
+        app_state
+            .legacy_bridge_connected
+            .store(paths.iter().any(|path| path.is_file()), Ordering::Relaxed);
         for path in paths {
             if let Some(tail) = tails.get_mut(&path)
                 && !tail.initialized
@@ -69,8 +72,16 @@ pub async fn watch_legacy_bridge_logs(app_state: Arc<AppState>) {
                 .get_mut(&path)
                 .map(|tail| read_appended_lines(&path, tail))
                 .unwrap_or_default();
+            if !lines.is_empty() {
+                app_state
+                    .last_legacy_bridge_activity_unix_ms
+                    .store(unix_time_ms(), Ordering::Relaxed);
+            }
             for line in lines {
                 if let Some(death) = parse_controlled_death(&line) {
+                    app_state
+                        .legacy_bridge_events
+                        .fetch_add(1, Ordering::Relaxed);
                     emit_controlled_death(app_state.clone(), death).await;
                 }
             }
@@ -78,6 +89,13 @@ pub async fn watch_legacy_bridge_logs(app_state: Arc<AppState>) {
 
         sleep(POLL_INTERVAL).await;
     }
+}
+
+fn unix_time_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64
 }
 
 fn discover_bridge_logs(tails: &mut HashMap<PathBuf, TailState>) {
@@ -254,7 +272,8 @@ async fn emit_controlled_death(app_state: Arc<AppState>, death: ControlledDeath)
     let (round_number, money_epoch, kill_count, mode) = {
         let mut mutable = app_state.mutable.write().await;
         let elapsed = mutable
-            .active_player.last_crossfire_kill_at
+            .active_player
+            .last_crossfire_kill_at
             .map(|previous| now.saturating_duration_since(previous));
         let streak_count = resolve_crossfire_streak_count(
             mutable.active_player.crossfire_streak_kills,

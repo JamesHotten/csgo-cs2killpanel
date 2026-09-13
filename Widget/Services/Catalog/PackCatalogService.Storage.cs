@@ -44,7 +44,7 @@ namespace KillConfirmGameBar.Services
                     mustSave = true;
                 }
 
-                MergeMissingBuiltIns(_cache);
+                mustSave |= MergeMissingBuiltIns(_cache);
                 RefreshExternalValorantEntries(_cache);
                 CrossfireExternalAssetService.RefreshCatalog(_cache);
                 mustSave |= RefreshBuiltInMetadata(_cache);
@@ -205,15 +205,18 @@ namespace KillConfirmGameBar.Services
             };
         }
 
-        private static void MergeMissingBuiltIns(PackCatalog catalog)
+        private static bool MergeMissingBuiltIns(PackCatalog catalog)
         {
+            bool changed = false;
             if (catalog.VoicePacks == null)
             {
                 catalog.VoicePacks = new List<VoicePackItem>();
+                changed = true;
             }
             if (catalog.IconPacks == null)
             {
                 catalog.IconPacks = new List<IconPackItem>();
+                changed = true;
             }
 
             foreach (VoicePackItem item in CreateDefaultCatalog().VoicePacks)
@@ -221,6 +224,7 @@ namespace KillConfirmGameBar.Services
                 if (!catalog.VoicePacks.Any(entry => string.Equals(entry.Key, item.Key, StringComparison.OrdinalIgnoreCase)))
                 {
                     catalog.VoicePacks.Add(item);
+                    changed = true;
                 }
             }
 
@@ -229,8 +233,11 @@ namespace KillConfirmGameBar.Services
                 if (!catalog.IconPacks.Any(entry => string.Equals(entry.Key, item.Key, StringComparison.OrdinalIgnoreCase)))
                 {
                     catalog.IconPacks.Add(item);
+                    changed = true;
                 }
             }
+
+            return changed;
         }
 
         private static void RefreshExternalValorantEntries(PackCatalog catalog)

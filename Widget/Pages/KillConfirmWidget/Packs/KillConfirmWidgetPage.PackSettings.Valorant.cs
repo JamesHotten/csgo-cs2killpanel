@@ -11,6 +11,11 @@ namespace KillConfirmGameBar
         private bool TrySyncValorantIconPackForVoiceSelection(string preset)
         {
             string associationId = ValorantExternalAssetService.GetAssociationIdForVoicePack(preset);
+            if (SelectedValorantIconMatchesAssociation(associationId))
+            {
+                return true;
+            }
+
             string iconPack = string.IsNullOrWhiteSpace(associationId)
                 ? null
                 : ValorantExternalAssetService.FindIconPackKeyByAssociation(associationId);
@@ -28,6 +33,22 @@ namespace KillConfirmGameBar
             _ = ApplyCustomPackOverlaySupportAsync(iconPack);
             WarmStartupAnimationCacheIfActive();
             return true;
+        }
+
+        private bool SelectedValorantIconMatchesAssociation(string associationId)
+        {
+            if (GameStyleService.Current != GameStyleMode.Valorant
+                || string.IsNullOrWhiteSpace(associationId)
+                || !(PackTestSectionView?.IconPackSelector?.SelectedItem is ComboBoxItem selected)
+                || !(selected.Tag is string selectedKey))
+            {
+                return false;
+            }
+
+            return string.Equals(
+                ValorantPackService.Find(selectedKey)?.AssociationId,
+                associationId,
+                StringComparison.OrdinalIgnoreCase);
         }
 
         private bool TrySyncValorantVoicePackForIconSelection(string iconPack)

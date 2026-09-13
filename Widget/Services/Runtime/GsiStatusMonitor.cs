@@ -156,6 +156,20 @@ namespace KillConfirmGameBar.Services
                         double parseErrors = json.GetNamedNumber("parse_errors", 0);
                         double? ageMs = TryGetJsonNumber(json, "last_post_age_ms");
                         bool recentlySeen = posts > 0 && ageMs.HasValue && ageMs.Value <= RecentGsiAgeMs;
+                        bool legacySelected = string.Equals(
+                            GsiGameVersionSettingsStore.Load(),
+                            GsiGameVersionSettingsStore.CsgoLegacy,
+                            StringComparison.OrdinalIgnoreCase);
+                        bool legacyBridgeConnected = json.GetNamedBoolean("legacy_bridge_connected", false);
+                        if (legacySelected && legacyBridgeConnected)
+                        {
+                            recentlySeen = true;
+                        }
+                        bool cs2LocalBridgeConnected = json.GetNamedBoolean("cs2_local_bridge_connected", false);
+                        if (!legacySelected && cs2LocalBridgeConnected)
+                        {
+                            recentlySeen = true;
+                        }
                         newSnapshot = new GsiStatusSnapshot(true, recentlySeen, posts, ageMs, parseErrors);
                     }
                 }

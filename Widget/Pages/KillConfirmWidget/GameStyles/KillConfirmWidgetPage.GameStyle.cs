@@ -182,7 +182,6 @@ namespace KillConfirmGameBar
 
             // Reset stays neutral in the primary visual toolbar.
             SetButtonTheme(VisualSettingsSectionView.ResetVisualButton, theme.Field, theme.SoftBorder, theme.Text);
-            UpdateOverlay.ApplyTheme(theme);
             UpdateControlPanelVisibility();
         }
 
