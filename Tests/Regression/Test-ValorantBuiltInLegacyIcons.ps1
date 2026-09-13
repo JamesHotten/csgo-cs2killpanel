@@ -24,6 +24,18 @@ $expected = @(
     '00033_rgx_11z_pro_v2', '00034_rgx_11z_pro_v3'
 )
 
+$nativeSupportRoot = Join-Path $assetRoot '_native/shared/textures'
+foreach ($texture in @(
+    'Base_Badge_Dissolve.png', 'Base_FrameBG.png', 'Base_FrameDissolve.png',
+    'Base_headshot.png', 'Base_RingBG.png', 'BaseT1_FX.png', 'BaseT2_FX.png',
+    'BaseT3_FX.png', 'FB_HeroFlame.png', 'FB_Large_Sparks.png',
+    'FB_X_Sparks.png', 'T_Mask_Ramp_TopDown.png', 'UI_Hud_Killbanner_VignetteFlat.png'
+)) {
+    if (-not (Test-Path -LiteralPath (Join-Path $nativeSupportRoot $texture) -PathType Leaf)) {
+        throw "Missing current-renderer support texture: $texture"
+    }
+}
+
 foreach ($folder in $expected) {
     $packRoot = Join-Path $assetRoot $folder
     $manifestPath = Join-Path $packRoot 'manifest.json'
@@ -69,6 +81,9 @@ $legacySource = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot 'Widget
 if ($renderSource -notmatch 'LegacyRendering' -or $renderSource -notmatch 'DrawLegacyValorantKillFrame') {
     throw 'Legacy Valorant packs are not routed to the restored renderer.'
 }
+if ($renderSource -notmatch 'DrawNativeValorantFrame') {
+    throw 'Current Valorant pack variants are not routed to the current renderer.'
+}
 foreach ($required in @('killicon_valorant_headshot.png', 'killicon_valorant_particle_base_t1.png',
     'killicon_valorant_particle_large_sparks.png', 'killicon_valorant_particle_x_sparks.png')) {
     if ($resourceSource -notmatch [regex]::Escape($required)) { throw "Legacy texture loader missing: $required" }
@@ -85,7 +100,12 @@ namespace KillConfirmGameBar.Services
     internal static class LocalizationManager
     {
         public static UiLanguage Current => UiLanguage.English;
-        public static string Text(string key) => key;
+        public static string Text(string key)
+        {
+            if (key == "ValorantLegacyRendererSuffix") return " (Legacy renderer)";
+            if (key == "ValorantCurrentRendererSuffix") return " (Current renderer)";
+            return key;
+        }
     }
     internal static class ValorantExternalAssetService
     {
@@ -97,20 +117,32 @@ namespace KillConfirmGameBar.Services
     {
         public static void Verify(string assetRoot, int expectedLegacyCount)
         {
-            if (ValorantPackService.All.Count != expectedLegacyCount + 1)
+            if (ValorantPackService.All.Count != expectedLegacyCount * 2 + 1)
                 throw new System.Exception("Unexpected built-in Valorant pack count.");
-            foreach (ValorantPackInfo pack in ValorantPackService.All)
+            foreach (ValorantPackInfo legacy in ValorantPackService.All)
             {
-                if (pack.Key == ValorantPackService.DefaultKey) continue;
-                if (pack.IsExternal || !pack.HasBuiltInAudio || pack.Profile == null || !pack.Profile.LegacyRendering)
-                    throw new System.Exception("Legacy pack flags changed: " + pack.Key);
-                string textureRoot = System.IO.Path.Combine(assetRoot, pack.Folder, "textures");
-                foreach (string file in new[] { pack.Profile.Emblem, pack.Profile.Bar,
-                    pack.Profile.BarHover, pack.Profile.Frame, pack.Profile.Ring, pack.Profile.Blade })
+                if (legacy.Key == ValorantPackService.DefaultKey
+                    || legacy.RendererVariant != "legacy") continue;
+                ValorantPackInfo current = ValorantPackService.Find(legacy.Key + "_current_renderer");
+                if (legacy.IsExternal || !legacy.HasBuiltInAudio || legacy.Profile == null
+                    || !legacy.Profile.LegacyRendering || current == null)
+                    throw new System.Exception("Legacy renderer variant is invalid: " + legacy.Key);
+                if (current.IsExternal || current.HasBuiltInAudio || current.Profile == null
+                    || current.Profile.LegacyRendering || current.RendererVariant != "current"
+                    || current.Folder != legacy.Folder || current.AssociationId != legacy.AssociationId)
+                    throw new System.Exception("Current renderer variant is invalid: " + legacy.Key);
+                if (!ValorantPackService.GetDisplayName(legacy.Key).Contains("Legacy renderer")
+                    || !ValorantPackService.GetDisplayName(current.Key).Contains("Current renderer"))
+                    throw new System.Exception("Renderer label is missing: " + legacy.Key);
+                if (ValorantPackService.GetVoiceDisplayName(legacy.Key).Contains("renderer"))
+                    throw new System.Exception("Renderer label leaked into voice pack: " + legacy.Key);
+                string textureRoot = System.IO.Path.Combine(assetRoot, legacy.Folder, "textures");
+                foreach (string file in new[] { legacy.Profile.Emblem, legacy.Profile.Bar,
+                    legacy.Profile.BarHover, legacy.Profile.Frame, legacy.Profile.Ring, legacy.Profile.Blade })
                 {
                     if (!string.IsNullOrWhiteSpace(file)
                         && !System.IO.File.Exists(System.IO.Path.Combine(textureRoot, file)))
-                        throw new System.Exception("Registered texture is missing: " + pack.Key + "/" + file);
+                        throw new System.Exception("Registered texture is missing: " + legacy.Key + "/" + file);
                 }
             }
         }
@@ -169,4 +201,4 @@ if ($BundlePath) {
     }
 }
 
-"PASS: all $($expected.Count) restored Valorant visual/audio packs are complete, registered and use the legacy renderer."
+"PASS: all $($expected.Count) restored Valorant packs expose labeled legacy/current renderer variants, share complete assets, and keep one audio pack each."

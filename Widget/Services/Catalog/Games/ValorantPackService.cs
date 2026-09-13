@@ -24,6 +24,7 @@ namespace KillConfirmGameBar.Services
         public bool IsExternal { get; set; }
         public string AssociationId { get; set; }
         public string FolderPath { get; set; }
+        public string RendererVariant { get; set; }
         public ValorantVisualProfileInfo Profile { get; set; }
     }
 
@@ -51,9 +52,8 @@ namespace KillConfirmGameBar.Services
 
         // The public keys remain stable for saved settings. Their folders now point
         // directly at the replacement tree built from the cooked VALORANT exports.
-        private static readonly ValorantPackInfo[] BuiltInPacks =
+        private static readonly ValorantPackInfo[] HistoricalPacks =
         {
-            Pack("00000_base", "_native/themes/Base", "Base", "Base_Emblem.png", hasBuiltInAudio: true),
             LegacyPack("00009_prime", "Prime", "killicon_valorant_prime_emblem.png", "killicon_valorant_bar.png", "killicon_valorant_prime_frame.png", "killicon_valorant_base_ring.png", "#FF8000", sliceSize: 145, headshotY: -17),
             LegacyPack("00010_glitchpop", "Glitchpop", "killicon_valorant_glitchpop_emblem.png", "killicon_valorant_glitchpop_bar.png", "killicon_valorant_glitchpop_frame.png", "killicon_valorant_glitchpop_ring.png", "#68F5FF", sliceSize: 172, headshotY: -10),
             LegacyPack("00011_singularity_v1", "Singularity V1", "killicon_valorant_singularity_v1_emblem.png", "killicon_valorant_singularity_v1_bar.png", "killicon_valorant_base_frame.png", "killicon_valorant_base_ring.png", "#F67A44", sliceSize: 140, headshotY: -10),
@@ -81,6 +81,13 @@ namespace KillConfirmGameBar.Services
             LegacyPack("00033_rgx_11z_pro_v2", "RGX 11z Pro V2", "killicon_valorant_rgx_11z_pro_v2_emblem.png", "killicon_valorant_rgx_11z_pro_v2_bar.png", "killicon_valorant_rgx_11z_pro_frame.png", "killicon_valorant_rgx_11z_pro_ring.png", "#184DD4", sliceSize: 147, headshotX: 0.85, headshotY: -21),
             LegacyPack("00034_rgx_11z_pro_v3", "RGX 11z Pro V3", "killicon_valorant_rgx_11z_pro_v3_emblem.png", "killicon_valorant_rgx_11z_pro_v3_bar.png", "killicon_valorant_rgx_11z_pro_frame.png", "killicon_valorant_rgx_11z_pro_ring.png", "#CE842B", sliceSize: 147, headshotX: 0.85, headshotY: -21)
         };
+
+        private static readonly ValorantPackInfo[] BuiltInPacks = new[]
+            {
+                Pack("00000_base", "_native/themes/Base", "Base", "Base_Emblem.png", hasBuiltInAudio: true)
+            }
+            .Concat(HistoricalPacks.SelectMany(CreateRendererVariants))
+            .ToArray();
 
         private static readonly object PacksLock = new object();
         private static IReadOnlyList<ValorantPackInfo> _packs = BuiltInPacks;
@@ -127,17 +134,41 @@ namespace KillConfirmGameBar.Services
                 return key;
             }
 
-            string localized = LocalizationManager.Text(pack.Key);
-            if (!string.Equals(localized, pack.Key, StringComparison.Ordinal))
-            {
-                return localized;
-            }
-
-            return pack.IsExternal
+            string localizationKey = string.Equals(pack.RendererVariant, "current", StringComparison.OrdinalIgnoreCase)
+                ? pack.Key.Substring(0, pack.Key.Length - CurrentRendererKeySuffix.Length)
+                : pack.Key;
+            string localized = LocalizationManager.Text(localizationKey);
+            string displayName = !string.Equals(localized, localizationKey, StringComparison.Ordinal)
+                ? localized
+                : pack.IsExternal
                 && LocalizationManager.Current == UiLanguage.SimplifiedChinese
                 && !string.IsNullOrWhiteSpace(pack.ChineseDisplayName)
                 ? pack.ChineseDisplayName
                 : pack.DisplayName;
+
+            if (string.Equals(pack.RendererVariant, "legacy", StringComparison.OrdinalIgnoreCase))
+            {
+                return displayName + LocalizationManager.Text("ValorantLegacyRendererSuffix");
+            }
+            if (string.Equals(pack.RendererVariant, "current", StringComparison.OrdinalIgnoreCase))
+            {
+                return displayName + LocalizationManager.Text("ValorantCurrentRendererSuffix");
+            }
+            return displayName;
+        }
+
+        public static string GetVoiceDisplayName(string key)
+        {
+            ValorantPackInfo pack = Find(key);
+            if (pack == null)
+            {
+                return key;
+            }
+
+            string localized = LocalizationManager.Text(pack.Key);
+            return string.Equals(localized, pack.Key, StringComparison.Ordinal)
+                ? pack.DisplayName
+                : localized;
         }
 
         public static string GetEmblemFile(string key)
@@ -214,6 +245,7 @@ namespace KillConfirmGameBar.Services
                 HasBuiltInAudio = true,
                 IsExternal = false,
                 AssociationId = "valorant:legacy:" + folder,
+                RendererVariant = "legacy",
                 Profile = new ValorantVisualProfileInfo
                 {
                     Accent = accent,
@@ -225,9 +257,51 @@ namespace KillConfirmGameBar.Services
                     Blade = blade,
                     HeadshotX = headshotX,
                     HeadshotY = headshotY,
-                    SliceSize = sliceSize
-                    ,LegacyRendering = true
+                    SliceSize = sliceSize,
+                    LegacyRendering = true
                 }
+            };
+        }
+
+        private const string CurrentRendererKeySuffix = "_current_renderer";
+
+        private static IEnumerable<ValorantPackInfo> CreateRendererVariants(ValorantPackInfo legacy)
+        {
+            yield return legacy;
+            yield return new ValorantPackInfo
+            {
+                Key = legacy.Key + CurrentRendererKeySuffix,
+                Folder = legacy.Folder,
+                DisplayName = legacy.DisplayName,
+                EmblemFile = legacy.EmblemFile,
+                HasBuiltInAudio = false,
+                IsExternal = false,
+                AssociationId = legacy.AssociationId,
+                RendererVariant = "current",
+                Profile = CloneProfile(legacy.Profile, legacyRendering: false)
+            };
+        }
+
+        private static ValorantVisualProfileInfo CloneProfile(
+            ValorantVisualProfileInfo source,
+            bool legacyRendering)
+        {
+            return new ValorantVisualProfileInfo
+            {
+                Accent = source.Accent,
+                Emblem = source.Emblem,
+                Frame = source.Frame,
+                Bar = source.Bar,
+                BarHover = source.BarHover,
+                Ring = source.Ring,
+                FrameDissolve = source.FrameDissolve,
+                BadgeDissolve = source.BadgeDissolve,
+                Blade = source.Blade,
+                SpecialFrame = source.SpecialFrame,
+                HeadshotX = source.HeadshotX,
+                HeadshotY = source.HeadshotY,
+                SliceSize = source.SliceSize,
+                LegacyRendering = legacyRendering
             };
         }
     }

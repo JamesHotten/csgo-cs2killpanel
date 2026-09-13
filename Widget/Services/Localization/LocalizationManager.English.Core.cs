@@ -228,6 +228,8 @@ namespace KillConfirmGameBar.Services
             ["valorant_00032_rgx_11z_pro_v1"] = "RGX 11z Pro (Variant 1 Red)",
             ["valorant_00033_rgx_11z_pro_v2"] = "RGX 11z Pro (Variant 2 Blue)",
             ["valorant_00034_rgx_11z_pro_v3"] = "RGX 11z Pro (Variant 3 Yellow)",
+            ["ValorantLegacyRendererSuffix"] = " (Legacy renderer)",
+            ["ValorantCurrentRendererSuffix"] = " (Current renderer)",
 
             // Built-in Voice Names
             ["crossfire_swat_gr"] = "swat GR",

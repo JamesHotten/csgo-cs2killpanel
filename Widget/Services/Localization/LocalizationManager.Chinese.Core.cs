@@ -228,6 +228,8 @@ namespace KillConfirmGameBar.Services
             ["valorant_00032_rgx_11z_pro_v1"] = "RGX 11z Pro（炫彩1 红色）",
             ["valorant_00033_rgx_11z_pro_v2"] = "RGX 11z Pro（炫彩2 蓝色）",
             ["valorant_00034_rgx_11z_pro_v3"] = "RGX 11z Pro（炫彩3 黄色）",
+            ["ValorantLegacyRendererSuffix"] = "（旧版渲染）",
+            ["ValorantCurrentRendererSuffix"] = "（新版渲染）",
 
             // Built-in Voice Names
             ["crossfire_swat_gr"] = "\u65af\u6c83\u7279 \u4fdd\u536b\u8005",

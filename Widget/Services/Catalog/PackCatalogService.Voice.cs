@@ -21,7 +21,7 @@ namespace KillConfirmGameBar.Services
             // display_name and made one imported package look like two entries.
             if (ValorantPackService.Find(item.Key) != null)
             {
-                return ValorantPackService.GetDisplayName(item.Key);
+                return ValorantPackService.GetVoiceDisplayName(item.Key);
             }
 
             if (item.IsBuiltIn)
