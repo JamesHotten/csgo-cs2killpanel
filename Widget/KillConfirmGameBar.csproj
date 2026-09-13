@@ -325,6 +325,7 @@
     <Compile Include="Controls\Animations\Valorant\ValorantAnimation.Data.cs" />
     <Compile Include="Controls\Animations\Valorant\ValorantAnimation.Resources.cs" />
     <Compile Include="Controls\Animations\Valorant\ValorantAnimation.Render.cs" />
+    <Compile Include="Controls\Animations\Valorant\ValorantAnimation.Legacy.cs" />
     <Compile Include="Controls\Animations\Valorant\ValorantAnimation.Drawing.cs" />
     <Compile Include="Controls\Animations\Valorant\ValorantAnimation.Effects.cs" />
     <Compile Include="Controls\Animations\Valorant\ValorantAnimation.Profiles.cs" />

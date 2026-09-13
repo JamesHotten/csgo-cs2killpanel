@@ -367,7 +367,10 @@ $unexpectedCfFiles = $cfFiles | Where-Object {
 if ($unexpectedCfFiles) { throw "Unexpected legacy CF media: $($unexpectedCfFiles[0].FullName)" }
 $baseRoot = Join-Path $RepositoryRoot 'SourceAssets/GameStyles/crossfire'
 $baseIconRoot = Join-Path $baseRoot 'iconpacks/default'
-$baseVoiceRoot = Join-Path $baseRoot 'soundpacks/crossfire_swat_gr'
+$voiceRoot = Join-Path $baseRoot 'soundpacks'
+$voiceKeys = @('crossfire_swat_gr', 'crossfire_swat_bl', 'crossfire_bunny_gr', 'crossfire_bunny_bl',
+    'crossfire_flying_tiger_gr', 'crossfire_flying_tiger_bl', 'crossfire_heart_judge_gr',
+    'crossfire_heart_judge_bl', 'crossfire_women_gr', 'crossfire_women_bl', 'crossfire_v_sex')
 $voicePreviewRoot = Join-Path $RepositoryRoot 'Widget/Assets/PackIcons'
 $voicePreviewFiles = @('swat.png', 'flying_tiger.png', 'women.png', 'cfsex.png', 'bunny.png', 'heart_judge.png')
 foreach ($required in @('iconpacks/default/badge_multi1.png', 'iconpacks/default/pack_head.png',
@@ -375,6 +378,18 @@ foreach ($required in @('iconpacks/default/badge_multi1.png', 'iconpacks/default
     'soundpacks/crossfire_swat_gr/common.wav', 'soundpacks/crossfire_swat_gr/pack_head.png')) {
     if (-not (Test-Path -LiteralPath (Join-Path $baseRoot $required))) { throw "Missing CF base resource: $required" }
 }
+foreach ($voiceKey in $voiceKeys) {
+    $packRoot = Join-Path $voiceRoot $voiceKey
+    if (-not (Test-Path -LiteralPath (Join-Path $packRoot 'manifest.json'))) {
+        throw "Missing restored CF voice pack: $voiceKey"
+    }
+    if (-not (Get-ChildItem -LiteralPath $packRoot -File | Where-Object Extension -eq '.wav')) {
+        throw "Restored CF voice pack has no audio: $voiceKey"
+    }
+}
+$legacyAnimationRoot = Join-Path $baseRoot 'animations'
+$legacyFrameCount = @(Get-ChildItem -LiteralPath $legacyAnimationRoot -Recurse -File -Filter '*.png').Count
+if ($legacyFrameCount -ne 938) { throw "Expected 938 restored raw CF animation frames; found $legacyFrameCount." }
 foreach ($required in $voicePreviewFiles) {
     if (-not (Test-Path -LiteralPath (Join-Path $voicePreviewRoot $required))) {
         throw "Missing built-in CF voice-pack preview: $required"
@@ -391,13 +406,7 @@ foreach ($required in $voicePreviewFiles) {
         }
     }
 }
-foreach ($file in Get-ChildItem -LiteralPath $baseRoot -Recurse -File) {
-    $relative = $file.FullName.Substring($baseRoot.Length + 1).Replace('\', '/')
-    if ($relative -notmatch '^(iconpacks/default|soundpacks/crossfire_swat_gr)/[^/]+$') {
-        throw "Only the two basic CF packs may be bundled: $relative"
-    }
-}
-'PASS: the default and 13 restored CF icon packs, base voice pack and six fallback preview icons are present.'
+'PASS: the default and 13 restored CF icon packs, all 11 legacy voice packs, 938 raw animation frames and six fallback preview icons are present.'
 
 # Inspect the final archive, not bin/obj: stale PRI file lists can omit newly
 # copied images even when the build succeeds and the images exist in staging.
@@ -420,15 +429,6 @@ try {
         $PackageArchive = $ownedArchive
     }
     if ($PackageArchive) {
-        $forbidden = $PackageArchive.Entries | Where-Object {
-            ($_.FullName -like 'Assets/KillConfirmCode/*' -and
-                $_.FullName -notlike 'Assets/KillConfirmCode/Csol4/*' -and
-                ($_.FullName -split '/')[2] -notin $builtInCfFolders) -or
-            ($_.FullName -like 'KillConfirmService/sounds/crossfire_*/*' -and $_.FullName -notlike 'KillConfirmService/sounds/crossfire_swat_gr/*') -or
-            ($_.FullName -like 'Assets/GameStyles/crossfire/*' -and $_.FullName -notlike 'Assets/GameStyles/crossfire/iconpacks/default/*') -or
-            $_.FullName -like 'Assets/GameStyles/crossfire/iconpacks/default/legacy_frames/*'
-        }
-        if ($forbidden) { throw 'Application archive contains external CF resources.' }
         $failures = @()
         $verified = 0
         $entries = [Collections.Generic.Dictionary[string, object]]::new([StringComparer]::OrdinalIgnoreCase)
@@ -437,7 +437,7 @@ try {
         $sourceRoots = @(
             @{ Path = $iconRoot; Prefix = 'Assets/KillConfirmCode/' },
             @{ Path = $baseIconRoot; Prefix = 'Assets/GameStyles/crossfire/iconpacks/default/' },
-            @{ Path = $baseVoiceRoot; Prefix = 'KillConfirmService/sounds/crossfire_swat_gr/' },
+            @{ Path = $voiceRoot; Prefix = 'KillConfirmService/sounds/' },
             @{ Path = $voicePreviewRoot; Prefix = 'Assets/PackIcons/' }
         )
         foreach ($sourceRoot in $sourceRoots) {
@@ -460,7 +460,7 @@ try {
         }
         }
         if ($failures.Count) { throw ("CF icon payload check failed:`n" + ($failures -join "`n")) }
-        "PASS: all $verified packaged CF assets match source SHA-256; only registered built-in fallbacks are bundled."
+        "PASS: all $verified packaged CF icons, previews and restored voice packs match source SHA-256."
     }
 }
 finally {

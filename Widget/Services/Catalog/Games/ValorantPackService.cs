@@ -18,7 +18,7 @@ namespace KillConfirmGameBar.Services
 
         /// <summary>
         /// Whether the native audio shipped with this visual pack is available
-        /// in the core application. Restored legacy visual packs remain icon-only.
+        /// in the core application.
         /// </summary>
         public bool HasBuiltInAudio { get; set; }
         public bool IsExternal { get; set; }
@@ -42,6 +42,7 @@ namespace KillConfirmGameBar.Services
         public double HeadshotX { get; set; }
         public double HeadshotY { get; set; }
         public double SliceSize { get; set; }
+        public bool LegacyRendering { get; set; }
     }
 
     internal static class ValorantPackService
@@ -210,7 +211,7 @@ namespace KillConfirmGameBar.Services
                 Folder = folder,
                 DisplayName = displayName,
                 EmblemFile = emblem,
-                HasBuiltInAudio = false,
+                HasBuiltInAudio = true,
                 IsExternal = false,
                 AssociationId = "valorant:legacy:" + folder,
                 Profile = new ValorantVisualProfileInfo
@@ -225,6 +226,7 @@ namespace KillConfirmGameBar.Services
                     HeadshotX = headshotX,
                     HeadshotY = headshotY,
                     SliceSize = sliceSize
+                    ,LegacyRendering = true
                 }
             };
         }

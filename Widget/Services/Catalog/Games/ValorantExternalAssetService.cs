@@ -96,9 +96,11 @@ namespace KillConfirmGameBar.Services
 
         public static string GetAssociationIdForVoicePack(string key)
         {
-            if (string.Equals(key, ValorantPackService.DefaultKey, StringComparison.OrdinalIgnoreCase))
+            ValorantPackInfo builtIn = ValorantPackService.All.FirstOrDefault(pack =>
+                pack.HasBuiltInAudio && string.Equals(pack.Key, key, StringComparison.OrdinalIgnoreCase));
+            if (builtIn != null)
             {
-                return "valorant:base";
+                return builtIn.AssociationId;
             }
 
             return DiscoverExternalVoicePacks().FirstOrDefault(pack =>
@@ -107,9 +109,12 @@ namespace KillConfirmGameBar.Services
 
         public static string FindVoicePackKeyByAssociation(string associationId)
         {
-            if (string.Equals(associationId, "valorant:base", StringComparison.OrdinalIgnoreCase))
+            ValorantPackInfo builtIn = ValorantPackService.All.FirstOrDefault(pack =>
+                pack.HasBuiltInAudio
+                && string.Equals(pack.AssociationId, associationId, StringComparison.OrdinalIgnoreCase));
+            if (builtIn != null)
             {
-                return ValorantPackService.DefaultKey;
+                return builtIn.Key;
             }
 
             return DiscoverExternalVoicePacks().FirstOrDefault(pack =>

@@ -4,11 +4,11 @@
 
 ## 内置基础包与独立资源包
 
-应用内置默认 CF 图标包、13 套旧版静态图标包与 `crossfire_swat_gr`（SWAT 保卫者）语音包，确保升级后旧选择仍可用，并在删除同键外部包后恢复内置回退。恢复的图标包为 VIP、Angelic Beast、10/15 周年、CFPL、2019/2022/2023/2024 排位赛各阶段；旧版完整序列动画、其他音频和大型动画素材继续外置。原有外部套装仍可分别发行中文 ZIP。
+应用内置默认 CF 图标包、13 套旧版静态图标包与全部 11 套历史语音包，确保升级后旧选择仍可用，并在删除同键外部包后恢复内置回退。恢复的图标包为 VIP、Angelic Beast、10/15 周年、CFPL、2019/2022/2023/2024 排位赛各阶段；历史原始序列帧也保留在源码资源中，供重建和比对使用。原有外部套装仍可分别发行中文 ZIP。
 
 资源包通过通常的单个、批量或拖放导入入口安装到 `LocalState/Packs/crossfire/icon_packs/<id>` 和 `voice_packs/<id>`。这些包使用 `package_kind: crossfire_icon` 或 `crossfire_voice`、`game_style: crossfire`、原有稳定 `id` 及中文 `display_name_zh_cn`。保留旧选择记录，重新导入同名包会更新素材并重新预载；缺少资源的旧内置条目不会继续显示在资源库。普通创作者图标包仍然不需要 manifest。
 
-外部同 ID 图标包和 `crossfire_swat_gr` 语音包可覆盖内置包；删除覆盖包后自动恢复内置版本。其他稳定 ID 的套装仍从 `LocalState/Packs/crossfire` 读取。
+外部同 ID 图标包或语音包可覆盖对应内置包；删除覆盖包后自动恢复内置版本。其他稳定 ID 的套装仍从 `LocalState/Packs/crossfire` 读取。
 
 从仓库外部的素材备份生成这些包：
 
@@ -17,7 +17,7 @@ python .\Tools\Crossfire\Build-CrossfireExternalPacks.py --source 'D:\icon\CF独
 .\Tests\Regression\Test-CrossfireExternalPacks.ps1 -PackagesPath 'D:\icon\CF独立资源\独立包'
 ```
 
-最终 MSIX 构建只允许默认包、上述 13 套恢复的静态图标包、SWAT 基础语音与六张旧语音封面；发现未登记的旧动画帧或其他 CF 媒体会拒绝打包。CSOL 素材保持原有方式。
+最终 MSIX 构建包含默认包、上述 13 套恢复的静态图标包、全部 11 套历史语音与六张旧语音封面。`SourceAssets/GameStyles/crossfire/animations` 中的 938 张原始帧属于可追溯构建素材，不直接作为运行时动画重复打包；当前分层渲染资源与触发逻辑保持不变。CSOL 素材保持原有方式。
 
 ## 素材结构
 

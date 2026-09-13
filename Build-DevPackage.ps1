@@ -166,7 +166,6 @@ foreach ($styleFolder in (Get-ChildItem -LiteralPath $SourceGameStylesRoot -Dire
     }
 
     foreach ($soundPack in (Get-ChildItem -LiteralPath $soundPacksRoot -Directory)) {
-        if ($styleFolder.Name -eq "crossfire" -and $soundPack.Name -ne "crossfire_swat_gr") { continue }
         $normalizedPackName = $soundPack.Name.ToLowerInvariant()
         if ($copiedSoundPackNames.ContainsKey($normalizedPackName)) {
             throw "内置语音包目录名重复: $($soundPack.Name)"

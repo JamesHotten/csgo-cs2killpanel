@@ -55,7 +55,7 @@ namespace KillConfirmGameBar.Services {
    catalog.VoicePacks.Add(new VoicePackItem{Key="crossfire_swat_bl",IsBuiltIn=true});
    CrossfireExternalAssetService.RefreshCatalog(catalog);
    CrossfireExternalAssetService.RefreshCatalog(catalog);
-   Check(catalog.IconPacks.Count==15 && catalog.VoicePacks.Count==1,"Unexpected packs or duplicates");
+   Check(catalog.IconPacks.Count==15 && catalog.VoicePacks.Count==11,"Unexpected packs or duplicates");
    Check(catalog.IconPacks.Single(p=>p.Key=="default").IsBuiltIn,"Default icon absent");
    string[] restored={"vip","angelic_beast","anniversary_10","anniversary_15","cfpl",
     "rankmach_2019_1","rankmach_2019_2","rankmach_2022_1","rankmach_2022_2",
@@ -64,7 +64,10 @@ namespace KillConfirmGameBar.Services {
     Check(catalog.IconPacks.Single(p=>p.Key==key).IsBuiltIn,"Restored icon absent: "+key);
     Check(File.Exists(new Uri(CrossfireExternalAssetService.IconPreviewUri(key)).LocalPath),"Restored preview does not resolve: "+key);
    }
-   Check(catalog.VoicePacks.Single().Key=="crossfire_swat_gr" && catalog.VoicePacks.Single().IsBuiltIn,"Default voice absent");
+   string[] voices={"crossfire_swat_gr","crossfire_swat_bl","crossfire_bunny_gr","crossfire_bunny_bl",
+    "crossfire_flying_tiger_gr","crossfire_flying_tiger_bl","crossfire_heart_judge_gr","crossfire_heart_judge_bl",
+    "crossfire_women_gr","crossfire_women_bl","crossfire_v_sex"};
+   foreach(string key in voices) Check(catalog.VoicePacks.Single(p=>p.Key==key).IsBuiltIn,"Restored voice absent: "+key);
    Check(File.Exists(new Uri(CrossfireExternalAssetService.VisualUri("Original","badge_multi1.png")).LocalPath),"Default icon does not resolve");
    Check(File.Exists(CrossfireExternalAssetService.DefaultVoiceFileAsync("common.wav").Result.Path),"Default voice does not resolve");
    string source=CrossfireExternalAssetService.BuiltInPath();
@@ -79,10 +82,10 @@ namespace KillConfirmGameBar.Services {
    Check(CrossfireExternalAssetService.ResolvePackPath("default")==source,"Base fallback path missing");
    CrossfireExternalAssetService.TryInstallAsync(new StorageFolder{Path=CrossfireExternalAssetService.BuiltInPath(true)},true).GetAwaiter().GetResult();
    CrossfireExternalAssetService.RefreshCatalog(catalog);
-   Check(!catalog.VoicePacks.Single().IsBuiltIn,"Imported voice override missing");
+   Check(!catalog.VoicePacks.Single(p=>p.Key=="crossfire_swat_gr").IsBuiltIn,"Imported voice override missing");
    Directory.Move(CrossfireExternalAssetService.PackPath("crossfire_swat_gr",true),Path.Combine(local,"removed-voice"));
    CrossfireExternalAssetService.RefreshAfterRemoval(catalog);
-   Check(catalog.VoicePacks.Single().IsBuiltIn,"Voice fallback missing");
+   Check(catalog.VoicePacks.Single(p=>p.Key=="crossfire_swat_gr").IsBuiltIn,"Voice fallback missing");
    string[] expected={"https://pan.quark.cn/s/f93adc47c434?pwd=JEcL","https://pan.quark.cn/s/070d14fa9438?pwd=YwFG", "https://pan.quark.cn/s/52c6d57d73e9?pwd=cgCV","https://pan.quark.cn/s/9467261e2bd5?pwd=czBG"};
    int index=0;
    foreach(var style in new[]{GameStyleMode.Crossfire,GameStyleMode.Valorant}) foreach(bool voice in new[]{true,false}) {
@@ -104,13 +107,14 @@ namespace KillConfirmGameBar.Services {
 Add-Type -TypeDefinition ($shim + $code)
 $temp = Join-Path $root ('Output/Tests/PackLibrary-' + [guid]::NewGuid().ToString('N'))
 $installed = Join-Path $temp 'Installed'
-foreach ($mapping in @(
-    @('iconpacks/default', 'Assets/GameStyles/crossfire/iconpacks/default'),
-    @('soundpacks/crossfire_swat_gr', 'KillConfirmService/sounds/crossfire_swat_gr'))) {
-    $target = Join-Path $installed $mapping[1]
+$target = Join-Path $installed 'Assets/GameStyles/crossfire/iconpacks/default'
+New-Item -ItemType Directory -Path $target -Force | Out-Null
+Get-ChildItem -LiteralPath (Join-Path $root 'SourceAssets/GameStyles/crossfire/iconpacks/default') -File |
+    Copy-Item -Destination $target
+Get-ChildItem -LiteralPath (Join-Path $root 'SourceAssets/GameStyles/crossfire/soundpacks') -Directory | ForEach-Object {
+    $target = Join-Path $installed "KillConfirmService/sounds/$($_.Name)"
     New-Item -ItemType Directory -Path $target -Force | Out-Null
-    Get-ChildItem -LiteralPath (Join-Path $root ('SourceAssets/GameStyles/crossfire/' + $mapping[0])) -File |
-        Copy-Item -Destination $target
+    Get-ChildItem -LiteralPath $_.FullName -File | Copy-Item -Destination $target
 }
 $restoredFolders = @('Vip', 'AngelicBeast', 'Anniversary10', 'Anniversary15', 'CFPL',
     'Rankmach2019_1', 'Rankmach2019_2', 'Rankmach2022_1', 'Rankmach2022_2',

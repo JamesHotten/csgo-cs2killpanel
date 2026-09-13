@@ -301,20 +301,22 @@ namespace KillConfirmGameBar.Services
         {
             bool changed = false;
             foreach (VoicePackItem valorantVoice in catalog.VoicePacks.Where(item =>
-                item.IsBuiltIn && string.Equals(item.Key, ValorantPackService.DefaultKey, StringComparison.OrdinalIgnoreCase)))
+                item.IsBuiltIn && ValorantPackService.Find(item.Key)?.HasBuiltInAudio == true))
             {
-                if (!string.Equals(valorantVoice.AssociationId, "valorant:base", StringComparison.OrdinalIgnoreCase))
+                string associationId = ValorantPackService.Find(valorantVoice.Key).AssociationId;
+                if (!string.Equals(valorantVoice.AssociationId, associationId, StringComparison.OrdinalIgnoreCase))
                 {
-                    valorantVoice.AssociationId = "valorant:base";
+                    valorantVoice.AssociationId = associationId;
                     changed = true;
                 }
             }
             foreach (IconPackItem valorantIcon in catalog.IconPacks.Where(item =>
-                item.IsBuiltIn && string.Equals(item.Key, ValorantPackService.DefaultKey, StringComparison.OrdinalIgnoreCase)))
+                item.IsBuiltIn && ValorantPackService.Find(item.Key) != null))
             {
-                if (!string.Equals(valorantIcon.AssociationId, "valorant:base", StringComparison.OrdinalIgnoreCase))
+                string associationId = ValorantPackService.Find(valorantIcon.Key).AssociationId;
+                if (!string.Equals(valorantIcon.AssociationId, associationId, StringComparison.OrdinalIgnoreCase))
                 {
-                    valorantIcon.AssociationId = "valorant:base";
+                    valorantIcon.AssociationId = associationId;
                     changed = true;
                 }
             }

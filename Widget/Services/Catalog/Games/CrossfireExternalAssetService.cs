@@ -18,6 +18,17 @@ namespace KillConfirmGameBar.Services
             "rankmach_2019_1", "rankmach_2019_2", "rankmach_2022_1", "rankmach_2022_2",
             "rankmach_2023_1", "rankmach_2023_2", "rankmach_2024_1", "rankmach_2024_2"
         };
+        internal static readonly string[] VoiceKeys = {
+            "crossfire_swat_gr", "crossfire_swat_bl", "crossfire_bunny_gr", "crossfire_bunny_bl",
+            "crossfire_flying_tiger_gr", "crossfire_flying_tiger_bl",
+            "crossfire_heart_judge_gr", "crossfire_heart_judge_bl",
+            "crossfire_women_gr", "crossfire_women_bl", "crossfire_v_sex"
+        };
+        private static readonly string[] VoiceDisplayNames = {
+            "斯沃特（保卫者）", "斯沃特（潜伏者）", "兔女郎（保卫者）", "兔女郎（潜伏者）",
+            "飞虎队（保卫者）", "飞虎队（潜伏者）", "审判者（保卫者）", "审判者（潜伏者）",
+            "猎狐者（保卫者）", "猎狐者（潜伏者）", "性感女性"
+        };
         private static readonly string[] LegacyFolders = {
             "Original", "Vip", "AngelicBeast", "Anniversary10", "Anniversary15", "CFPL",
             "Rankmach2019_1", "Rankmach2019_2", "Rankmach2022_1", "Rankmach2022_2",
@@ -30,6 +41,7 @@ namespace KillConfirmGameBar.Services
         };
         public static bool IsIconKey(string key) => IconKeys.Contains(key ?? "", StringComparer.OrdinalIgnoreCase);
         public static bool IsVoiceKey(string key) => !string.IsNullOrWhiteSpace(key) && key.StartsWith("crossfire_", StringComparison.OrdinalIgnoreCase);
+        public static bool IsBuiltInVoiceKey(string key) => VoiceKeys.Contains(key ?? "", StringComparer.OrdinalIgnoreCase);
         public static string Root => Path.Combine(ApplicationData.Current.LocalFolder.Path, "Packs", "crossfire");
         public static int Revision { get; private set; }
         public static string PackPath(string key, bool voice = false) => Path.Combine(Root, voice ? "voice_packs" : "icon_packs", key);
@@ -37,6 +49,10 @@ namespace KillConfirmGameBar.Services
         public static string BuiltInPath(bool voice = false) => Path.Combine(
             Windows.ApplicationModel.Package.Current.InstalledLocation.Path,
             voice ? @"KillConfirmService\sounds\crossfire_swat_gr" : @"Assets\GameStyles\crossfire\iconpacks\default");
+
+        private static string BuiltInVoicePath(string key) => Path.Combine(
+            Windows.ApplicationModel.Package.Current.InstalledLocation.Path,
+            "KillConfirmService", "sounds", IsBuiltInVoiceKey(key) ? key : VoiceKeys[0]);
 
         private static string BuiltInIconPath(string key)
         {
@@ -56,8 +72,8 @@ namespace KillConfirmGameBar.Services
             string external = PackPath(key, voice);
             if (!File.Exists(Path.Combine(external, "manifest.json")))
             {
-                if (voice && string.Equals(key, "crossfire_swat_gr", StringComparison.OrdinalIgnoreCase))
-                    return BuiltInPath(true);
+                if (voice && IsBuiltInVoiceKey(key))
+                    return BuiltInVoicePath(key);
                 if (!voice && IsIconKey(key))
                     return BuiltInIconPath(key);
             }
@@ -79,7 +95,7 @@ namespace KillConfirmGameBar.Services
         public static async Task<StorageFile> DefaultVoiceFileAsync(string name)
         {
             string path = Path.Combine(ResolvePackPath("crossfire_swat_gr", true), name);
-            if (!File.Exists(path)) path = Path.Combine(BuiltInPath(true), name);
+            if (!File.Exists(path)) path = Path.Combine(BuiltInVoicePath("crossfire_swat_gr"), name);
             return await StorageFile.GetFileFromPathAsync(path);
         }
 
@@ -149,11 +165,16 @@ namespace KillConfirmGameBar.Services
                     HasWeaponBadgeOverlay = File.Exists(Path.Combine(folder, "badge_assault1.png"))
                 });
             }
-            if (!voices.Any(p => string.Equals(p.Key, "crossfire_swat_gr", StringComparison.OrdinalIgnoreCase)))
+            for (int index = VoiceKeys.Length - 1; index >= 0; index--)
+            {
+                string key = VoiceKeys[index];
+                if (voices.Any(p => string.Equals(p.Key, key, StringComparison.OrdinalIgnoreCase)))
+                    continue;
                 voices.Insert(0, new VoicePackItem {
-                    Key = "crossfire_swat_gr", DisplayName = "斯沃特（保卫者）", FolderPath = BuiltInPath(true),
+                    Key = key, DisplayName = VoiceDisplayNames[index], FolderPath = BuiltInVoicePath(key),
                     IsBuiltIn = true, IsVisibleInWidget = true, OwnsFolder = false
                 });
+            }
             catalog.IconPacks = icons;
             catalog.VoicePacks = voices;
         }

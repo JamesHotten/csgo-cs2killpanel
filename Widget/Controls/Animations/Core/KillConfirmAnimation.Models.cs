@@ -101,6 +101,9 @@ namespace KillConfirmGameBar.Controls
             public CanvasBitmap LargeSparks => Textures?.LargeSparks;
             public CanvasBitmap XSparks => Textures?.XSparks;
             public ValorantDemoProfile DemoProfile { get; set; }
+            public int SpinDirection { get; set; } = 1;
+            public float Brightness { get; set; } = 1.0f;
+            public float Contrast { get; set; } = 1.0f;
         }
 
         private sealed class ValorantTextureSet : IDisposable

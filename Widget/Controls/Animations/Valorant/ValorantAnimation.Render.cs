@@ -12,6 +12,12 @@ namespace KillConfirmGameBar.Controls
                 return;
             }
 
+            if (asset.DemoProfile?.LegacyRendering == true)
+            {
+                DrawLegacyValorantKillFrame(drawingSession, frame, asset);
+                return;
+            }
+
             DrawNativeValorantFrame(drawingSession, frame, asset);
         }
 

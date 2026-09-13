@@ -14,6 +14,11 @@ namespace KillConfirmGameBar.Controls
             ValorantVisualProfileInfo external = ValorantPackService.Find(packKey)?.Profile;
             if (external != null)
             {
+                if (external.LegacyRendering)
+                {
+                    return GetLegacyValorantDemoProfile(packKey);
+                }
+
                 return new ValorantDemoProfile(
                     "external",
                     external.Accent,
@@ -102,6 +107,80 @@ namespace KillConfirmGameBar.Controls
             }
         }
 
+        private static ValorantDemoProfile GetLegacyValorantDemoProfile(string packKey)
+        {
+            string id = ExtractValorantDemoId(packKey);
+            ValorantDemoProfile profile;
+            switch (id)
+            {
+                case "00010": profile = new ValorantDemoProfile(id, "#2697f5", "killicon_valorant_glitchpop_emblem.png", "killicon_valorant_glitchpop_frame.png", "killicon_valorant_glitchpop_bar.png", "killicon_valorant_glitchpop_bar.png") { HeadshotY = -16, HeroFlame = false }; break;
+                case "00011": profile = LegacySimple(id, "#df7e49", "singularity_v1", -10, 0.9, 0.8, false); break;
+                case "00012": profile = LegacySimple(id, "#dcc971", "singularity_v2", -10, 0.9, 0.8, false); break;
+                case "00013": profile = LegacySimple(id, "#7e9edc", "singularity_v3", -10, 0.9, 0.8, false); break;
+                case "00014": profile = LegacyGaia(id, "#f9545e", "gaia"); break;
+                case "00015": profile = LegacyGaia(id, "#287ef3", "gaia_v1"); break;
+                case "00016": profile = LegacyGaia(id, "#27b748", "gaia_v2"); break;
+                case "00017": profile = LegacyGaia(id, "#f77124", "gaia_v3"); break;
+                case "00018": profile = LegacyBubblegum(id, "#c94fb9", "bubblegum_deathwish", "bubblegum_deathwish", -12); break;
+                case "00019": profile = LegacyBubblegum(id, "#c98e4c", "bubblegum_deathwish_v3", "bubblegum_deathwish_v1", -12); break;
+                case "00020": profile = LegacyBubblegum(id, "#9d332f", "bubblegum_deathwish_v2", "bubblegum_deathwish_v2", -12); break;
+                case "00021": profile = LegacyBubblegum(id, "#6eb037", "bubblegum_deathwish_v1", "bubblegum_deathwish_v3", -12); break;
+                case "00022": profile = LegacySimple(id, "#947046", "champions_2021", -12, 0.6, 0.8); break;
+                case "00023": profile = LegacyChaos(id, "#f46e57", "prelude_to_chaos_v1"); break;
+                case "00024": profile = LegacyChaos(id, "#10c110", "prelude_to_chaos_v2"); break;
+                case "00025": profile = LegacyChaos(id, "#1168c1", "prelude_to_chaos_v3"); break;
+                case "00026": profile = LegacyPrimordium(id, "#8f3e31", "primordium"); break;
+                case "00027": profile = LegacyPrimordium(id, "#387a51", "primordium_v1"); break;
+                case "00028": profile = LegacyPrimordium(id, "#316884", "primordium_v2"); break;
+                case "00029": profile = LegacyPrimordium(id, "#8d6f43", "primordium_v3"); break;
+                case "00030": profile = LegacySimple(id, "#73c0c4", "radiant_crisis_001", -12, 0.5, 0.8); profile.HaloRadius = 25; break;
+                case "00031": profile = LegacyRgx(id, "#c1f341", "rgx_11z_pro"); break;
+                case "00032": profile = LegacyRgx(id, "#f3414a", "rgx_11z_pro_v1"); break;
+                case "00033": profile = LegacyRgx(id, "#41baf3", "rgx_11z_pro_v2"); break;
+                case "00034": profile = LegacyRgx(id, "#f3a741", "rgx_11z_pro_v3"); break;
+                default: profile = new ValorantDemoProfile("00009", "#908ccd", "killicon_valorant_prime_emblem.png", "killicon_valorant_prime_frame.png", "killicon_valorant_bar.png", "killicon_valorant_bar.png") { HeadshotY = -16, HeroFlame = false }; break;
+            }
+            profile.LegacyRendering = true;
+            return profile;
+        }
+
+        private static ValorantDemoProfile LegacySimple(string id, string color, string name, double headshotY, double emblemScale, double frameScale, bool heroFlame = true)
+        {
+            return new ValorantDemoProfile(id, color, $"killicon_valorant_{name}_emblem.png", "killicon_valorant_base_frame.png", $"killicon_valorant_{name}_bar.png", $"killicon_valorant_{name}_bar.png")
+            { HeadshotY = headshotY, HeroFlame = heroFlame, EmblemScale = emblemScale, FrameWidthScale = frameScale };
+        }
+
+        private static ValorantDemoProfile LegacyGaia(string id, string color, string name)
+        {
+            return new ValorantDemoProfile(id, color, $"killicon_valorant_{name}_emblem.png", $"killicon_valorant_{name}_frame.png", $"killicon_valorant_{name}_bar.png", $"killicon_valorant_{name}_bar.png")
+            { HeadshotX = -2, HeadshotY = -20, EmblemScale = 0.9, BarRadiusOffset = 4, IsGaia = true };
+        }
+
+        private static ValorantDemoProfile LegacyBubblegum(string id, string color, string emblem, string bar, double headshotY)
+        {
+            return new ValorantDemoProfile(id, color, $"killicon_valorant_{emblem}_emblem.png", "killicon_valorant_bubblegum_deathwish_frame.png", $"killicon_valorant_{bar}_bar.png", $"killicon_valorant_{bar}_bar.png")
+            { Blade = "killicon_valorant_bubblegum_deathwish_blade.png", HeadshotY = headshotY, EmblemScale = 0.55 };
+        }
+
+        private static ValorantDemoProfile LegacyChaos(string id, string color, string name)
+        {
+            ValorantDemoProfile profile = LegacySimple(id, color, name, -12, 0.5, 0.8);
+            profile.BarRadiusOffset = 9;
+            return profile;
+        }
+
+        private static ValorantDemoProfile LegacyPrimordium(string id, string color, string name)
+        {
+            return new ValorantDemoProfile(id, color, $"killicon_valorant_{name}_emblem.png", "killicon_valorant_primordium_frame.png", $"killicon_valorant_{name}_bar.png", $"killicon_valorant_{name}_bar.png")
+            { HeadshotY = -14, EmblemScale = 0.4, HaloRadius = 25 };
+        }
+
+        private static ValorantDemoProfile LegacyRgx(string id, string color, string name)
+        {
+            return new ValorantDemoProfile(id, color, $"killicon_valorant_{name}_emblem.png", $"killicon_valorant_{name}_frame.png", $"killicon_valorant_{name}_bar.png", $"killicon_valorant_{name}_bar.png")
+            { HeadshotY = -12, EmblemScale = 0.35, FrameWidthScale = 0.8, HaloRadius = 25 };
+        }
+
         private static ValorantDemoProfile EdgeProfile(string id, string color, string variant)
         {
             return new ValorantDemoProfile(id, color, $"Edge_Emblem{variant}.png", "Dragon_FrameBG.png", $"Edge_KillPip_Up{variant}.png", $"Edge_KillPip_Hover{variant}.png") { Ring = "FantasySovereign_RingBG.png", FrameDissolve = "Dragon_FrameDissolve.png", BadgeDissolve = "Cyberpunk_BadgeDissolve.png", SliceSize = 140, HeadshotY = -10 };
@@ -174,6 +253,16 @@ namespace KillConfirmGameBar.Controls
             public double HeadshotX { get; set; }
             public double HeadshotY { get; set; }
             public double SliceSize { get; set; } = 147.0;
+            public bool LegacyRendering { get; set; }
+            public bool HeroFlame { get; set; } = true;
+            public bool IsGaia { get; set; }
+            public double EmblemScale { get; set; } = 1.0;
+            public double FrameWidthScale { get; set; } = 1.0;
+            public double BarRadiusOffset { get; set; }
+            public double BaseParticleYOffset { get; set; } = 45.0;
+            public double BaseParticleScale { get; set; } = 1.0;
+            public double LargeSparksScale { get; set; } = 1.0;
+            public double HaloRadius { get; set; } = 30.0;
         }
 
         private static Color ParseValorantColor(string hex)

@@ -32,7 +32,10 @@ namespace KillConfirmGameBar.Controls
                 IsHeadshot = isHeadshot,
                 Accent = profile.Accent,
                 DemoProfile = profile,
-                Textures = textures
+                Textures = textures,
+                SpinDirection = NextValorantSpinDirection(),
+                Brightness = profile.IsGaia ? ValorantGaiaBrightness : 1.0f,
+                Contrast = profile.IsGaia ? ValorantGaiaContrast : 1.0f
             };
 
             progress?.Report(100);
@@ -41,7 +44,9 @@ namespace KillConfirmGameBar.Controls
                 {
                     FrameWidth = (int)ValorantFrameWidth,
                     FrameHeight = (int)ValorantFrameHeight,
-                    Frames = GetNativeValorantFrameCount(asset.KillCount),
+                    Frames = profile.LegacyRendering
+                        ? LegacyValorantFrameCount
+                        : GetNativeValorantFrameCount(asset.KillCount),
                     Fps = FrameSequenceFps
                 },
                 asset);
@@ -164,6 +169,22 @@ namespace KillConfirmGameBar.Controls
                 if (!string.IsNullOrWhiteSpace(profile.SpecialFrame))
                 {
                     textures.SpecialFrame = await LoadValorantTextureAsync(packKey, root, folder, profile.SpecialFrame, cancellationToken);
+                }
+
+                if (profile.LegacyRendering)
+                {
+                    progress?.Report(35);
+                    textures.Headshot = await LoadValorantTextureAsync(packKey, root, folder, "killicon_valorant_headshot.png", cancellationToken);
+                    progress?.Report(45);
+                    textures.BaseParticle = await LoadValorantTextureAsync(packKey, root, folder, "killicon_valorant_particle_base_t1.png", cancellationToken);
+                    progress?.Report(65);
+                    textures.HeroFlame = await TryLoadValorantTextureAsync(packKey, root, folder, "killicon_valorant_particle_hero_flame.png", cancellationToken);
+                    progress?.Report(78);
+                    textures.LargeSparks = await LoadValorantTextureAsync(packKey, root, folder, "killicon_valorant_particle_large_sparks.png", cancellationToken);
+                    progress?.Report(92);
+                    textures.XSparks = await LoadValorantTextureAsync(packKey, root, folder, "killicon_valorant_particle_x_sparks.png", cancellationToken);
+                    progress?.Report(100);
+                    return textures;
                 }
 
                 progress?.Report(35);

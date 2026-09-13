@@ -158,4 +158,22 @@ mod tests {
         assert_eq!(super::resolve_soundpack_alias("APEX_LEGENDS"), Some("apex"));
         assert_eq!(super::resolve_soundpack_alias("unsupported_pack"), None);
     }
+
+    #[test]
+    fn every_restored_valorant_voice_is_selectable_and_loadable() {
+        let source_sounds = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../SourceAssets/GameStyles/valorant/soundpacks");
+        let restored: Vec<_> = super::SOUND_PACK_OPTIONS
+            .iter()
+            .filter(|option| option.preset.starts_with("valorant_000")
+                && option.preset != "valorant_00000_base")
+            .collect();
+        assert_eq!(restored.len(), 26);
+        for option in restored {
+            assert_eq!(super::resolve_soundpack_alias(option.preset), Some(option.preset));
+            let preset = crate::soundpack::Preset::load_from_sounds_root(option.preset, &source_sounds)
+                .unwrap_or_else(|error| panic!("{} failed to load: {error:?}", option.preset));
+            assert_eq!(preset.preset_name, option.preset);
+        }
+    }
 }

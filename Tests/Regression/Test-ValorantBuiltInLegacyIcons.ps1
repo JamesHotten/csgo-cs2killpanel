@@ -3,6 +3,7 @@ param([string]$BundlePath = '')
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $assetRoot = Join-Path $repositoryRoot 'Widget/Assets/GameStyles/valorant/killconfirm'
+$audioRoot = Join-Path $repositoryRoot 'SourceAssets/GameStyles/valorant/soundpacks'
 $servicePath = Join-Path $repositoryRoot 'Widget/Services/Catalog/Games/ValorantPackService.cs'
 $service = Get-Content -Raw -LiteralPath $servicePath
 $editor = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot 'Widget/Pages/Main/Packs/Creation/MainPage.PackCreation.ValorantIcon.cs')
@@ -42,14 +43,38 @@ foreach ($folder in $expected) {
     if ($service -notmatch [regex]::Escape("LegacyPack(`"$folder`"")) {
         throw "Restored Valorant icon pack is not registered: $folder"
     }
+    $voiceRoot = Join-Path $audioRoot "valorant_$folder"
+    $voiceManifestPath = Join-Path $voiceRoot 'manifest.json'
+    if (-not (Test-Path -LiteralPath $voiceManifestPath -PathType Leaf)) {
+        throw "Missing restored Valorant voice pack manifest: valorant_$folder"
+    }
+    $voiceManifest = Get-Content -Raw -LiteralPath $voiceManifestPath | ConvertFrom-Json
+    foreach ($voice in @('1.wav', '2.wav', '3.wav', '4.wav', '5.wav')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $voiceRoot $voice) -PathType Leaf)) {
+            throw "Missing restored Valorant voice: valorant_$folder/$voice"
+        }
+    }
 }
 
 $registered = [regex]::Matches($service, 'LegacyPack\("00(?:0(?:09)|0[1-3][0-9])[^\"]*"').Count
 if ($registered -ne $expected.Count) {
     throw "Expected $($expected.Count) restored Valorant icon packs; found $registered registrations."
 }
-if ($service -notmatch 'HasBuiltInAudio\s*=\s*false') {
-    throw 'Restored Valorant visual packs must not claim missing built-in audio.'
+if ($service -notmatch 'HasBuiltInAudio\s*=\s*true') {
+    throw 'Restored Valorant packs must expose their restored built-in audio.'
+}
+$renderSource = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot 'Widget/Controls/Animations/Valorant/ValorantAnimation.Render.cs')
+$resourceSource = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot 'Widget/Controls/Animations/Valorant/ValorantAnimation.Resources.cs')
+$legacySource = Get-Content -Raw -LiteralPath (Join-Path $repositoryRoot 'Widget/Controls/Animations/Valorant/ValorantAnimation.Legacy.cs')
+if ($renderSource -notmatch 'LegacyRendering' -or $renderSource -notmatch 'DrawLegacyValorantKillFrame') {
+    throw 'Legacy Valorant packs are not routed to the restored renderer.'
+}
+foreach ($required in @('killicon_valorant_headshot.png', 'killicon_valorant_particle_base_t1.png',
+    'killicon_valorant_particle_large_sparks.png', 'killicon_valorant_particle_x_sparks.png')) {
+    if ($resourceSource -notmatch [regex]::Escape($required)) { throw "Legacy texture loader missing: $required" }
+}
+if ($legacySource -notmatch 'LegacyValorantBarAngles' -or $legacySource -notmatch 'GetLegacyValorantLifeOpacity') {
+    throw 'Restored Valorant renderer is incomplete.'
 }
 
 if (-not ('KillConfirmGameBar.Services.LegacyValorantPackRegression' -as [type])) {
@@ -77,7 +102,7 @@ namespace KillConfirmGameBar.Services
             foreach (ValorantPackInfo pack in ValorantPackService.All)
             {
                 if (pack.Key == ValorantPackService.DefaultKey) continue;
-                if (pack.IsExternal || pack.HasBuiltInAudio || pack.Profile == null)
+                if (pack.IsExternal || !pack.HasBuiltInAudio || pack.Profile == null || !pack.Profile.LegacyRendering)
                     throw new System.Exception("Legacy pack flags changed: " + pack.Key);
                 string textureRoot = System.IO.Path.Combine(assetRoot, pack.Folder, "textures");
                 foreach (string file in new[] { pack.Profile.Emblem, pack.Profile.Bar,
@@ -129,6 +154,12 @@ if ($BundlePath) {
                 $path = "Assets/GameStyles/valorant/killconfirm/$folder/textures/$texture"
                 if (-not $entries.Contains($path)) { throw "Packaged Valorant texture missing: $path" }
             }
+            $sourceVoiceRoot = Join-Path $audioRoot "valorant_$folder"
+            foreach ($voiceFile in Get-ChildItem -LiteralPath $sourceVoiceRoot -File) {
+                $voice = $voiceFile.Name
+                $voicePath = "KillConfirmService/sounds/valorant_$folder/$voice"
+                if (-not $entries.Contains($voicePath)) { throw "Packaged Valorant voice missing: $voicePath" }
+            }
         }
     }
     finally {
@@ -138,4 +169,4 @@ if ($BundlePath) {
     }
 }
 
-"PASS: all $($expected.Count) restored Valorant icon packs are complete, registered and visual-only."
+"PASS: all $($expected.Count) restored Valorant visual/audio packs are complete, registered and use the legacy renderer."
