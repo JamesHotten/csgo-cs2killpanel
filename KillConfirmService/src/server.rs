@@ -172,6 +172,7 @@ pub(crate) async fn run(mut args: Args) -> Result<()> {
         mutable: RwLock::new(Mutable {
             active_player: Default::default(),
             active_observed_player_id: None,
+            last_effective_gsi_game_version: None,
             last_bomb_state: None,
             last_bomb_player: None,
             last_round_bomb_state: None,

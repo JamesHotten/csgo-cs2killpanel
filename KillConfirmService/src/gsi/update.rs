@@ -3,10 +3,11 @@ pub async fn update(
     body: Bytes,
 ) -> Result<StatusCode, ApiError> {
     let gsi_start = Instant::now();
-    let gsi_game_version =
+    let configured_gsi_game_version =
         GsiGameVersion::from_u8(app_state.gsi_game_version.load(Ordering::Relaxed));
-    let data: Body = match parse_gsi_body(&body, gsi_game_version) {
-        Ok(data) => data,
+    let (data, gsi_game_version): (Body, GsiGameVersion) =
+        match parse_gsi_body_with_version(&body, configured_gsi_game_version) {
+        Ok(parsed) => parsed,
         Err(error) => {
             let errors = app_state.gsi_parse_errors.fetch_add(1, Ordering::Relaxed) + 1;
             app_state
@@ -168,8 +169,13 @@ pub async fn update(
 
     let binding = app_state.mutable.read().await;
     let tracked_player = binding.active_player.clone();
-    let observed_player_changed =
-        has_observed_player_changed(binding.active_observed_player_id.as_deref(), &steamid);
+    let observed_player_changed = has_observed_player_changed(
+        binding.active_observed_player_id.as_deref(),
+        &steamid,
+    ) || has_gsi_game_version_changed(
+        binding.last_effective_gsi_game_version,
+        gsi_game_version,
+    );
     let current_kills = ply_state.round_kills;
     let original_kills = tracked_player.ply_kills;
     let current_hs_kills = ply_state.round_killhs;
@@ -376,6 +382,7 @@ pub async fn update(
     binding.last_bomb_player = current_bomb_player;
     binding.last_round_bomb_state = current_round_bomb_state;
     binding.active_observed_player_id = Some(steamid.clone());
+    binding.last_effective_gsi_game_version = Some(gsi_game_version);
     binding.last_game_mode = Some(current_mode.clone());
     binding.cs2_local_log_unconfirmed_kills = if matches!(
         gsi_game_version,

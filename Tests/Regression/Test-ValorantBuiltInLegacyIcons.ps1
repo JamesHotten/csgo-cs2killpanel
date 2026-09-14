@@ -94,7 +94,20 @@ foreach ($required in @('killicon_valorant_headshot.png', 'killicon_valorant_par
 if ($legacySource -notmatch 'LegacyValorantBarAngles' -or $legacySource -notmatch 'GetLegacyValorantLifeOpacity') {
     throw 'Restored Valorant renderer is incomplete.'
 }
-if ($profilesSource -notmatch 'LegacyRgx[\s\S]*?"killicon_valorant_rgx_11z_pro_frame\.png"') {
+function Get-MethodBody([string]$source, [string]$name) {
+    $match = [regex]::Match(
+        $source,
+        '(?ms)^        private static [^\r\n]+\b' + [regex]::Escape($name) + '\([^)]*\)\s*\{.*?^        \}')
+    if (-not $match.Success) { throw "Method not found: $name" }
+    return $match.Value
+}
+
+$legacyGaiaProfile = Get-MethodBody $profilesSource 'LegacyGaia'
+$legacyRgxProfile = Get-MethodBody $profilesSource 'LegacyRgx'
+if ($legacyGaiaProfile -notmatch '\$"killicon_valorant_\{name\}_frame\.png"') {
+    throw 'Gaia legacy variants must load their own frame texture.'
+}
+if ($legacyRgxProfile -notmatch '"killicon_valorant_rgx_11z_pro_frame\.png"') {
     throw 'RGX legacy variants must share the frame texture that actually exists in every variant folder.'
 }
 if ($packSyncSource -notmatch 'SelectedValorantIconMatchesAssociation') {

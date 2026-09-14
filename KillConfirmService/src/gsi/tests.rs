@@ -5,13 +5,14 @@ mod tests {
         advance_pending_last_kill_frame,
         can_read_observed_combat_events, classify_delayed_last_kill, detect_bomb_defused_action,
         detect_bomb_planted_action, detect_gun_fired, detect_thrown_grenade,
-        has_observed_player_changed, is_knife_weapon, is_local_observed_player,
+        has_gsi_game_version_changed, has_observed_player_changed, is_knife_weapon,
+        is_local_observed_player,
         normalize_cs2_map_mode, opponent_team_display_name, pending_last_kill_is_confirmable,
         resolve_crossfire_streak_count, resolve_observed_player_id, resolve_player_death_count,
         resolve_player_kill_delta, resolve_weapon_kill_context, should_emit_player_death,
         should_emit_player_kill, should_reset_stored_streak,
     };
-    use crate::state::PendingLastKill;
+    use crate::state::{GsiGameVersion, PendingLastKill};
     use gsi_cs2::map::Mode;
     use gsi_cs2::round::BombState;
     use gsi_cs2::team::TeamClass;
@@ -244,6 +245,22 @@ mod tests {
             0
         );
         assert!(should_reset_stored_streak(false, true, false));
+    }
+
+    #[test]
+    fn switching_between_cs2_and_legacy_discards_the_previous_game_baseline() {
+        assert!(has_gsi_game_version_changed(
+            Some(GsiGameVersion::Cs2),
+            GsiGameVersion::CsgoLegacy
+        ));
+        assert!(has_gsi_game_version_changed(
+            Some(GsiGameVersion::CsgoLegacy),
+            GsiGameVersion::Cs2
+        ));
+        assert!(!has_gsi_game_version_changed(
+            Some(GsiGameVersion::Cs2),
+            GsiGameVersion::Cs2
+        ));
     }
 
     #[test]

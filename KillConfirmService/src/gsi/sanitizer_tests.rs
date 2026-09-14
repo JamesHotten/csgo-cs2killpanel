@@ -1,6 +1,9 @@
 #[cfg(test)]
 mod gsi_sanitizer_tests {
-    use super::{GsiGameVersion, parse_gsi_body, sanitize_cs2_numeric_fields};
+    use super::{
+        GsiGameVersion, parse_gsi_body, parse_gsi_body_with_version,
+        sanitize_cs2_numeric_fields,
+    };
 
     fn sample_payload() -> serde_json::Value {
         serde_json::json!({
@@ -98,6 +101,69 @@ mod gsi_sanitizer_tests {
             parsed.err()
         );
         let parsed = parsed.unwrap();
+        assert_eq!(parsed.player.unwrap().state.unwrap().armor, 255);
+    }
+
+    #[test]
+    fn legacy_payload_is_auto_detected_while_cs2_is_selected() {
+        let value = serde_json::json!({
+            "provider": {
+                "name": "Counter-Strike: Global Offensive",
+                "appid": 730,
+                "version": "13804",
+                "steamid": "76561198000000000",
+                "timestamp": 1700000000
+            },
+            "map": {
+                "mode": "competitive",
+                "name": "de_dust2",
+                "phase": "live",
+                "round": 4,
+                "current_spectators": 1,
+                "team_ct": { "score": 2 },
+                "team_t": { "score": 1 }
+            },
+            "player": {
+                "steamid": "76561198000000001",
+                "name": "Observed Player",
+                "team": "CT",
+                "state": {
+                    "health": 100,
+                    "armor": 50,
+                    "money": 3200,
+                    "round_kills": 1,
+                    "round_killhs": 0
+                },
+                "match_stats": { "kills": 4, "assists": 1, "deaths": 2, "mvps": 0, "score": 9 },
+                "weapons": {}
+            },
+            "round": { "phase": "live" },
+            "auth": { "token": "killconfirm" }
+        });
+        let body = serde_json::to_vec(&value).unwrap();
+        let (parsed, detected) =
+            parse_gsi_body_with_version(&body, GsiGameVersion::Cs2).unwrap();
+
+        assert_eq!(detected, GsiGameVersion::CsgoLegacy);
+        assert_eq!(parsed.player.unwrap().state.unwrap().round_kills, 1);
+    }
+
+    #[test]
+    fn cs2_payload_is_auto_detected_while_legacy_is_selected() {
+        let mut value = sample_payload();
+        value["provider"] = serde_json::json!({
+            "name": "Counter-Strike 2",
+            "appid": 730,
+            "version": 14000,
+            "steamid": "76561198000000000",
+            "timestamp": 1700000000
+        });
+        value["auth"] = serde_json::json!({ "token": "killconfirm" });
+        let body = serde_json::to_vec(&value).unwrap();
+        let (parsed, detected) =
+            parse_gsi_body_with_version(&body, GsiGameVersion::CsgoLegacy).unwrap();
+
+        assert_eq!(detected, GsiGameVersion::Cs2);
         assert_eq!(parsed.player.unwrap().state.unwrap().armor, 255);
     }
 }

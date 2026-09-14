@@ -15,8 +15,17 @@ fn resolve_bomb_audio_transition(
     new_round_started.then_some(BombAudioTransition::Stop)
 }
 
+#[cfg(test)]
 fn parse_gsi_body(body: &[u8], game_version: GsiGameVersion) -> Result<Body, GsiBodyError> {
+    parse_gsi_body_with_version(body, game_version).map(|(body, _)| body)
+}
+
+fn parse_gsi_body_with_version(
+    body: &[u8],
+    configured_game_version: GsiGameVersion,
+) -> Result<(Body, GsiGameVersion), GsiBodyError> {
     let mut value: serde_json::Value = serde_json::from_slice(body)?;
+    let game_version = detect_gsi_game_version(&value).unwrap_or(configured_game_version);
     let valid_auth = match game_version {
         GsiGameVersion::Cs2 => has_valid_gsi_token(&value),
         GsiGameVersion::CsgoLegacy => crate::csgo_legacy::has_valid_auth(&value),
@@ -29,9 +38,35 @@ fn parse_gsi_body(body: &[u8], game_version: GsiGameVersion) -> Result<Body, Gsi
         GsiGameVersion::Cs2 => {
             normalize_cs2_map_mode(&mut value);
             sanitize_cs2_numeric_fields(&mut value);
-            Ok(serde_json::from_value(value)?)
+            Ok((serde_json::from_value(value)?, game_version))
         }
-        GsiGameVersion::CsgoLegacy => Ok(crate::csgo_legacy::parse_body(value)?),
+        GsiGameVersion::CsgoLegacy => {
+            Ok((crate::csgo_legacy::parse_body(value)?, game_version))
+        }
+    }
+}
+
+fn detect_gsi_game_version(value: &serde_json::Value) -> Option<GsiGameVersion> {
+    let root = value.as_object()?;
+    let provider = root
+        .iter()
+        .find(|(key, _)| key.eq_ignore_ascii_case("provider"))?
+        .1
+        .as_object()?;
+    let name = provider
+        .iter()
+        .find(|(key, _)| key.eq_ignore_ascii_case("name"))?
+        .1
+        .as_str()?
+        .trim()
+        .to_ascii_lowercase();
+
+    if name.contains("global offensive") {
+        Some(GsiGameVersion::CsgoLegacy)
+    } else if name.contains("counter-strike 2") || name.contains("counter strike 2") {
+        Some(GsiGameVersion::Cs2)
+    } else {
+        None
     }
 }
 
@@ -263,6 +298,13 @@ fn classify_delayed_last_kill(
 
 fn has_observed_player_changed(previous_player_id: Option<&str>, current_player_id: &str) -> bool {
     previous_player_id != Some(current_player_id)
+}
+
+fn has_gsi_game_version_changed(
+    previous_game_version: Option<GsiGameVersion>,
+    current_game_version: GsiGameVersion,
+) -> bool {
+    previous_game_version != Some(current_game_version)
 }
 
 fn is_local_observed_player(

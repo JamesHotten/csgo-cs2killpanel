@@ -3,6 +3,7 @@ use gsi_cs2::weapon::WeaponName;
 pub struct Mutable {
     pub active_player: TrackedPlayerState,
     pub active_observed_player_id: Option<String>,
+    pub last_effective_gsi_game_version: Option<GsiGameVersion>,
     pub last_bomb_state: Option<String>,
     pub last_bomb_player: Option<String>,
     pub last_round_bomb_state: Option<String>,
