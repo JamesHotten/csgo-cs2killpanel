@@ -20,6 +20,16 @@ namespace KillConfirmGameBar.Controls
 
         public void PlayOverwatchLowerThirdKill(string targetName, bool isAssist = false)
         {
+            if (_overwatchCardLoading)
+            {
+                // Preserve rapid preview events received while the first icon is loading.
+                if (_overwatchPendingCards.Count < OverwatchMaximumCardCount - 1)
+                {
+                    _overwatchPendingCards.Add(Tuple.Create(targetName, isAssist));
+                }
+                return;
+            }
+
             if (_isOverwatchActive
                 && _drawOverwatchCard
                 && _playbackClock.IsRunning
@@ -33,6 +43,7 @@ namespace KillConfirmGameBar.Controls
                 return;
             }
 
+            _overwatchCardLoading = true;
             PlayOverwatchMode(
                 targetName,
                 drawCrosshair: false,
@@ -91,13 +102,41 @@ namespace KillConfirmGameBar.Controls
                     drawCrosshair,
                     drawCard,
                     isAssist);
+                if (drawCard)
+                {
+                    foreach (Tuple<string, bool> pending in _overwatchPendingCards)
+                    {
+                        AddOverwatchFeedItem(
+                            pending.Item1,
+                            pending.Item2,
+                            _playbackClock.Elapsed.TotalMilliseconds);
+                    }
+                    if (_overwatchPendingCards.Count > 0)
+                    {
+                        UpdateOverwatchCardSelectionBounds();
+                        SpriteCanvas.Invalidate();
+                    }
+                    _overwatchPendingCards.Clear();
+                }
             }
-            catch
+            catch (Exception error)
             {
+                App.Log("Overwatch playback failed (card=" + drawCard + "): " + error);
                 if (token == _playToken)
                 {
                     ResetOverwatchState();
                     Visibility = Visibility.Collapsed;
+                }
+            }
+            finally
+            {
+                if (drawCard && token == _playToken)
+                {
+                    _overwatchCardLoading = false;
+                    if (!_isOverwatchActive)
+                    {
+                        _overwatchPendingCards.Clear();
+                    }
                 }
             }
         }
@@ -183,6 +222,8 @@ namespace KillConfirmGameBar.Controls
             _isOverwatchActive = false;
             _drawOverwatchCrosshair = false;
             _drawOverwatchCard = false;
+            _overwatchCardLoading = false;
+            _overwatchPendingCards.Clear();
             _overwatchFeedItems.Clear();
             _overwatchSelectionViewportCenterOffsetX = 0;
             _overwatchSelectionViewportCenterOffsetY = 0;

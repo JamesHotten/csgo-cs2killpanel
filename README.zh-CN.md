@@ -59,6 +59,8 @@ CS2 不使用 Legacy 的身份缓存或 SourceMod 去重路径。`Legacy Bridge`
 - 已启用 Xbox Game Bar
 - Counter-Strike 2 和/或 CS:GO Legacy
 
+Game Bar 小组件支持游戏的独占全屏模式；若游戏内未显示悬浮窗，请确认小组件已固定，并检查 Xbox Game Bar 在该游戏中的显示状态。上游新增的“兼容显示”桌面窗口支持无边框全屏窗口化，但当前版本尚未提供该显示模式。
+
 从源码构建还需要：
 
 - Rust 工具链

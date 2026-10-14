@@ -55,6 +55,7 @@ For the boundaries and curation notes of all 16 danmaku event pools, see the [ev
 
 - Windows 10 or Windows 11
 - Xbox Game Bar enabled
+- The Game Bar widget supports exclusive fullscreen. If the overlay is missing, check that the widget is pinned and visible in Game Bar. The upstream borderless fullscreen desktop display mode is not included in this version.
 - Counter-Strike 2 and/or CS:GO Legacy
 
 Building from source additionally requires:

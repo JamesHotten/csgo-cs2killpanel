@@ -155,16 +155,37 @@ namespace KillConfirmGameBar
                 UpdateConnectionState(KillEventConnectionState.Connecting);
                 App.Log("EnsureServiceAvailableAsync: attempting packaged service launch.");
 
-                bool launched = await TryLaunchPackagedServiceAsync();
-                App.Log("EnsureServiceAvailableAsync: launch result=" + launched);
-                if (!launched)
+                ServiceHealthCheckResult ready = null;
+                bool launched = false;
+                for (int attempt = 0; attempt < 2 && _isPageActive && !_shutdownRequested; attempt++)
                 {
-                    UpdateConnectionState(KillEventConnectionState.Disconnected);
-                    await ShowServiceStartupFailureAsync(CreateServiceDiagnostic("SVC-03", "ServiceDiagLaunchFailed"));
+                    launched = await TryLaunchPackagedServiceAsync();
+                    App.Log("EnsureServiceAvailableAsync: launch attempt=" + (attempt + 1) + ", result=" + launched);
+                    ready = launched ? await WaitForServiceReadyAsync() : await CheckServiceHealthAsync();
+                    if (ready.IsHealthy || ready.Diagnostic?.Code == "SVC-05")
+                    {
+                        break;
+                    }
+
+                    if (attempt == 0)
+                    {
+                        // A closing companion may still own the port when the widget reopens.
+                        await Task.Delay(500);
+                    }
+                }
+
+                if (!_isPageActive || _shutdownRequested)
+                {
                     return;
                 }
 
-                ServiceHealthCheckResult ready = await WaitForServiceReadyAsync();
+                if (ready == null)
+                {
+                    ready = new ServiceHealthCheckResult
+                    {
+                        Diagnostic = CreateServiceDiagnostic("SVC-03", "ServiceDiagLaunchFailed")
+                    };
+                }
                 App.Log("EnsureServiceAvailableAsync: service ready after launch=" + ready.IsHealthy);
                 if (_isPageActive)
                 {
@@ -178,7 +199,9 @@ namespace KillConfirmGameBar
                 else
                 {
                     await ShowServiceStartupFailureAsync(
-                        ready.Diagnostic ?? CreateServiceDiagnostic("SVC-04", "ServiceDiagStartupTimeout"));
+                        ready.Diagnostic ?? CreateServiceDiagnostic(
+                            launched ? "SVC-04" : "SVC-03",
+                            launched ? "ServiceDiagStartupTimeout" : "ServiceDiagLaunchFailed"));
                 }
             }
             finally

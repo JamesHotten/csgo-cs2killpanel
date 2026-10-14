@@ -493,6 +493,7 @@ namespace KillConfirmGameBar.Danmaku
                 canvasHeight,
                 laneCount,
                 _cachedFontSize);
+            laneCount = lanes.Count;
 
             DanmakuQueueItem pending;
             while (_activeList.Count < activeLimit && _pendingQueue.TryPeek(out pending))
@@ -542,7 +543,7 @@ namespace KillConfirmGameBar.Danmaku
                     Color = GetRandomDanmakuColor(pending.Message.Role),
                     IsEventReaction = pending.Message.IsEventReaction
                 });
-                _nextLaneIndex = (laneIndex + 1) % laneCount;
+                _nextLaneIndex = (laneIndex + Math.Max(1, laneCount / 5)) % laneCount;
                 _lastSpawnTimeMs = nowMs;
                 _lastSpawnWasEvent = isEvent;
                 break;

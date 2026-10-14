@@ -39,6 +39,8 @@ namespace KillConfirmGameBar.Controls
         private bool _isOverwatchActive;
         private bool _drawOverwatchCrosshair;
         private bool _drawOverwatchCard;
+        private bool _overwatchCardLoading;
+        private readonly List<Tuple<string, bool>> _overwatchPendingCards = new List<Tuple<string, bool>>();
         private readonly List<OverwatchFeedItem> _overwatchFeedItems = new List<OverwatchFeedItem>();
         private double _overwatchSelectionViewportWidth = 180;
         private double _overwatchSelectionViewportHeight = OverwatchCardHeight;

@@ -193,7 +193,7 @@ namespace KillConfirmGameBar
             object sender,
             SystemNavigationCloseRequestedPreviewEventArgs e)
         {
-            if (Services.CloseBehaviorSettingsStore.KeepRunningAfterSettingsClose)
+            if (_currentWindowIsWidget || Services.CloseBehaviorSettingsStore.KeepRunningAfterSettingsClose)
             {
                 return;
             }
@@ -223,16 +223,16 @@ namespace KillConfirmGameBar
                 _systemNavigationPreview = null;
             }
 
-            if (!Services.CloseBehaviorSettingsStore.KeepRunningAfterSettingsClose)
-            {
-                await RequestFullExitAsync();
-            }
-            else if (_currentWindowIsWidget)
+            _gameBarWidget = null;
+            if (_currentWindowIsWidget)
             {
                 await ShutdownCompanionFromCurrentFrameAsync();
             }
+            else if (!Services.CloseBehaviorSettingsStore.KeepRunningAfterSettingsClose)
+            {
+                await RequestFullExitAsync();
+            }
 
-            _gameBarWidget = null;
             Log(_currentWindowIsWidget ? "Widget window closed." : "Settings window closed.");
         }
 
@@ -284,8 +284,8 @@ namespace KillConfirmGameBar
                 // Suspending is the last reliable callback UWP receives during
                 // normal app shutdown. Always release this process's service
                 // lease; the companion also watches the PID for crash/kill cases.
-                await ShutdownCompanionFromCurrentFrameAsync();
                 _gameBarWidget = null;
+                await ShutdownCompanionFromCurrentFrameAsync();
                 Log("App suspending.");
             }
             finally
