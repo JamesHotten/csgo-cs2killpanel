@@ -23,9 +23,10 @@ namespace KillConfirmGameBar.Controls
             if (_overwatchCardLoading)
             {
                 // Preserve rapid preview events received while the first icon is loading.
-                if (_overwatchPendingCards.Count < OverwatchMaximumCardCount - 1)
+                _overwatchPendingCards.Add(Tuple.Create(targetName, isAssist));
+                while (_overwatchPendingCards.Count > OverwatchMaximumCardCount)
                 {
-                    _overwatchPendingCards.Add(Tuple.Create(targetName, isAssist));
+                    _overwatchPendingCards.RemoveAt(0);
                 }
                 return;
             }
